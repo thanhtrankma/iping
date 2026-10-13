@@ -123,6 +123,7 @@ class GroupEvent {
     required this.lat,
     required this.lng,
     required this.createdAt,
+    this.battery,
   });
 
   final String id;
@@ -133,6 +134,7 @@ class GroupEvent {
   final double? lat;
   final double? lng;
   final DateTime? createdAt;
+  final int? battery;
 
   factory GroupEvent.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? const {};
@@ -145,6 +147,7 @@ class GroupEvent {
       lat: (d['lat'] as num?)?.toDouble(),
       lng: (d['lng'] as num?)?.toDouble(),
       createdAt: _date(d['createdAt']),
+      battery: (d['battery'] as num?)?.toInt(),
     );
   }
 }
