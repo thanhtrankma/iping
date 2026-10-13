@@ -10,12 +10,14 @@ import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
+import '../widgets/explore_pill.dart';
 import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
 import 'activity_tab.dart';
 import 'meetup_screen.dart';
 import 'moments_screen.dart';
 import 'chat_tab.dart';
+import 'explore_leaderboard_screen.dart';
 import 'explore_screen.dart';
 import 'group_actions.dart';
 import 'member_screen.dart';
@@ -198,7 +200,17 @@ class _GroupMapViewState extends State<_GroupMapView> {
                             ],
                           ),
                           const Spacer(),
-                          const _SharingBadge(),
+                          Column(
+                            children: [
+                              ExplorePill(
+                                onOpen: () => _push(const ExploreScreen()),
+                                onLeaderboard: () => g == null
+                                    ? _push(const ExploreScreen())
+                                    : _push(ExploreLeaderboardScreen(groupId: g.id, myUid: widget.uid)),
+                              ),
+                              const _SharingBadge(),
+                            ],
+                          ),
                           const Spacer(),
                           Column(
                             children: [
@@ -212,13 +224,6 @@ class _GroupMapViewState extends State<_GroupMapView> {
                               ),
                               const SizedBox(height: 14),
                               GlassButton(icon: Icons.near_me_rounded, tooltip: 'Vị trí của tôi', onTap: _focusMe),
-                              const SizedBox(height: 14),
-                              GlassButton(
-                                icon: Icons.explore_outlined,
-                                color: AppColors.brand,
-                                tooltip: 'Khám phá',
-                                onTap: () => _push(const ExploreScreen()),
-                              ),
                               if (g != null) ...[
                                 const SizedBox(height: 14),
                                 GlassButton(
