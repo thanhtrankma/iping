@@ -19,6 +19,11 @@ service cloud.firestore {
     // Hồ sơ người dùng: chỉ chính chủ đọc/ghi (chứa token push).
     match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
+
+      // Ô lục giác đã khám phá, chia theo bucket.
+      match /explore/{bucket} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
     }
 
     // Mã mời chỉ được Cloud Functions truy cập.

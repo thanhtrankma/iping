@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
+import 'explore_service.dart';
 import 'geofence_service.dart';
 import 'group_service.dart';
 import 'profile_service.dart';
@@ -100,6 +101,8 @@ class LocationService {
 
   Future<void> _onPosition(Position p) async {
     lastPosition.value = p;
+    // Mở sương ở màn Khám phá (chỉ lưu cho chính người dùng).
+    ExploreService.instance.record(p.latitude, p.longitude, accuracy: p.accuracy, time: p.timestamp);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || !sharing.value) return;
 

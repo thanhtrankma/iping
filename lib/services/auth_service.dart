@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'explore_service.dart';
 import 'location_service.dart';
 import 'notification_service.dart';
 
@@ -34,6 +35,7 @@ class AuthService {
       // Dừng chia sẻ và gỡ token push trước khi mất quyền ghi.
       await LocationService.instance.stop();
       await LocationService.instance.dispose();
+      await ExploreService.instance.dispose();
       await NotificationService.instance.unregister(uid);
     }
     await _auth.signOut();

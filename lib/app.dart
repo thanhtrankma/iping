@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/sign_in_screen.dart';
 import 'services/auth_service.dart';
+import 'services/explore_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
 import 'services/settings_service.dart';
@@ -59,6 +60,7 @@ class _SignedInShellState extends State<SignedInShell> {
     super.initState();
     SettingsService.instance.load();
     LocationService.instance.init(widget.uid);
+    ExploreService.instance.init(widget.uid);
     NotificationService.instance.init(widget.uid);
   }
 
