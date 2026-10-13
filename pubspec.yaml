@@ -20,6 +20,9 @@ dependencies:
   battery_plus: ^6.0.3
   shared_preferences: ^2.3.2
   geocoding: ^5.0.0
+  firebase_storage: ^12.4.10
+  image_picker: ^1.2.4
+  cached_network_image: ^4.0.4
 
 dev_dependencies:
   flutter_test:

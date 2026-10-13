@@ -13,6 +13,8 @@ import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
 import 'activity_tab.dart';
+import 'meetup_screen.dart';
+import 'moments_screen.dart';
 import 'chat_tab.dart';
 import 'group_actions.dart';
 import 'member_screen.dart';
@@ -80,6 +82,8 @@ class _GroupMapViewState extends State<_GroupMapView> {
   final _map = MapController();
   Stream<List<MemberLocation>>? _locations;
   Stream<List<Place>>? _places;
+  Stream<List<Moment>>? _moments;
+  Stream<List<Meetup>>? _meetups;
 
   @override
   void initState() {
@@ -88,6 +92,8 @@ class _GroupMapViewState extends State<_GroupMapView> {
     if (g != null) {
       _locations = GroupService.instance.locations(g.id);
       _places = GroupService.instance.places(g.id);
+      _moments = GroupService.instance.moments(g.id);
+      _meetups = GroupService.instance.activeMeetups(g.id);
     }
   }
 
@@ -103,118 +109,143 @@ class _GroupMapViewState extends State<_GroupMapView> {
   @override
   Widget build(BuildContext context) {
     final g = widget.group;
-    return StreamBuilder<List<Place>>(
-      stream: _places,
-      builder: (context, placeSnap) => StreamBuilder<List<MemberLocation>>(
-        stream: _locations,
-        builder: (context, locSnap) {
-          final places = placeSnap.data ?? const <Place>[];
-          final locs = (locSnap.data ?? const <MemberLocation>[])
-              .where((l) => g?.memberIds.contains(l.uid) ?? false)
-              .toList();
-          final me = LocationService.instance.lastPosition.value;
-          final myLoc = locs.where((l) => l.uid == widget.uid).firstOrNull;
-          final center = me != null
-              ? LatLng(me.latitude, me.longitude)
-              : myLoc?.point ?? (locs.isNotEmpty ? locs.first.point : defaultCenter);
-          // Bản đồ tạo trước khi dữ liệu về: đưa về đúng chỗ ở lần đầu có vị trí.
-          if (!_centered && (me != null || locs.isNotEmpty)) {
-            _centered = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _map.move(center, 16);
-            });
-          }
+    return StreamBuilder<List<Moment>>(
+      stream: _moments,
+      builder: (context, momentSnap) => StreamBuilder<List<Meetup>>(
+        stream: _meetups,
+        builder: (context, meetupSnap) => StreamBuilder<List<Place>>(
+          stream: _places,
+          builder: (context, placeSnap) => StreamBuilder<List<MemberLocation>>(
+            stream: _locations,
+            builder: (context, locSnap) {
+              final places = placeSnap.data ?? const <Place>[];
+              final moments = momentSnap.data ?? const <Moment>[];
+              final meetups = meetupSnap.data ?? const <Meetup>[];
+              final locs = (locSnap.data ?? const <MemberLocation>[])
+                  .where((l) => g?.memberIds.contains(l.uid) ?? false)
+                  .toList();
+              final me = LocationService.instance.lastPosition.value;
+              final myLoc = locs.where((l) => l.uid == widget.uid).firstOrNull;
+              final center = me != null
+                  ? LatLng(me.latitude, me.longitude)
+                  : myLoc?.point ?? (locs.isNotEmpty ? locs.first.point : defaultCenter);
+              // Bản đồ tạo trước khi dữ liệu về: đưa về đúng chỗ ở lần đầu có vị trí.
+              if (!_centered && (me != null || locs.isNotEmpty)) {
+                _centered = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _map.move(center, 16);
+                });
+              }
 
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: IPingMap(
-                  controller: _map,
-                  center: center,
-                  zoom: 16,
-                  layers: [
-                    ...placeLayers(places),
-                    MarkerLayer(markers: [for (final l in locs) memberMarker(l)]),
-                  ],
-                ),
-              ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Column(
-                        children: [
-                          GlassButton(
-                            icon: Icons.menu_rounded,
-                            tooltip: 'Menu',
-                            onTap: () => _push(MenuScreen(uid: widget.uid, group: g)),
-                          ),
-                          if (g != null) ...[
-                            const SizedBox(height: 14),
-                            GlassButton(
-                              icon: Icons.person_add_alt_1_rounded,
-                              tooltip: 'Mời thành viên',
-                              onTap: () => GroupActions.invite(context, g),
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: IPingMap(
+                      controller: _map,
+                      center: center,
+                      zoom: 16,
+                      layers: [
+                        ...placeLayers(places),
+                        MarkerLayer(markers: [
+                          for (final m in meetups)
+                            Marker(
+                              point: m.point,
+                              width: 44,
+                              height: 44,
+                              alignment: Alignment.topCenter,
+                              child: GestureDetector(
+                                onTap: () => _push(MeetupDetailScreen(group: g!, meetupId: m.id)),
+                                child: const Icon(Icons.flag_circle_rounded, size: 44, color: AppColors.sos),
+                              ),
                             ),
-                            const SizedBox(height: 14),
-                            GlassButton(
-                              tooltip: 'Gửi SOS',
-                              onTap: () => GroupActions.sos(context, g),
-                              child: const Text('SOS',
-                                  style: TextStyle(
-                                      color: AppColors.sos, fontWeight: FontWeight.w900, fontSize: 16)),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const Spacer(),
-                      const _SharingBadge(),
-                      const Spacer(),
-                      Column(
-                        children: [
-                          ValueListenableBuilder<MapStyle>(
-                            valueListenable: SettingsService.instance.mapStyle,
-                            builder: (context, style, _) => GlassButton(
-                              icon: style == MapStyle.satellite ? Icons.map_outlined : Icons.satellite_alt_rounded,
-                              tooltip: 'Đổi kiểu bản đồ',
-                              onTap: SettingsService.instance.toggleMapStyle,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          GlassButton(icon: Icons.near_me_rounded, tooltip: 'Vị trí của tôi', onTap: _focusMe),
-                          if (g != null) ...[
-                            const SizedBox(height: 14),
-                            GlassButton(
-                              icon: Icons.chat_bubble_outline_rounded,
-                              tooltip: 'Trò chuyện',
-                              onTap: () => _push(SubPage(title: g.name, child: ChatTab(group: g))),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
+                          for (final m in moments.where((m) => m.hasLocation))
+                            momentMarker(m, () => _push(MomentsScreen(group: g!))),
+                          for (final l in locs) memberMarker(l),
+                        ]),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-              if (widget.loading)
-                const Center(child: CircularProgressIndicator())
-              else if (g == null)
-                const _Onboarding()
-              else
-                _MembersSheet(
-                  group: g,
-                  groups: widget.groups,
-                  locations: locs,
-                  places: places,
-                  myUid: widget.uid,
-                  onOpenMember: (uid) => _push(MemberScreen(groupId: g.id, uid: uid)),
-                  onOpenPage: _push,
-                ),
-            ],
-          );
-        },
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Column(
+                            children: [
+                              GlassButton(
+                                icon: Icons.menu_rounded,
+                                tooltip: 'Menu',
+                                onTap: () => _push(MenuScreen(uid: widget.uid, group: g)),
+                              ),
+                              if (g != null) ...[
+                                const SizedBox(height: 14),
+                                GlassButton(
+                                  icon: Icons.person_add_alt_1_rounded,
+                                  tooltip: 'Mời thành viên',
+                                  onTap: () => GroupActions.invite(context, g),
+                                ),
+                                const SizedBox(height: 14),
+                                GlassButton(
+                                  tooltip: 'Gửi SOS',
+                                  onTap: () => GroupActions.sos(context, g),
+                                  child: const Text('SOS',
+                                      style:
+                                          TextStyle(color: AppColors.sos, fontWeight: FontWeight.w900, fontSize: 16)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const Spacer(),
+                          const _SharingBadge(),
+                          const Spacer(),
+                          Column(
+                            children: [
+                              ValueListenableBuilder<MapStyle>(
+                                valueListenable: SettingsService.instance.mapStyle,
+                                builder: (context, style, _) => GlassButton(
+                                  icon: style == MapStyle.satellite ? Icons.map_outlined : Icons.satellite_alt_rounded,
+                                  tooltip: 'Đổi kiểu bản đồ',
+                                  onTap: SettingsService.instance.toggleMapStyle,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              GlassButton(icon: Icons.near_me_rounded, tooltip: 'Vị trí của tôi', onTap: _focusMe),
+                              if (g != null) ...[
+                                const SizedBox(height: 14),
+                                GlassButton(
+                                  icon: Icons.chat_bubble_outline_rounded,
+                                  tooltip: 'Trò chuyện',
+                                  onTap: () => _push(SubPage(title: g.name, child: ChatTab(group: g))),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (widget.loading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (g == null)
+                    const _Onboarding()
+                  else
+                    _MembersSheet(
+                      group: g,
+                      groups: widget.groups,
+                      locations: locs,
+                      places: places,
+                      meetups: meetups,
+                      momentCount: moments.length,
+                      myUid: widget.uid,
+                      onOpenMember: (uid) => _push(MemberScreen(groupId: g.id, uid: uid)),
+                      onOpenPage: _push,
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -308,6 +339,8 @@ class _MembersSheet extends StatelessWidget {
     required this.groups,
     required this.locations,
     required this.places,
+    required this.meetups,
+    required this.momentCount,
     required this.myUid,
     required this.onOpenMember,
     required this.onOpenPage,
@@ -317,6 +350,8 @@ class _MembersSheet extends StatelessWidget {
   final List<Group> groups;
   final List<MemberLocation> locations;
   final List<Place> places;
+  final List<Meetup> meetups;
+  final int momentCount;
   final String myUid;
   final ValueChanged<String> onOpenMember;
   final ValueChanged<Widget> onOpenPage;
@@ -385,20 +420,28 @@ class _MembersSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: GlassTile(
+                      icon: Icons.auto_awesome_outlined,
+                      label: momentCount > 0 ? 'Khoảnh khắc ($momentCount)' : 'Khoảnh khắc',
+                      onTap: () => onOpenPage(MomentsScreen(group: group)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GlassTile(
+                      icon: Icons.handshake_outlined,
+                      label: 'Meetup',
+                      onTap: () => onOpenPage(MeetupListScreen(group: group)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GlassTile(
                       icon: Icons.place_outlined,
                       label: 'Địa điểm',
                       onTap: () => onOpenPage(SubPage(title: 'Địa điểm', child: PlacesTab(group: group))),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GlassTile(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      label: 'Trò chuyện',
-                      onTap: () => onOpenPage(SubPage(title: group.name, child: ChatTab(group: group))),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: GlassTile(
                       icon: Icons.notifications_none_rounded,
@@ -408,6 +451,10 @@ class _MembersSheet extends StatelessWidget {
                   ),
                 ],
               ),
+              for (final m in meetups) ...[
+                const SizedBox(height: 12),
+                MeetupCard(group: group, meetup: m),
+              ],
               const SizedBox(height: 14),
               Container(
                 decoration: BoxDecoration(

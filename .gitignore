@@ -8,3 +8,11 @@ build/
 ios/Pods/
 functions/node_modules/
 .firebase/
+.flutter-plugins-dependencies
+*.log
+.DS_Store
+ios/Flutter/ephemeral/
+ios/.symlinks/
+android/.gradle/
+android/local.properties
+android/app/.cxx/

@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/models.dart';
+import 'profile_service.dart';
 import 'trip_analyzer.dart';
 
 class GroupService {
@@ -88,6 +90,75 @@ class GroupService {
       .limit(50)
       .snapshots()
       .map((s) => s.docs.map(GroupEvent.fromDoc).toList());
+
+  // ---- Khoảnh khắc ----
+
+  /// Khoảnh khắc trong 24 giờ gần nhất, mới nhất trước.
+  Stream<List<Moment>> moments(String gid) => _sub(gid, 'moments')
+      .where('createdAt', isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 24))))
+      .orderBy('createdAt', descending: true)
+      .snapshots()
+      .map((s) => s.docs.map(Moment.fromDoc).toList());
+
+  Future<void> postMoment(String gid, {required String text, XFile? photo, double? lat, double? lng}) async {
+    final ref = _sub(gid, 'moments').doc();
+    String? photoUrl;
+    if (photo != null) {
+      photoUrl = await ProfileService.instance.uploadImage('moments/$gid/$_uid/${ref.id}.jpg', photo);
+    }
+    final now = DateTime.now();
+    await ref.set({
+      'uid': _uid,
+      'name': _name,
+      'text': text,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+      'likes': <String>[],
+      'createdAt': FieldValue.serverTimestamp(),
+      'clientAt': Timestamp.fromDate(now),
+      // Firestore TTL tự xoá sau 24 giờ.
+      'expireAt': Timestamp.fromDate(now.add(const Duration(hours: 24))),
+    });
+  }
+
+  Future<void> toggleLike(String gid, Moment m) => _sub(gid, 'moments').doc(m.id).update({
+        'likes': m.likes.contains(_uid) ? FieldValue.arrayRemove([_uid]) : FieldValue.arrayUnion([_uid]),
+      });
+
+  Future<void> deleteMoment(String gid, String id) => _sub(gid, 'moments').doc(id).delete();
+
+  // ---- Meetup ----
+
+  Stream<List<Meetup>> activeMeetups(String gid) => _sub(gid, 'meetups')
+      .where('active', isEqualTo: true)
+      .orderBy('time')
+      .snapshots()
+      .map((s) => s.docs.map(Meetup.fromDoc).toList());
+
+  Stream<Meetup?> meetup(String gid, String id) =>
+      _sub(gid, 'meetups').doc(id).snapshots().map((d) => d.exists ? Meetup.fromDoc(d) : null);
+
+  Future<String> createMeetup(String gid,
+      {required String title, required double lat, required double lng, required DateTime time}) async {
+    final ref = await _sub(gid, 'meetups').add({
+      'title': title,
+      'lat': lat,
+      'lng': lng,
+      'time': Timestamp.fromDate(time),
+      'createdBy': _uid,
+      'createdByName': _name,
+      'participants': {_uid: MeetupStatus.going.name},
+      'active': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+  }
+
+  Future<void> setMeetupStatus(String gid, String id, MeetupStatus status) =>
+      _sub(gid, 'meetups').doc(id).update({'participants.$_uid': status.name});
+
+  Future<void> endMeetup(String gid, String id) => _sub(gid, 'meetups').doc(id).update({'active': false});
 
   // ---- Địa điểm (vùng geofence) ----
 

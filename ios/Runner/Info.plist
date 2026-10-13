@@ -26,10 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>IPing dùng camera để chụp ảnh đại diện và khoảnh khắc.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Cho phép luôn truy cập vị trí để nhóm nhận thông báo khi bạn đến hoặc rời địa điểm, kể cả khi ứng dụng đóng.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>IPing dùng vị trí để hiển thị bạn trên bản đồ cho các thành viên trong nhóm.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>IPing cần truy cập ảnh để chọn ảnh đại diện và khoảnh khắc.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

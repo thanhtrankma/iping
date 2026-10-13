@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import 'geofence_service.dart';
 import 'group_service.dart';
+import 'profile_service.dart';
 
 /// Theo dõi vị trí của chính người dùng và ghi vào mọi nhóm họ tham gia.
 /// Chỉ chạy khi người dùng tự bật "Chia sẻ vị trí".
@@ -34,6 +35,7 @@ class LocationService {
     _groupSub = GroupService.instance.myGroups(uid).listen((groups) {
       _groups = groups;
       GeofenceService.instance.watch(groups);
+      AvatarRegistry.instance.addGroups(groups);
     });
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_prefKey) ?? false) await start();
@@ -108,6 +110,7 @@ class LocationService {
 
     final data = {
       'name': user.displayName ?? 'Thành viên',
+      'photoUrl': user.photoURL,
       'lat': p.latitude,
       'lng': p.longitude,
       'accuracy': p.accuracy,
@@ -161,7 +164,7 @@ class LocationService {
       return AndroidSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: distanceFilter,
-        intervalDuration: const Duration(seconds: 30),
+        intervalDuration: const Duration(seconds: 10),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'IPing đang chia sẻ vị trí',
           notificationText: 'Nhóm của bạn có thể thấy vị trí của bạn. Tắt trong ứng dụng bất cứ lúc nào.',

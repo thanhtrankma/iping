@@ -12,6 +12,7 @@ class Group {
     required this.inviteCode,
     required this.memberIds,
     required this.memberNames,
+    this.memberPhotos = const {},
   });
 
   final String id;
@@ -20,6 +21,7 @@ class Group {
   final String inviteCode;
   final List<String> memberIds;
   final Map<String, String> memberNames;
+  final Map<String, String?> memberPhotos;
 
   String nameOf(String uid) => memberNames[uid] ?? 'Thành viên';
 
@@ -32,6 +34,7 @@ class Group {
       inviteCode: d['inviteCode'] as String? ?? '',
       memberIds: List<String>.from(d['memberIds'] as List? ?? const []),
       memberNames: Map<String, String>.from(d['memberNames'] as Map? ?? const {}),
+      memberPhotos: Map<String, String?>.from(d['memberPhotos'] as Map? ?? const {}),
     );
   }
 }
@@ -47,10 +50,12 @@ class MemberLocation {
     required this.battery,
     required this.sharing,
     required this.updatedAt,
+    this.photoUrl,
   });
 
   final String uid;
   final String name;
+  final String? photoUrl;
   final double lat;
   final double lng;
   final double accuracy;
@@ -73,6 +78,7 @@ class MemberLocation {
       battery: (d['battery'] as num?)?.toInt(),
       sharing: d['sharing'] as bool? ?? false,
       updatedAt: _date(d['updatedAt']) ?? _date(d['clientAt']),
+      photoUrl: d['photoUrl'] as String?,
     );
   }
 }
@@ -166,6 +172,98 @@ class ChatMessage {
       name: d['name'] as String? ?? 'Thành viên',
       text: d['text'] as String? ?? '',
       createdAt: _date(d['createdAt']),
+    );
+  }
+}
+
+/// Khoảnh khắc: ảnh và/hoặc dòng trạng thái kèm vị trí, hết hạn sau 24 giờ.
+class Moment {
+  Moment({
+    required this.id,
+    required this.uid,
+    required this.name,
+    required this.text,
+    required this.photoUrl,
+    required this.lat,
+    required this.lng,
+    required this.likes,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String uid;
+  final String name;
+  final String text;
+  final String? photoUrl;
+  final double? lat;
+  final double? lng;
+  final List<String> likes;
+  final DateTime? createdAt;
+
+  bool get hasLocation => lat != null && lng != null;
+  LatLng? get point => hasLocation ? LatLng(lat!, lng!) : null;
+
+  factory Moment.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? const {};
+    return Moment(
+      id: doc.id,
+      uid: d['uid'] as String? ?? '',
+      name: d['name'] as String? ?? 'Thành viên',
+      text: d['text'] as String? ?? '',
+      photoUrl: d['photoUrl'] as String?,
+      lat: (d['lat'] as num?)?.toDouble(),
+      lng: (d['lng'] as num?)?.toDouble(),
+      likes: List<String>.from(d['likes'] as List? ?? const []),
+      createdAt: _date(d['createdAt']) ?? _date(d['clientAt']),
+    );
+  }
+}
+
+/// Trạng thái tham gia meetup.
+enum MeetupStatus { invited, going, declined, arrived }
+
+class Meetup {
+  Meetup({
+    required this.id,
+    required this.title,
+    required this.lat,
+    required this.lng,
+    required this.time,
+    required this.createdBy,
+    required this.createdByName,
+    required this.participants,
+    required this.active,
+  });
+
+  final String id;
+  final String title;
+  final double lat;
+  final double lng;
+  final DateTime time;
+  final String createdBy;
+  final String createdByName;
+  final Map<String, MeetupStatus> participants;
+  final bool active;
+
+  LatLng get point => LatLng(lat, lng);
+  MeetupStatus statusOf(String uid) => participants[uid] ?? MeetupStatus.invited;
+
+  factory Meetup.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? const {};
+    final raw = Map<String, dynamic>.from(d['participants'] as Map? ?? const {});
+    return Meetup(
+      id: doc.id,
+      title: d['title'] as String? ?? '',
+      lat: _num(d['lat']),
+      lng: _num(d['lng']),
+      time: _date(d['time']) ?? DateTime.now(),
+      createdBy: d['createdBy'] as String? ?? '',
+      createdByName: d['createdByName'] as String? ?? '',
+      participants: {
+        for (final e in raw.entries)
+          e.key: MeetupStatus.values.firstWhere((s) => s.name == e.value, orElse: () => MeetupStatus.invited),
+      },
+      active: d['active'] as bool? ?? true,
     );
   }
 }

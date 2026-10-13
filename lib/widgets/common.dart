@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../services/location_service.dart';
+import '../services/profile_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 
@@ -122,12 +124,14 @@ class MemberAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatar = CircleAvatar(
-      radius: radius,
-      backgroundColor: dimmed ? Colors.grey.shade400 : avatarColor(uid),
-      child: Text(initial(name),
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: radius * 0.85)),
+    return ValueListenableBuilder<Map<String, String>>(
+      valueListenable: AvatarRegistry.instance,
+      builder: (context, photos, _) => _build(context, photos[uid]),
     );
+  }
+
+  Widget _build(BuildContext context, String? photo) {
+    final avatar = AvatarCircle(uid: uid, name: name, radius: radius, dimmed: dimmed, photoUrl: photo);
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -276,6 +280,47 @@ class SharingSwitchCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Hình tròn avatar: ảnh nếu có, nếu không thì chữ cái đầu trên nền màu.
+class AvatarCircle extends StatelessWidget {
+  const AvatarCircle({
+    super.key,
+    required this.uid,
+    required this.name,
+    required this.radius,
+    this.dimmed = false,
+    this.photoUrl,
+  });
+  final String uid;
+  final String name;
+  final double radius;
+  final bool dimmed;
+  final String? photoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Text(initial(name),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: radius * 0.85));
+    final url = photoUrl;
+    final circle = CircleAvatar(
+      radius: radius,
+      backgroundColor: dimmed ? Colors.grey.shade400 : avatarColor(uid),
+      foregroundImage: url == null ? null : CachedNetworkImageProvider(url),
+      child: fallback,
+    );
+    if (!dimmed || url == null) return circle;
+    // Làm xám ảnh khi thành viên tắt chia sẻ.
+    return ColorFiltered(
+      colorFilter: const ColorFilter.matrix([
+        0.33, 0.33, 0.33, 0, 0, //
+        0.33, 0.33, 0.33, 0, 0,
+        0.33, 0.33, 0.33, 0, 0,
+        0, 0, 0, 1, 0,
+      ]),
+      child: circle,
     );
   }
 }

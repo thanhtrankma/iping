@@ -5,9 +5,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/models.dart';
+import '../services/profile_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
-import '../utils/format.dart';
 import 'common.dart';
 
 /// Bản đồ dùng chung, tự đổi giữa vệ tinh và bản đồ thường theo cài đặt.
@@ -133,10 +133,10 @@ class MemberPin extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black38, offset: Offset(0, 3))],
           ),
-          child: CircleAvatar(
-            backgroundColor: dimmed ? Colors.grey : avatarColor(uid),
-            child: Text(initial(name),
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: size * 0.38)),
+          child: ValueListenableBuilder<Map<String, String>>(
+            valueListenable: AvatarRegistry.instance,
+            builder: (context, photos, _) =>
+                AvatarCircle(uid: uid, name: name, radius: size / 2, dimmed: dimmed, photoUrl: photos[uid]),
           ),
         ),
         CustomPaint(size: const Size(16, 10), painter: _TailPainter()),

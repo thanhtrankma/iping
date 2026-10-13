@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
@@ -30,6 +30,11 @@ async function displayName(uid) {
   return snap.get('name') || 'Thành viên';
 }
 
+async function photoUrl(uid) {
+  const snap = await db.doc(`users/${uid}`).get();
+  return snap.get('photoUrl') || null;
+}
+
 // ---------- Nhóm ----------
 
 exports.createGroup = onCall(async (req) => {
@@ -51,6 +56,7 @@ exports.createGroup = onCall(async (req) => {
           ownerId: uid,
           memberIds: [uid],
           memberNames: { [uid]: memberName },
+          memberPhotos: { [uid]: await photoUrl(uid) },
           inviteCode: code,
           createdAt: FieldValue.serverTimestamp(),
         });
@@ -74,6 +80,7 @@ exports.joinGroup = onCall(async (req) => {
 
   const groupRef = db.doc(`groups/${codeSnap.get('groupId')}`);
   const memberName = await displayName(uid);
+  const memberPhoto = await photoUrl(uid);
 
   const joined = await db.runTransaction(async (tx) => {
     const g = await tx.get(groupRef);
@@ -86,6 +93,7 @@ exports.joinGroup = onCall(async (req) => {
     tx.update(groupRef, {
       memberIds: FieldValue.arrayUnion(uid),
       [`memberNames.${uid}`]: memberName,
+      [`memberPhotos.${uid}`]: memberPhoto,
     });
     return true;
   });
@@ -115,6 +123,7 @@ exports.leaveGroup = onCall(async (req) => {
     const update = {
       memberIds: FieldValue.arrayRemove(uid),
       [`memberNames.${uid}`]: FieldValue.delete(),
+      [`memberPhotos.${uid}`]: FieldValue.delete(),
     };
     if (g.get('ownerId') === uid) update.ownerId = remaining[0];
     tx.update(groupRef, update);
@@ -193,6 +202,9 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     case 'join':
       notification = { title: groupName, body: `${e.name} đã tham gia nhóm` };
       break;
+    case 'meetup_arrive':
+      notification = { title: groupName, body: `📍 ${e.name} đã tới điểm hẹn ${e.placeName || ''}` };
+      break;
     default:
       return;
   }
@@ -226,4 +238,48 @@ exports.onPing = onDocumentCreated('groups/{groupId}/pings/{pingId}', async (eve
   const g = await db.doc(`groups/${groupId}`).get();
   if (!(g.get('memberIds') || []).includes(p.to)) return;
   await notifyUsers(groupId, [p.to], { title: p.fromName || 'IPing', body: PING_TEXT[p.type] }, { type: 'ping' });
+});
+
+// ---------- Hồ sơ: đồng bộ tên & ảnh vào các nhóm ----------
+
+exports.onUserProfile = onDocumentWritten('users/{uid}', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after = event.data?.after?.data();
+  if (!after) return;
+  if (before.name === after.name && before.photoUrl === after.photoUrl) return;
+  const uid = event.params.uid;
+  const groups = await db.collection('groups').where('memberIds', 'array-contains', uid).get();
+  const batch = db.batch();
+  groups.forEach((g) => batch.update(g.ref, {
+    [`memberNames.${uid}`]: after.name || 'Thành viên',
+    [`memberPhotos.${uid}`]: after.photoUrl || null,
+  }));
+  await batch.commit();
+});
+
+// ---------- Khoảnh khắc ----------
+
+exports.onMoment = onDocumentCreated('groups/{groupId}/moments/{momentId}', async (event) => {
+  const m = event.data?.data();
+  if (!m) return;
+  const groupId = event.params.groupId;
+  const groupName = (await db.doc(`groups/${groupId}`).get()).get('name') || 'Nhóm';
+  const body = m.text ? String(m.text).slice(0, 120) : (m.photoUrl ? '📷 Đã đăng một ảnh' : 'Có khoảnh khắc mới');
+  await notifyGroup(groupId, m.uid, { title: `✨ ${m.name} · ${groupName}`, body }, { type: 'moment' });
+});
+
+// ---------- Meetup ----------
+
+exports.onMeetup = onDocumentCreated('groups/{groupId}/meetups/{meetupId}', async (event) => {
+  const m = event.data?.data();
+  if (!m) return;
+  const groupId = event.params.groupId;
+  const when = m.time?.toDate?.();
+  const time = when
+    ? when.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+    : '';
+  await notifyGroup(groupId, m.createdBy, {
+    title: `📍 Meetup: ${m.title}`,
+    body: `${m.createdByName || 'Ai đó'} hẹn mọi người lúc ${time}. Mở IPing để tham gia.`,
+  }, { type: 'meetup' });
 });

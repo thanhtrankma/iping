@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Rules đọc Firestore (firestore.get) để kiểm tra thành viên nhóm: Storage cần vai trò
+// "Firebase Rules Firestore Service Agent" (CLI tự cấp khi deploy).
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 3 * 1024 * 1024;
+    }
+
+    function isMember(gid) {
+      return request.auth != null
+        && request.auth.uid in firestore.get(/databases/(default)/documents/groups/$(gid)).data.memberIds;
+    }
+
+    // Ảnh đại diện: ai đăng nhập cũng xem được, chỉ chủ ghi.
+    match /avatars/{uid}/{file} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid && isImage();
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Ảnh khoảnh khắc: chỉ thành viên nhóm xem / đăng.
+    match /moments/{gid}/{uid}/{file} {
+      allow read: if isMember(gid);
+      allow create: if isMember(gid) && request.auth.uid == uid && isImage();
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

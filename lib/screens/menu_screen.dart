@@ -10,15 +10,17 @@ import '../widgets/glass.dart';
 import 'activity_tab.dart';
 import 'group_actions.dart';
 import 'groups_screen.dart';
+import 'meetup_screen.dart';
+import 'moments_screen.dart';
 import 'places_tab.dart';
+import 'profile_screen.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key, required this.uid, required this.group});
   final String uid;
   final Group? group;
 
-  void _push(BuildContext context, Widget page) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  void _push(BuildContext context, Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
   @override
   Widget build(BuildContext context) {
@@ -40,22 +42,32 @@ class MenuScreen extends StatelessWidget {
             Glass(
               radius: 26,
               opacity: 0.6,
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  MemberAvatar(uid: uid, name: name, radius: 30),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(26),
+                  onTap: () => _push(context, const ProfileScreen()),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
                       children: [
-                        Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                        Text(user?.email ?? '',
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        MemberAvatar(uid: uid, name: name, radius: 30),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                              Text(user?.email ?? '',
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -68,6 +80,16 @@ class MenuScreen extends StatelessWidget {
                 onTap: () => _push(context, GroupsScreen(uid: uid)),
               ),
               if (g != null) ...[
+                _Item(
+                  icon: Icons.auto_awesome_outlined,
+                  title: 'Khoảnh khắc',
+                  onTap: () => _push(context, MomentsScreen(group: g)),
+                ),
+                _Item(
+                  icon: Icons.handshake_outlined,
+                  title: 'Meetup',
+                  onTap: () => _push(context, MeetupListScreen(group: g)),
+                ),
                 _Item(
                   icon: Icons.place_outlined,
                   title: 'Địa điểm của "${g.name}"',
