@@ -16,3 +16,4 @@ ios/.symlinks/
 android/.gradle/
 android/local.properties
 android/app/.cxx/
+.claude/
