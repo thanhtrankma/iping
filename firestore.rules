@@ -16,6 +16,12 @@ service cloud.firestore {
       return v is int || v is float;
     }
 
+    // Chuỗi dài từ lo tới hi ký tự. (Lưu ý: `s.size() in [lo, hi]` là kiểm tra thuộc danh sách,
+    // tức chỉ đúng khi dài đúng lo hoặc hi ký tự.)
+    function lenIn(s, lo, hi) {
+      return s is string && s.size() >= lo && s.size() <= hi;
+    }
+
     // Hồ sơ người dùng: chỉ chính chủ đọc/ghi (chứa token push).
     match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
@@ -40,7 +46,7 @@ service cloud.firestore {
         && request.auth.uid == resource.data.ownerId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
         && request.resource.data.name is string
-        && request.resource.data.name.size() in [1, 50];
+        && lenIn(request.resource.data.name, 1, 50);
 
       // Mỗi thành viên chỉ ghi được vị trí của chính mình.
       match /locations/{uid} {
@@ -91,7 +97,7 @@ service cloud.firestore {
         allow create: if isMember(gid)
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.title is string
-          && request.resource.data.title.size() in [1, 80]
+          && lenIn(request.resource.data.title, 1, 80)
           && isNumber(request.resource.data.lat)
           && isNumber(request.resource.data.lng)
           && request.resource.data.time is timestamp;
@@ -108,7 +114,7 @@ service cloud.firestore {
         allow read, delete: if isMember(gid);
         allow create, update: if isMember(gid)
           && request.resource.data.name is string
-          && request.resource.data.name.size() in [1, 60]
+          && lenIn(request.resource.data.name, 1, 60)
           && isNumber(request.resource.data.lat)
           && isNumber(request.resource.data.lng)
           && isNumber(request.resource.data.radius)
@@ -143,7 +149,7 @@ service cloud.firestore {
         allow create: if isMember(gid)
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.text is string
-          && request.resource.data.text.size() in [1, 1000];
+          && lenIn(request.resource.data.text, 1, 1000);
       }
     }
   }
