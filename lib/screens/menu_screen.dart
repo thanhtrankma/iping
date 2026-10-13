@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import 'activity_tab.dart';
+import 'explore_screen.dart';
 import 'group_actions.dart';
 import 'groups_screen.dart';
 import 'meetup_screen.dart';
@@ -78,6 +79,11 @@ class MenuScreen extends StatelessWidget {
                 icon: Icons.groups_2_outlined,
                 title: 'Quản lý nhóm',
                 onTap: () => _push(context, GroupsScreen(uid: uid)),
+              ),
+              _Item(
+                icon: Icons.explore_outlined,
+                title: 'Khám phá',
+                onTap: () => _push(context, const ExploreScreen()),
               ),
               if (g != null) ...[
                 _Item(

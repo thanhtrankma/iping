@@ -16,6 +16,7 @@ import 'activity_tab.dart';
 import 'meetup_screen.dart';
 import 'moments_screen.dart';
 import 'chat_tab.dart';
+import 'explore_screen.dart';
 import 'group_actions.dart';
 import 'member_screen.dart';
 import 'menu_screen.dart';
@@ -211,6 +212,13 @@ class _GroupMapViewState extends State<_GroupMapView> {
                               ),
                               const SizedBox(height: 14),
                               GlassButton(icon: Icons.near_me_rounded, tooltip: 'Vị trí của tôi', onTap: _focusMe),
+                              const SizedBox(height: 14),
+                              GlassButton(
+                                icon: Icons.explore_outlined,
+                                color: AppColors.brand,
+                                tooltip: 'Khám phá',
+                                onTap: () => _push(const ExploreScreen()),
+                              ),
                               if (g != null) ...[
                                 const SizedBox(height: 14),
                                 GlassButton(
