@@ -21,6 +21,7 @@ class _ActivityTabState extends State<ActivityTab> {
         'arrive' => (Icons.login_rounded, AppColors.online, 'đã đến ${e.placeName ?? ''}'),
         'leave' => (Icons.logout_rounded, AppColors.warning, 'đã rời ${e.placeName ?? ''}'),
         'sos' => (Icons.sos_rounded, AppColors.sos, 'đã gửi cảnh báo SOS!'),
+        'checkin' => (Icons.where_to_vote_rounded, AppColors.brand, 'đã check-in tại ${e.placeName ?? ''}'),
         'join' => (Icons.group_add_rounded, AppColors.brand, 'đã tham gia nhóm'),
         'leave_group' => (Icons.group_remove_rounded, Colors.grey, 'đã rời nhóm'),
         _ => (Icons.info_outline_rounded, Colors.grey, ''),

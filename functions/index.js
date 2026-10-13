@@ -163,12 +163,23 @@ async function notifyUsers(groupId, targets, notification, data) {
   if (tokens.length === 0) return;
 
   const isSos = data.type === 'sos';
+  // Yêu cầu vị trí: đánh thức app nền để tự gửi vị trí (iOS cần content-available).
+  const wake = data.type === 'locate';
   const res = await getMessaging().sendEachForMulticast({
     tokens,
     notification,
     data: { groupId, ...data },
     android: { priority: 'high' },
-    apns: { payload: { aps: { sound: 'default', 'interruption-level': isSos ? 'time-sensitive' : 'active' } } },
+    apns: {
+      headers: { 'apns-priority': '10' },
+      payload: {
+        aps: {
+          sound: 'default',
+          'interruption-level': isSos ? 'time-sensitive' : 'active',
+          ...(wake ? { 'content-available': 1 } : {}),
+        },
+      },
+    },
   });
 
   // Dọn token đã hết hạn.
@@ -203,6 +214,9 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     case 'join':
       notification = { title: groupName, body: `${e.name} đã tham gia nhóm` };
       break;
+    case 'checkin':
+      notification = { title: groupName, body: `📍 ${e.name} đã check-in tại ${e.placeName || ''}` };
+      break;
     case 'meetup_arrive':
       notification = { title: groupName, body: `📍 ${e.name} đã tới điểm hẹn ${e.placeName || ''}` };
       break;
@@ -234,10 +248,17 @@ const PING_TEXT = {
 
 exports.onPing = onDocumentCreated('groups/{groupId}/pings/{pingId}', async (event) => {
   const p = event.data?.data();
-  if (!p || !PING_TEXT[p.type]) return;
+  if (!p || !(PING_TEXT[p.type] || p.type === 'locate')) return;
   const groupId = event.params.groupId;
   const g = await db.doc(`groups/${groupId}`).get();
   if (!(g.get('memberIds') || []).includes(p.to)) return;
+  if (p.type === 'locate') {
+    // Data message ưu tiên cao: máy nhận tự lấy và ghi vị trí (nếu đang bật chia sẻ).
+    const name = p.fromName || 'Ai đó';
+    await notifyUsers(groupId, [p.to], { title: 'IPing', body: `📍 ${name} muốn biết bạn đang ở đâu` },
+      { type: 'locate', from: String(p.from || '') });
+    return;
+  }
   await notifyUsers(groupId, [p.to], { title: p.fromName || 'IPing', body: PING_TEXT[p.type] }, { type: 'ping' });
 });
 

@@ -65,7 +65,7 @@ service cloud.firestore {
         allow create: if isMember(gid)
           && request.resource.data.from == request.auth.uid
           && request.resource.data.to in get(/databases/$(database)/documents/groups/$(gid)).data.memberIds
-          && request.resource.data.type in ['love', 'boo', 'poke', 'arrived', 'call', 'home'];
+          && request.resource.data.type in ['love', 'boo', 'poke', 'arrived', 'call', 'home', 'locate'];
       }
 
       // Khoảnh khắc: ảnh/trạng thái kèm vị trí, tự hết hạn sau 24 giờ.
@@ -120,7 +120,7 @@ service cloud.firestore {
         allow read: if isMember(gid);
         allow create: if isMember(gid)
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive'];
+          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'checkin'];
       }
 
       // Điểm khám phá: thành viên đọc được, mỗi người chỉ ghi điểm của mình.

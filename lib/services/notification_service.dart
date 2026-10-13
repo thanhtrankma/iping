@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import 'locate_background.dart';
+import 'location_service.dart';
+
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 /// Đăng ký token push (FCM) và hiển thị thông báo khi app đang mở.
@@ -18,6 +21,7 @@ class NotificationService {
   String? _token;
 
   Future<void> init(String uid) async {
+    FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
     await _messaging.requestPermission();
     try {
       _token = await _messaging.getToken();
@@ -35,6 +39,8 @@ class NotificationService {
 
     await _msgSub?.cancel();
     _msgSub = FirebaseMessaging.onMessage.listen((m) {
+      // Yêu cầu vị trí khi app đang mở: gửi ngay (nếu đang bật chia sẻ).
+      if (m.data['type'] == 'locate') LocationService.instance.pushNow();
       final n = m.notification;
       if (n == null) return;
       final isSos = m.data['type'] == 'sos';
