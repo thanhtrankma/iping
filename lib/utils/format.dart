@@ -40,3 +40,20 @@ bool isFresh(DateTime? t) => t != null && DateTime.now().difference(t).inMinutes
 
 String distanceLabel(double meters) =>
     meters < 1000 ? '${meters.round()} m' : '${(meters / 1000).toStringAsFixed(1)} km';
+
+/// Phần trăm kiểu Việt Nam: 7,2%.
+String percentLabel(double p) => '${p.toStringAsFixed(1).replaceAll('.', ',')}%';
+
+String areaLabel(double m2) {
+  final km2 = m2 / 1e6;
+  return km2 < 1 ? '${km2.toStringAsFixed(2).replaceAll('.', ',')} km²' : '${km2.toStringAsFixed(1).replaceAll('.', ',')} km²';
+}
+
+/// Bỏ tiền tố hành chính cho tiêu đề ngắn: "Xã An Lão" -> "An Lão".
+String shortAreaName(String name) {
+  const prefixes = ['Thành phố ', 'Thị trấn ', 'Thị xã ', 'Phường ', 'Quận ', 'Huyện ', 'Tỉnh ', 'Xã ', 'Đặc khu '];
+  for (final p in prefixes) {
+    if (name.startsWith(p) && name.length > p.length) return name.substring(p.length);
+  }
+  return name;
+}

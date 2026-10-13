@@ -24,6 +24,7 @@ class IPingMap extends StatelessWidget {
     this.interactive = true,
     this.onTap,
     this.fit,
+    this.style,
   });
 
   final MapController controller;
@@ -34,12 +35,15 @@ class IPingMap extends StatelessWidget {
   final void Function(TapPosition, LatLng)? onTap;
   final CameraFit? fit;
 
+  /// Ép kiểu bản đồ, bỏ qua cài đặt của người dùng.
+  final MapStyle? style;
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<MapStyle>(
       valueListenable: SettingsService.instance.mapStyle,
-      builder: (context, style, _) {
-        final satellite = style == MapStyle.satellite;
+      builder: (context, setting, _) {
+        final satellite = (style ?? setting) == MapStyle.satellite;
         return FlutterMap(
           mapController: controller,
           options: MapOptions(
