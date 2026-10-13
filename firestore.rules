@@ -126,12 +126,32 @@ service cloud.firestore {
         allow read: if isMember(gid);
         allow create: if isMember(gid)
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'low_battery', 'checkin']
+          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'low_battery', 'checkin',
+                                         'safe_start', 'safe_arrive', 'safe_end', 'safe_ok', 'safe_extend']
           // Cảnh báo pin yếu phải kèm mức pin hợp lệ.
           && (request.resource.data.type != 'low_battery'
               || (request.resource.data.battery is int
                   && request.resource.data.battery >= 0
                   && request.resource.data.battery <= 100));
+      }
+
+      // Về an toàn: mỗi người một chuyến (doc id = uid). Chỉ server đánh dấu quá giờ
+      // (status 'overdue', alerts > 0); người đi chỉ được đặt lại alerts về 0 khi gia hạn.
+      match /safeTrips/{uid} {
+        allow read: if isMember(gid);
+        allow create, update: if isMember(gid) && request.auth.uid == uid
+          && request.resource.data.destName is string
+          && lenIn(request.resource.data.destName, 1, 120)
+          && isNumber(request.resource.data.destLat)
+          && isNumber(request.resource.data.destLng)
+          && isNumber(request.resource.data.radius)
+          && request.resource.data.radius >= 50
+          && request.resource.data.radius <= 2000
+          && request.resource.data.dueAt is timestamp
+          && request.resource.data.status in ['active', 'arrived', 'ended']
+          && (request.resource.data.get('alerts', 0) == 0
+              || (resource != null && request.resource.data.alerts == resource.data.get('alerts', 0)));
+        allow delete: if isMember(gid) && request.auth.uid == uid;
       }
 
       // Điểm khám phá: thành viên đọc được, mỗi người chỉ ghi điểm của mình.

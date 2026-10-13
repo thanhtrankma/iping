@@ -1,17 +1,22 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/models.dart';
 import '../services/geocode_service.dart';
 import '../services/group_service.dart';
 import '../services/location_service.dart';
+import '../services/safe_trip_service.dart';
 import '../services/trip_analyzer.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
+import '../widgets/safe_trip_widgets.dart';
 import 'chat_tab.dart';
 import 'driving_screen.dart';
 import 'group_actions.dart';
@@ -51,6 +56,27 @@ class _MemberScreenState extends State<MemberScreen> {
     final trips = buildTimeline(pts).whereType<Trip>();
     return trips.isEmpty ? null : trips.last;
   }();
+
+  // Chuyến "Về an toàn" đang mở của thành viên (null nếu không có).
+  SafeTrip? _safeTrip;
+  StreamSubscription<SafeTrip?>? _safeSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _safeSub = SafeTripService.instance.of(widget.groupId, widget.uid).listen(
+      (t) {
+        if (mounted) setState(() => _safeTrip = t != null && t.isOpen ? t : null);
+      },
+      onError: (Object _) {},
+    );
+  }
+
+  @override
+  void dispose() {
+    _safeSub?.cancel();
+    super.dispose();
+  }
 
   bool _centered = false;
   // Đẩy ghim lên phần bản đồ không bị bảng thông tin che.
@@ -131,6 +157,18 @@ class _MemberScreenState extends State<MemberScreen> {
                       zoom: 17,
                       layers: [
                         ...placeLayers(pSnap.data ?? const []),
+                        if (_safeTrip != null)
+                          ...safeTripLayers(
+                            [(gid: widget.groupId, trip: _safeTrip!)],
+                            current: {
+                              if (isMe && mySafeTripPosition() != null)
+                                widget.uid: mySafeTripPosition()!
+                              else if (loc != null && loc.sharing)
+                                widget.uid: loc.point,
+                            },
+                            now: DateTime.now(),
+                            onTap: (t) => _map.move(t.trip.dest, 16, offset: _pinOffset),
+                          ),
                         if (loc != null)
                           MarkerLayer(markers: [memberMarker(loc, size: 66, label: timeAgo(loc.updatedAt))]),
                       ],
@@ -235,6 +273,17 @@ class _MemberScreenState extends State<MemberScreen> {
                           name: isMe ? '$name (Bạn)' : name,
                           location: loc,
                           isMe: isMe,
+                          safeTrip: _safeTrip == null
+                              ? null
+                              : SafeTripStatusCard(
+                                  gid: widget.groupId,
+                                  trip: _safeTrip!,
+                                  name: isMe ? null : name,
+                                  current: isMe
+                                      ? mySafeTripPosition()
+                                      : (loc != null && loc.sharing ? LatLng(loc.lat, loc.lng) : null),
+                                  controls: isMe,
+                                ),
                           onHistory: () => _push(HistoryScreen(groupId: widget.groupId, uid: widget.uid, name: name, fallbackCenter: loc?.point)),
                           onDriving: () => _push(DrivingScreen(groupId: widget.groupId, uid: widget.uid, name: name)),
                           onPlaces: () =>
@@ -302,6 +351,7 @@ class _DetailCard extends StatelessWidget {
     required this.onHistory,
     required this.onDriving,
     required this.onPlaces,
+    this.safeTrip,
   });
 
   final String name;
@@ -310,6 +360,9 @@ class _DetailCard extends StatelessWidget {
   final VoidCallback onHistory;
   final VoidCallback onDriving;
   final VoidCallback onPlaces;
+
+  /// Thẻ trạng thái "Về an toàn" (nếu thành viên đang có chuyến mở).
+  final Widget? safeTrip;
 
   @override
   Widget build(BuildContext context) {
@@ -372,6 +425,10 @@ class _DetailCard extends StatelessWidget {
                 ],
               ],
             ),
+          ],
+          if (safeTrip != null) ...[
+            const SizedBox(height: 14),
+            safeTrip!,
           ],
           const SizedBox(height: 18),
           Row(

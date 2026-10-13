@@ -1,11 +1,12 @@
 const crypto = require('crypto');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
-const { wantsAlert } = require('./alert_prefs');
+const { wantsAlert, CRITICAL } = require('./alert_prefs');
 
 initializeApp();
 setGlobalOptions({ region: 'asia-southeast1' });
@@ -235,7 +236,7 @@ async function notifyUsers(groupId, targets, notification, data, senderUid) {
   const tokens = [...tokenOwners.keys()];
   if (tokens.length === 0) return;
 
-  const isSos = data.type === 'sos';
+  const isSos = CRITICAL.has(data.type);
   // Yêu cầu vị trí: đánh thức app nền để tự gửi vị trí (iOS cần content-available).
   const wake = data.type === 'locate';
   const res = await getMessaging().sendEachForMulticast({
@@ -296,6 +297,30 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     case 'low_battery':
       notification = { title: groupName, body: `🔋 ${e.name} sắp hết pin (${e.battery}%)` };
       break;
+    case 'safe_start':
+      notification = {
+        title: groupName,
+        body: `🛡️ ${e.name} đang về ${e.placeName || ''}, dự kiến tới lúc ${hhmm(e.dueAt)}`,
+      };
+      break;
+    case 'safe_arrive':
+      notification = { title: groupName, body: `✅ ${e.name} đã về ${e.placeName || ''} an toàn` };
+      break;
+    case 'safe_ok':
+      notification = { title: groupName, body: `✅ ${e.name} báo đã an toàn (chuyến về ${e.placeName || ''})` };
+      break;
+    case 'safe_extend':
+      notification = { title: groupName, body: `⏱️ ${e.name} gia hạn chuyến về ${e.placeName || ''} tới ${hhmm(e.dueAt)}` };
+      break;
+    case 'safe_overdue': {
+      const late = e.repeat ? 'vẫn chưa tới' : 'chưa tới';
+      const battery = e.battery != null ? ` Pin ${e.battery}%.` : '';
+      notification = {
+        title: `⚠️ ${e.name} ${late} ${e.placeName || ''}`,
+        body: `Đã quá giờ dự kiến ${hhmm(e.dueAt)}.${battery} Mở ứng dụng để xem vị trí và gọi cho ${e.name}.`,
+      };
+      break;
+    }
     default:
       return;
   }
@@ -337,6 +362,69 @@ exports.onPing = onDocumentCreated('groups/{groupId}/pings/{pingId}', async (eve
   }
   await notifyUsers(groupId, [p.to], { title: p.fromName || 'IPing', body: PING_TEXT[p.type] }, { type: 'ping' },
     p.from);
+});
+
+// ---------- Về an toàn ----------
+
+/// Giờ:phút theo giờ Việt Nam cho Timestamp Firestore.
+function hhmm(ts) {
+  if (!ts || typeof ts.toDate !== 'function') return '?';
+  return ts.toDate().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+}
+
+const SAFE_REALERT_MS = 15 * 60 * 1000;
+const SAFE_MAX_ALERTS = 2;
+// Chuyến quá giờ lâu mà không ai đóng: tự kết thúc để không quét mãi.
+const SAFE_EXPIRE_MS = 12 * 60 * 60 * 1000;
+
+/// Mỗi phút: chuyến "Về an toàn" quá giờ mà chưa tới → báo động cả nhóm (kèm vị trí cuối, pin)
+/// và nhắc chính người đi. Nếu sau 15 phút vẫn chưa xong thì nhắc lại lần nữa.
+exports.checkSafeTrips = onSchedule({ schedule: 'every 1 minutes', timeZone: 'Asia/Ho_Chi_Minh' }, async () => {
+  const now = Date.now();
+  const snap = await db.collectionGroup('safeTrips')
+    .where('status', 'in', ['active', 'overdue'])
+    .where('dueAt', '<=', new Date(now))
+    .get();
+
+  await Promise.all(snap.docs.map(async (doc) => {
+    const groupRef = doc.ref.parent.parent;
+    const uid = doc.id;
+    const fire = await db.runTransaction(async (tx) => {
+      const t = (await tx.get(doc.ref)).data();
+      if (!t || !['active', 'overdue'].includes(t.status)) return null;
+      const alerts = t.alerts || 0;
+      const dueMs = t.dueAt.toMillis();
+      if (now > dueMs + SAFE_EXPIRE_MS) {
+        tx.update(doc.ref, { status: 'ended', endedAt: FieldValue.serverTimestamp() });
+        return null;
+      }
+      if (alerts >= SAFE_MAX_ALERTS) return null;
+      if (now < dueMs + alerts * SAFE_REALERT_MS) return null;
+      tx.update(doc.ref, { status: 'overdue', alerts: alerts + 1, overdueAt: FieldValue.serverTimestamp() });
+      return { trip: t, repeat: alerts > 0 };
+    });
+    if (!fire) return;
+
+    const loc = (await groupRef.collection('locations').doc(uid).get()).data() || {};
+    const { trip, repeat } = fire;
+    // Sự kiện → onGroupEvent gửi push cho các thành viên khác.
+    await groupRef.collection('events').add({
+      type: 'safe_overdue',
+      uid,
+      name: trip.name || 'Thành viên',
+      placeName: trip.destName || '',
+      dueAt: trip.dueAt,
+      repeat,
+      ...(typeof loc.lat === 'number' && loc.sharing !== false ? { lat: loc.lat, lng: loc.lng } : {}),
+      ...(typeof loc.battery === 'number' ? { battery: loc.battery } : {}),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    // Nhắc chính người đi: có thể họ quên tắt, hoặc cần gia hạn.
+    await notifyUsers(groupRef.id, [uid], {
+      title: `Bạn đã tới ${trip.destName || 'nơi'} chưa?`,
+      body: 'Đã quá giờ dự kiến nên nhóm vừa được báo. Mở ứng dụng để báo "Tôi ổn" hoặc gia hạn.',
+    }, { type: 'safe_self' }, null);
+  }));
 });
 
 // ---------- Hồ sơ: đồng bộ tên & ảnh vào các nhóm ----------

@@ -121,7 +121,7 @@ class Place {
   }
 }
 
-/// Sự kiện trong nhóm: arrive / leave / sos / join.
+/// Sự kiện trong nhóm: arrive / leave / sos / join / checkin / safe_* ...
 class GroupEvent {
   GroupEvent({
     required this.id,
@@ -133,6 +133,7 @@ class GroupEvent {
     required this.lng,
     required this.createdAt,
     this.battery,
+    this.dueAt,
   });
 
   final String id;
@@ -144,6 +145,8 @@ class GroupEvent {
   final double? lng;
   final DateTime? createdAt;
   final int? battery;
+  /// Giờ dự kiến tới (sự kiện "Về an toàn").
+  final DateTime? dueAt;
 
   factory GroupEvent.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? const {};
@@ -157,6 +160,7 @@ class GroupEvent {
       lng: (d['lng'] as num?)?.toDouble(),
       createdAt: _date(d['createdAt']),
       battery: (d['battery'] as num?)?.toInt(),
+      dueAt: _date(d['dueAt']),
     );
   }
 }
@@ -276,6 +280,86 @@ class Meetup {
           e.key: MeetupStatus.values.firstWhere((s) => s.name == e.value, orElse: () => MeetupStatus.invited),
       },
       active: d['active'] as bool? ?? true,
+    );
+  }
+}
+
+/// Trạng thái chuyến "Về an toàn".
+/// - active: đang đi, chưa quá giờ.
+/// - overdue: quá giờ dự kiến mà chưa tới (server đã cảnh báo nhóm).
+/// - arrived: đã tới nơi (tự phát hiện hoặc tự xác nhận).
+/// - ended: người đi tự kết thúc (huỷ, hoặc báo "Tôi ổn" khi đang quá giờ).
+enum SafeTripStatus { active, overdue, arrived, ended }
+
+/// Một chuyến "Về an toàn" (`groups/{gid}/safeTrips/{uid}`, mỗi người tối đa một chuyến mỗi nhóm).
+class SafeTrip {
+  SafeTrip({
+    required this.uid,
+    required this.name,
+    required this.destName,
+    required this.destLat,
+    required this.destLng,
+    required this.radius,
+    required this.startedAt,
+    required this.dueAt,
+    required this.status,
+    this.startLat,
+    this.startLng,
+    this.endedAt,
+  });
+
+  final String uid;
+  final String name;
+  final String destName;
+  final double destLat;
+  final double destLng;
+  /// Bán kính (m) quanh điểm đến được coi là đã tới.
+  final double radius;
+  final DateTime startedAt;
+  final DateTime dueAt;
+  final SafeTripStatus status;
+  final double? startLat;
+  final double? startLng;
+  final DateTime? endedAt;
+
+  LatLng get dest => LatLng(destLat, destLng);
+  LatLng? get start => startLat == null || startLng == null ? null : LatLng(startLat!, startLng!);
+
+  /// Đang diễn ra (cần hiển thị trên bản đồ / banner).
+  bool get isOpen => status == SafeTripStatus.active || status == SafeTripStatus.overdue;
+
+  /// Quá giờ: server đã đánh dấu, hoặc máy thấy đã qua giờ mà server chưa kịp chạy.
+  bool isLate(DateTime now) => status == SafeTripStatus.overdue || (status == SafeTripStatus.active && now.isAfter(dueAt));
+
+  /// Thời gian còn lại tới giờ dự kiến (âm nếu đã quá giờ).
+  Duration remaining(DateTime now) => dueAt.difference(now);
+
+  /// Tiến độ quãng đường 0–1 dựa trên khoảng cách còn lại so với lúc xuất phát.
+  double progress(LatLng current) {
+    final s = start;
+    if (s == null) return 0;
+    const d = Distance();
+    final total = d(s, dest);
+    if (total <= radius) return 1;
+    final left = d(current, dest);
+    return (1 - (left - radius) / (total - radius)).clamp(0.0, 1.0);
+  }
+
+  factory SafeTrip.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? const {};
+    return SafeTrip(
+      uid: doc.id,
+      name: d['name'] as String? ?? 'Thành viên',
+      destName: d['destName'] as String? ?? '',
+      destLat: _num(d['destLat']),
+      destLng: _num(d['destLng']),
+      radius: (d['radius'] as num?)?.toDouble() ?? 150,
+      startedAt: _date(d['startedAt']) ?? DateTime.now(),
+      dueAt: _date(d['dueAt']) ?? DateTime.now(),
+      status: SafeTripStatus.values.firstWhere((s) => s.name == d['status'], orElse: () => SafeTripStatus.ended),
+      startLat: (d['startLat'] as num?)?.toDouble(),
+      startLng: (d['startLng'] as num?)?.toDouble(),
+      endedAt: _date(d['endedAt']),
     );
   }
 }

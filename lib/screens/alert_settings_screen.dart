@@ -70,6 +70,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
   static Color _badgeColor(String key) => switch (key) {
         'place' => AppColors.teal,
         'sos' => AppColors.sos,
+        'safe' => AppColors.online,
         'message' => AppColors.online,
         'moment' => AppColors.pink,
         'meetup' => AppColors.purple,

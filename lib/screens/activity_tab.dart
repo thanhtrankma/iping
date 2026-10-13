@@ -27,6 +27,21 @@ class _ActivityTabState extends State<ActivityTab> {
         'leave_group' => (Icons.group_remove_rounded, AppColors.gray, 'đã rời nhóm'),
         'low_battery' => (Icons.battery_alert_rounded, AppColors.warning, 'sắp hết pin (${e.battery ?? '?'}%)'),
         'removed' => (Icons.person_remove_rounded, AppColors.sos, 'đã bị xoá khỏi nhóm'),
+        // "Về an toàn".
+        'safe_start' => (
+            Icons.shield_rounded,
+            AppColors.online,
+            'đang về ${e.placeName ?? ''}${e.dueAt != null ? ' · dự kiến ${clock(e.dueAt)}' : ''}'
+          ),
+        'safe_arrive' => (Icons.verified_user_rounded, AppColors.online, 'đã về ${e.placeName ?? ''} an toàn ✅'),
+        'safe_end' => (Icons.shield_outlined, AppColors.gray, 'đã kết thúc chuyến về ${e.placeName ?? ''}'),
+        'safe_ok' => (Icons.verified_user_rounded, AppColors.online, 'báo đã an toàn (chuyến về ${e.placeName ?? ''})'),
+        'safe_extend' => (
+            Icons.more_time_rounded,
+            AppColors.warning,
+            'gia hạn chuyến về ${e.placeName ?? ''}${e.dueAt != null ? ' tới ${clock(e.dueAt)}' : ''}'
+          ),
+        'safe_overdue' => (Icons.warning_rounded, AppColors.sos, 'chưa tới ${e.placeName ?? ''} đúng giờ!'),
         _ => (Icons.info_outline_rounded, AppColors.gray, ''),
       };
 
@@ -55,7 +70,7 @@ class _ActivityTabState extends State<ActivityTab> {
             return const EmptyState(
               icon: Icons.notifications_active_rounded,
               title: 'Chưa có hoạt động',
-              text: 'Đến/rời địa điểm, SOS và thành viên mới\nsẽ hiện ở đây.',
+              text: 'Đến/rời địa điểm, SOS, Về an toàn\nvà thành viên mới sẽ hiện ở đây.',
             );
           }
 
@@ -93,7 +108,8 @@ class _EventRow extends StatelessWidget {
     final (icon, color, action) = info;
     final scheme = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final isSos = e.type == 'sos';
+    // Sự kiện khẩn: SOS và "Về an toàn" quá giờ.
+    final isSos = e.type == 'sos' || e.type == 'safe_overdue';
     final hasPos = e.lat != null && e.lng != null;
     final secondary = scheme.onSurface.withValues(alpha: 0.55);
 
@@ -148,10 +164,13 @@ class _EventRow extends StatelessWidget {
                     fontWeight: isSos ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
-                if (isSos && hasPos) ...[
+                if (isSos && (hasPos || (e.type == 'safe_overdue' && e.battery != null))) ...[
                   const SizedBox(height: 3),
                   Text(
-                    '${e.lat!.toStringAsFixed(5)}, ${e.lng!.toStringAsFixed(5)}',
+                    [
+                      if (hasPos) '${e.lat!.toStringAsFixed(5)}, ${e.lng!.toStringAsFixed(5)}',
+                      if (e.type == 'safe_overdue' && e.battery != null) 'Pin ${e.battery}%',
+                    ].join(' · '),
                     style: TextStyle(color: secondary, fontSize: 12.5),
                   ),
                 ],

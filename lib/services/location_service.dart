@@ -12,6 +12,7 @@ import '../models/models.dart';
 import 'battery_alert_service.dart';
 import 'explore_service.dart';
 import 'geofence_service.dart';
+import 'safe_trip_service.dart';
 import 'group_service.dart';
 import 'privacy_service.dart';
 import 'profile_service.dart';
@@ -43,6 +44,7 @@ class LocationService {
     _groupSub = GroupService.instance.myGroups(uid).listen((groups) {
       _groups = groups;
       GeofenceService.instance.watch(groups);
+      SafeTripService.instance.watch(groups);
       AvatarRegistry.instance.addGroups(groups);
     });
     BatteryAlertService.instance.start();
@@ -58,6 +60,7 @@ class LocationService {
     _groupSub = null;
     _groups = [];
     GeofenceService.instance.watch(const []);
+    SafeTripService.instance.watch(const []);
     await BatteryAlertService.instance.stop();
   }
 
@@ -182,6 +185,7 @@ class LocationService {
     }));
 
     await GeofenceService.instance.check(p, active);
+    await SafeTripService.instance.check(p);
     if (battery != null) await BatteryAlertService.instance.check(level: battery);
   }
 

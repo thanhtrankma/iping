@@ -13,7 +13,17 @@ const PREF_KEY = {
   meetup: 'meetup',
   ping: 'ping',
   low_battery: 'battery',
+  safe_start: 'safe',
+  safe_arrive: 'safe',
+  safe_end: 'safe',
+  safe_ok: 'safe',
+  safe_extend: 'safe',
+  // Quá giờ "Về an toàn" là cảnh báo khẩn: đi theo công tắc SOS.
+  safe_overdue: 'sos',
 };
+
+// Cảnh báo khẩn vẫn đến dù người nhận đã tắt cảnh báo từ người gửi.
+const CRITICAL = new Set(['sos', 'safe_overdue']);
 
 function prefKeyFor(type) {
   return PREF_KEY[type] || null;
@@ -26,10 +36,10 @@ function wantsAlert(userData, type, senderUid) {
   const key = prefKeyFor(type);
   if (key && prefs.types && prefs.types[key] === false) return false;
   // SOS vẫn đến dù đã tắt cảnh báo từ người gửi (chỉ tắt được bằng công tắc SOS).
-  if (type !== 'sos' && senderUid && Array.isArray(prefs.mutedUids) && prefs.mutedUids.includes(senderUid)) {
+  if (!CRITICAL.has(type) && senderUid && Array.isArray(prefs.mutedUids) && prefs.mutedUids.includes(senderUid)) {
     return false;
   }
   return true;
 }
 
-module.exports = { PREF_KEY, prefKeyFor, wantsAlert };
+module.exports = { PREF_KEY, CRITICAL, prefKeyFor, wantsAlert };

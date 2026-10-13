@@ -16,6 +16,12 @@ void main() {
         'meetup': 'meetup',
         'ping': 'ping',
         'low_battery': 'battery',
+        'safe_start': 'safe',
+        'safe_arrive': 'safe',
+        'safe_end': 'safe',
+        'safe_ok': 'safe',
+        'safe_extend': 'safe',
+        'safe_overdue': 'sos',
       };
       expected.forEach((type, key) => expect(alertPrefKeyFor(type), key, reason: type));
       expect(alertPrefKeyFor('leave_group'), isNull);
@@ -23,7 +29,7 @@ void main() {
 
     test('mọi khoá đều có trên màn cài đặt', () {
       final keys = alertTypes.map((t) => t.key).toSet();
-      for (final type in ['arrive', 'sos', 'join', 'meetup', 'message', 'moment', 'ping', 'low_battery']) {
+      for (final type in ['arrive', 'sos', 'join', 'meetup', 'message', 'moment', 'ping', 'low_battery', 'safe_start', 'safe_overdue']) {
         expect(keys, contains(alertPrefKeyFor(type)));
       }
     });
@@ -54,6 +60,8 @@ void main() {
       expect(p.wants('message', 'a'), isFalse);
       expect(p.wants('message', 'b'), isTrue);
       expect(p.wants('sos', 'a'), isTrue);
+      expect(p.wants('safe_overdue', 'a'), isTrue);
+      expect(p.wants('safe_arrive', 'a'), isFalse);
       expect(
           AlertPrefs.fromMap({
             'types': {'sos': false},
