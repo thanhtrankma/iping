@@ -5,6 +5,8 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
+const { getAuth } = require('firebase-admin/auth');
+const { getStorage } = require('firebase-admin/storage');
 
 initializeApp();
 setGlobalOptions({ region: 'asia-southeast1' });
@@ -106,19 +108,17 @@ exports.joinGroup = onCall(async (req) => {
   return { groupId: groupRef.id };
 });
 
-exports.leaveGroup = onCall(async (req) => {
-  const uid = requireAuth(req);
-  const groupId = String(req.data?.groupId ?? '');
-  if (!groupId) throw new HttpsError('invalid-argument', 'Thiếu groupId.');
+// Gỡ một thành viên khỏi nhóm: chuyển quyền chủ nhóm, xoá nhóm khi không còn ai.
+async function removeMember(uid, groupId) {
   const groupRef = db.doc(`groups/${groupId}`);
 
   const result = await db.runTransaction(async (tx) => {
     const g = await tx.get(groupRef);
-    if (!g.exists) return { deleted: false, remaining: [] };
+    if (!g.exists) return { deleted: false, missing: true };
     const remaining = (g.get('memberIds') || []).filter((m) => m !== uid);
     if (remaining.length === 0) {
       tx.delete(db.doc(`inviteCodes/${g.get('inviteCode')}`));
-      return { deleted: true, remaining };
+      return { deleted: true };
     }
     const update = {
       memberIds: FieldValue.arrayRemove(uid),
@@ -127,18 +127,27 @@ exports.leaveGroup = onCall(async (req) => {
     };
     if (g.get('ownerId') === uid) update.ownerId = remaining[0];
     tx.update(groupRef, update);
-    return { deleted: false, remaining };
+    return { deleted: false };
   });
 
+  if (result.missing) return;
   if (result.deleted) {
     await db.recursiveDelete(groupRef);
   } else {
-    await groupRef.collection('locations').doc(uid).delete();
+    // Xoá cả lịch sử `points` bên dưới vị trí.
+    await db.recursiveDelete(groupRef.collection('locations').doc(uid));
     await groupRef.collection('explore').doc(uid).delete();
     await groupRef.collection('events').add({
       type: 'leave_group', uid, name: await displayName(uid), createdAt: FieldValue.serverTimestamp(),
     });
   }
+}
+
+exports.leaveGroup = onCall(async (req) => {
+  const uid = requireAuth(req);
+  const groupId = String(req.data?.groupId ?? '');
+  if (!groupId) throw new HttpsError('invalid-argument', 'Thiếu groupId.');
+  await removeMember(uid, groupId);
   return { ok: true };
 });
 
@@ -283,4 +292,36 @@ exports.onMeetup = onDocumentCreated('groups/{groupId}/meetups/{meetupId}', asyn
     title: `📍 Meetup: ${m.title}`,
     body: `${m.createdByName || 'Ai đó'} hẹn mọi người lúc ${time}. Mở IPing để tham gia.`,
   }, { type: 'meetup' });
+});
+
+// ---------- Tài khoản ----------
+
+// Xoá vĩnh viễn tài khoản và toàn bộ dữ liệu của người gọi.
+exports.deleteAccount = onCall({ timeoutSeconds: 300 }, async (req) => {
+  const uid = requireAuth(req);
+
+  // 1. Rời mọi nhóm (trước khi xoá users/{uid} vì cần tên cho sự kiện).
+  const groups = await db.collection('groups').where('memberIds', 'array-contains', uid).get();
+  for (const g of groups.docs) {
+    await removeMember(uid, g.id);
+    // Khoảnh khắc của người này sẽ mất ảnh nên xoá luôn.
+    const moments = await g.ref.collection('moments').where('uid', '==', uid).get();
+    await Promise.all(moments.docs.map((m) => db.recursiveDelete(m.ref)));
+  }
+
+  // 2. Ảnh đại diện và ảnh khoảnh khắc trên Storage.
+  const bucket = getStorage().bucket();
+  await bucket.deleteFiles({ prefix: `avatars/${uid}/` });
+  await bucket.deleteFiles({ prefix: 'moments/', matchGlob: `moments/*/${uid}/**` });
+
+  // 3. Hồ sơ cùng các collection con (explore...).
+  await db.recursiveDelete(db.doc(`users/${uid}`));
+
+  // 4. Cuối cùng xoá tài khoản đăng nhập.
+  try {
+    await getAuth().deleteUser(uid);
+  } catch (e) {
+    if (e.code !== 'auth/user-not-found') throw e;
+  }
+  return { ok: true };
 });
