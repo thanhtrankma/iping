@@ -24,6 +24,7 @@ class _ActivityTabState extends State<ActivityTab> {
         'join' => (Icons.group_add_rounded, AppColors.brand, 'đã tham gia nhóm'),
         'leave_group' => (Icons.group_remove_rounded, Colors.grey, 'đã rời nhóm'),
         'low_battery' => (Icons.battery_alert_rounded, AppColors.warning, 'sắp hết pin (${e.battery ?? '?'}%)'),
+        'removed' => (Icons.person_remove_rounded, AppColors.sos, 'đã bị xoá khỏi nhóm'),
         _ => (Icons.info_outline_rounded, Colors.grey, ''),
       };
 

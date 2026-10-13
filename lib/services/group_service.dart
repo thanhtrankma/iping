@@ -47,6 +47,13 @@ class GroupService {
   Future<void> leaveGroup(String gid) =>
       _fn.httpsCallable('leaveGroup').call({'groupId': gid});
 
+  /// Chủ nhóm xoá một thành viên; [block] = chặn không cho tham gia lại.
+  Future<void> removeMember(String gid, String uid, {bool block = false}) =>
+      _fn.httpsCallable('removeMember').call({'groupId': gid, 'uid': uid, 'block': block});
+
+  Future<void> unblockMember(String gid, String uid) =>
+      _fn.httpsCallable('unblockMember').call({'groupId': gid, 'uid': uid});
+
   // ---- Vị trí ----
 
   Stream<List<MemberLocation>> locations(String gid) => _sub(gid, 'locations')

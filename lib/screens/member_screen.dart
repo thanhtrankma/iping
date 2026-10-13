@@ -16,6 +16,7 @@ import 'chat_tab.dart';
 import 'driving_screen.dart';
 import 'group_actions.dart';
 import 'history_screen.dart';
+import 'member_admin.dart';
 import 'home_screen.dart' show BatteryPill;
 
 const _pings = [
@@ -121,6 +122,20 @@ class _MemberScreenState extends State<MemberScreen> {
                                   tooltip: 'Trò chuyện',
                                   onTap: () => _push(SubPage(title: group.name, child: ChatTab(group: group))),
                                 ),
+                              // Chỉ chủ nhóm thấy nút xoá / chặn thành viên khác.
+                              if (group != null && !isMe && group.isOwner(_myUid)) ...[
+                                const SizedBox(height: 14),
+                                GlassButton(
+                                  icon: Icons.manage_accounts_outlined,
+                                  tooltip: 'Quản lý thành viên',
+                                  onTap: () async {
+                                    if (await MemberAdmin.showActions(context, group, widget.uid, name) &&
+                                        context.mounted) {
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                ),
+                              ],
                               const SizedBox(height: 14),
                               GlassButton(
                                 icon: Icons.person_pin_circle_outlined,

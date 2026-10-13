@@ -88,6 +88,9 @@ exports.joinGroup = onCall(async (req) => {
     if (!g.exists) throw new HttpsError('not-found', 'Nhóm không còn tồn tại.');
     const members = g.get('memberIds') || [];
     if (members.includes(uid)) return false;
+    if ((g.get('blockedIds') || []).includes(uid)) {
+      throw new HttpsError('permission-denied', 'Bạn không thể tham gia nhóm này.');
+    }
     if (members.length >= MAX_MEMBERS) {
       throw new HttpsError('failed-precondition', `Nhóm đã đủ ${MAX_MEMBERS} thành viên.`);
     }
@@ -134,12 +137,78 @@ exports.leaveGroup = onCall(async (req) => {
   if (result.deleted) {
     await db.recursiveDelete(groupRef);
   } else {
-    await groupRef.collection('locations').doc(uid).delete();
-    await groupRef.collection('explore').doc(uid).delete();
+    await removeMemberData(groupRef, uid);
     await groupRef.collection('events').add({
       type: 'leave_group', uid, name: await displayName(uid), createdAt: FieldValue.serverTimestamp(),
     });
   }
+  return { ok: true };
+});
+
+// Xoá vị trí (kèm lịch sử points) và điểm khám phá của một thành viên trong nhóm.
+async function removeMemberData(groupRef, uid) {
+  await db.recursiveDelete(groupRef.collection('locations').doc(uid));
+  await groupRef.collection('explore').doc(uid).delete();
+}
+
+// Đọc nhóm và chắc chắn người gọi là chủ nhóm.
+async function requireOwner(tx, groupRef, uid) {
+  const g = await tx.get(groupRef);
+  if (!g.exists) throw new HttpsError('not-found', 'Nhóm không còn tồn tại.');
+  if (g.get('ownerId') !== uid) throw new HttpsError('permission-denied', 'Chỉ chủ nhóm mới làm được việc này.');
+  return g;
+}
+
+exports.removeMember = onCall(async (req) => {
+  const uid = requireAuth(req);
+  const groupId = String(req.data?.groupId ?? '');
+  const target = String(req.data?.uid ?? '');
+  const block = req.data?.block === true;
+  if (!groupId || !target) throw new HttpsError('invalid-argument', 'Thiếu groupId hoặc uid.');
+  if (target === uid) throw new HttpsError('invalid-argument', 'Bạn không thể tự xoá mình. Hãy dùng "Rời nhóm".');
+  const groupRef = db.doc(`groups/${groupId}`);
+
+  const result = await db.runTransaction(async (tx) => {
+    const g = await requireOwner(tx, groupRef, uid);
+    const isMember = (g.get('memberIds') || []).includes(target);
+    if (!isMember && !block) throw new HttpsError('not-found', 'Người này không còn trong nhóm.');
+    const name = g.get(`memberNames.${target}`) || g.get(`blockedNames.${target}`) || 'Thành viên';
+    const update = {};
+    if (isMember) {
+      update.memberIds = FieldValue.arrayRemove(target);
+      update[`memberNames.${target}`] = FieldValue.delete();
+      update[`memberPhotos.${target}`] = FieldValue.delete();
+    }
+    if (block) {
+      update.blockedIds = FieldValue.arrayUnion(target);
+      update[`blockedNames.${target}`] = name;
+    }
+    tx.update(groupRef, update);
+    return { isMember, name };
+  });
+
+  if (result.isMember) {
+    await removeMemberData(groupRef, target);
+    await groupRef.collection('events').add({
+      type: 'removed', uid: target, name: result.name, createdAt: FieldValue.serverTimestamp(),
+    });
+  }
+  return { ok: true };
+});
+
+exports.unblockMember = onCall(async (req) => {
+  const uid = requireAuth(req);
+  const groupId = String(req.data?.groupId ?? '');
+  const target = String(req.data?.uid ?? '');
+  if (!groupId || !target) throw new HttpsError('invalid-argument', 'Thiếu groupId hoặc uid.');
+  const groupRef = db.doc(`groups/${groupId}`);
+  await db.runTransaction(async (tx) => {
+    await requireOwner(tx, groupRef, uid);
+    tx.update(groupRef, {
+      blockedIds: FieldValue.arrayRemove(target),
+      [`blockedNames.${target}`]: FieldValue.delete(),
+    });
+  });
   return { ok: true };
 });
 

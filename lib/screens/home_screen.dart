@@ -13,6 +13,7 @@ import '../widgets/common.dart';
 import '../widgets/explore_pill.dart';
 import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
+import '../widgets/privacy_widgets.dart';
 import 'activity_tab.dart';
 import 'meetup_screen.dart';
 import 'moments_screen.dart';
@@ -209,6 +210,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                                     : _push(ExploreLeaderboardScreen(groupId: g.id, myUid: widget.uid)),
                               ),
                               const _SharingBadge(),
+                              if (g != null) PausedGroupChip(group: g),
                             ],
                           ),
                           const Spacer(),

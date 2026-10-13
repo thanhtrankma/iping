@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import 'group_actions.dart';
+import 'member_admin.dart';
 
 /// Quản lý nhóm: chọn nhóm đang xem, mời, rời, tạo / tham gia nhóm.
 class GroupsScreen extends StatefulWidget {
@@ -158,10 +159,15 @@ class _GroupCard extends StatelessWidget {
                 PopupMenuButton<String>(
                   onSelected: (v) {
                     if (v == 'invite') GroupActions.invite(context, group);
+                    if (v == 'members') {
+                      Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => GroupMembersScreen(groupId: group.id)));
+                    }
                     if (v == 'leave') GroupActions.leave(context, group);
                   },
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'invite', child: Text('Mời thành viên')),
+                    PopupMenuItem(value: 'members', child: Text('Thành viên & chặn')),
                     PopupMenuItem(value: 'leave', child: Text('Rời nhóm', style: TextStyle(color: AppColors.sos))),
                   ],
                 ),

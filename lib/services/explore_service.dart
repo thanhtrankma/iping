@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'group_service.dart';
 import 'hex_grid.dart';
 import 'location_service.dart';
+import 'privacy_service.dart';
 
 /// Điểm khám phá của một thành viên trong nhóm (`groups/{gid}/explore/{uid}`).
 class ExploreScore {
@@ -164,7 +165,8 @@ class ExploreService {
   /// Ghi điểm vào mọi nhóm đang tham gia để thành viên khác thấy trên bảng xếp hạng.
   Future<void> publishScore() async {
     final uid = _uid;
-    final groups = LocationService.instance.groups;
+    // Không gửi điểm (kèm tên khu vực) cho nhóm đang tạm dừng chia sẻ.
+    final groups = LocationService.instance.groups.where((g) => !PrivacyService.instance.isPaused(g.id)).toList();
     if (uid == null || groups.isEmpty) return;
     final data = {
       'name': FirebaseAuth.instance.currentUser?.displayName ?? 'Thành viên',
