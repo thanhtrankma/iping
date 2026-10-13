@@ -17,6 +17,7 @@ import '../widgets/common.dart';
 import '../widgets/explore_fog.dart';
 import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
+import 'explore_leaderboard_screen.dart';
 
 /// Màn "Khám phá": bản đồ phủ sương, mở dần theo những nơi đã đi qua.
 class ExploreScreen extends StatefulWidget {
@@ -102,6 +103,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final a = _area;
     if (a == null || !mounted) return;
     setState(() => _explored = a.exploredIn(_explore.cells));
+    _explore.publishArea(a.name, _percent);
+  }
+
+  void _openLeaderboard() {
+    final groups = LocationService.instance.groups;
+    final selected = SettingsService.instance.selectedGroupId.value;
+    final gid = groups.any((g) => g.id == selected) ? selected : groups.firstOrNull?.id;
+    if (gid == null) {
+      showMessage(context, 'Hãy tạo hoặc tham gia một nhóm để xem bảng xếp hạng.');
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ExploreLeaderboardScreen(groupId: gid, myUid: FirebaseAuth.instance.currentUser!.uid),
+    ));
   }
 
   /// Đưa cả khu vực vào khung nhìn (không thu nhỏ quá mức 11 với khu vực lớn).
@@ -248,12 +263,42 @@ class _ExploreScreenState extends State<ExploreScreen> {
               children: [
                 GlassButton(icon: Icons.close_rounded, tooltip: 'Đóng', onTap: () => Navigator.pop(context)),
                 const Spacer(),
-                GlassPill(
-                  onTap: _showDetails,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  child: Text(
-                    a == null ? 'Đang tính…' : '$percent đã khám phá',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                Glass(
+                  radius: 32,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          borderRadius: BorderRadius.circular(30),
+                          onTap: _showDetails,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+                            child: Text(
+                              a == null ? 'Đang tính…' : '$percent đã khám phá',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: Tooltip(
+                            message: 'Bảng xếp hạng',
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: _openLeaderboard,
+                              child: Container(
+                                width: 46,
+                                height: 46,
+                                decoration: const BoxDecoration(gradient: AppColors.brandGradient, shape: BoxShape.circle),
+                                child: const Icon(Icons.leaderboard_rounded, color: Colors.white, size: 24),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const Spacer(),

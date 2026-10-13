@@ -123,6 +123,16 @@ service cloud.firestore {
           && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive'];
       }
 
+      // Điểm khám phá: thành viên đọc được, mỗi người chỉ ghi điểm của mình.
+      match /explore/{uid} {
+        allow read: if isMember(gid);
+        allow create, update: if isMember(gid) && request.auth.uid == uid
+          && request.resource.data.count is int
+          && request.resource.data.count >= 0
+          && isNumber(request.resource.data.areaKm2);
+        allow delete: if isMember(gid) && request.auth.uid == uid;
+      }
+
       match /messages/{mid} {
         allow read: if isMember(gid);
         allow create: if isMember(gid)

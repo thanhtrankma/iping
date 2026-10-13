@@ -134,6 +134,7 @@ exports.leaveGroup = onCall(async (req) => {
     await db.recursiveDelete(groupRef);
   } else {
     await groupRef.collection('locations').doc(uid).delete();
+    await groupRef.collection('explore').doc(uid).delete();
     await groupRef.collection('events').add({
       type: 'leave_group', uid, name: await displayName(uid), createdAt: FieldValue.serverTimestamp(),
     });

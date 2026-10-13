@@ -31,6 +31,9 @@ class LocationService {
   StreamSubscription<List<Group>>? _groupSub;
   List<Group> _groups = [];
 
+  /// Các nhóm người dùng đang tham gia.
+  List<Group> get groups => _groups;
+
   Future<void> init(String uid) async {
     await _groupSub?.cancel();
     _groupSub = GroupService.instance.myGroups(uid).listen((groups) {

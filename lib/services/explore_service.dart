@@ -1,12 +1,48 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'group_service.dart';
 import 'hex_grid.dart';
+import 'location_service.dart';
+
+/// Điểm khám phá của một thành viên trong nhóm (`groups/{gid}/explore/{uid}`).
+class ExploreScore {
+  ExploreScore({
+    required this.uid,
+    required this.name,
+    required this.count,
+    required this.areaKm2,
+    this.areaName,
+    this.percent,
+    this.updatedAt,
+  });
+
+  final String uid;
+  final String name;
+  final int count;
+  final double areaKm2;
+  final String? areaName;
+  final double? percent;
+  final DateTime? updatedAt;
+
+  factory ExploreScore.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? const {};
+    return ExploreScore(
+      uid: doc.id,
+      name: d['name'] as String? ?? 'Thành viên',
+      count: (d['count'] as num?)?.toInt() ?? 0,
+      areaKm2: (d['areaKm2'] as num?)?.toDouble() ?? 0,
+      areaName: d['areaName'] as String?,
+      percent: (d['percent'] as num?)?.toDouble(),
+      updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
+    );
+  }
+}
 
 /// Lưu các ô lục giác người dùng đã đi qua ("Khám phá").
 ///
@@ -112,8 +148,51 @@ class ExploreService {
       debugPrint('Explore flush: $e');
       // Ghi lại lần sau.
       pending.forEach((b, ids) => _pending.putIfAbsent(b, () => {}).addAll(ids));
+      return;
     }
+    await publishScore();
   }
+
+  // ---- Bảng xếp hạng ----
+
+  String? _areaName;
+  double? _percent;
+
+  /// Tổng diện tích thật (km²) của các ô đã khám phá.
+  double get exploredKm2 => cells.fold<double>(0, (s, c) => s + HexGrid.areaM2(c)) / 1e6;
+
+  /// Ghi điểm vào mọi nhóm đang tham gia để thành viên khác thấy trên bảng xếp hạng.
+  Future<void> publishScore() async {
+    final uid = _uid;
+    final groups = LocationService.instance.groups;
+    if (uid == null || groups.isEmpty) return;
+    final data = {
+      'name': FirebaseAuth.instance.currentUser?.displayName ?? 'Thành viên',
+      'count': cells.length,
+      'areaKm2': double.parse(exploredKm2.toStringAsFixed(4)),
+      if (_areaName != null) 'areaName': _areaName,
+      if (_percent != null) 'percent': double.parse(_percent!.toStringAsFixed(2)),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    await Future.wait(groups.map((g) async {
+      try {
+        await _db.doc('groups/${g.id}/explore/$uid').set(data, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Explore score ${g.id}: $e');
+      }
+    }));
+  }
+
+  /// Ghi khu vực hiện tại và % đã khám phá (chỉ khi thay đổi đáng kể).
+  Future<void> publishArea(String name, double percent) async {
+    if (name == _areaName && _percent != null && (percent - _percent!).abs() < 0.05) return;
+    _areaName = name;
+    _percent = percent;
+    await publishScore();
+  }
+
+  Stream<List<ExploreScore>> scores(String gid) =>
+      _db.collection('groups/$gid/explore').snapshots().map((s) => s.docs.map(ExploreScore.fromDoc).toList());
 
   /// Gộp dữ liệu trên Firestore với dữ liệu cục bộ, rồi lấp dữ liệu cũ một lần.
   Future<void> _syncRemote(String uid) async {
@@ -136,6 +215,7 @@ class ExploreService {
         unawaited(_saveLocal());
       }
       await _backfill(uid);
+      await publishScore();
     } catch (e) {
       debugPrint('Explore sync: $e');
     }
