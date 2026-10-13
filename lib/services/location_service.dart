@@ -23,6 +23,8 @@ class LocationService {
   static final instance = LocationService._();
 
   static const _prefKey = 'sharing_enabled';
+  // Dùng chung với trình xử lý push nền (yêu cầu vị trí).
+  static const sharingPrefKey = _prefKey;
 
   final sharing = ValueNotifier<bool>(false);
   final lastPosition = ValueNotifier<Position?>(null);
@@ -111,6 +113,21 @@ class LocationService {
   Future<void> refresh() async {
     final p = lastPosition.value;
     if (p != null && sharing.value) await _onPosition(p);
+  }
+
+  /// Lấy vị trí mới ngay và ghi một lần vào các nhóm (yêu cầu vị trí).
+  /// Không gửi gì nếu đang tắt chia sẻ; trả về `true` nếu đã ghi.
+  Future<bool> pushNow() async {
+    if (!sharing.value) return false;
+    final perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return false;
+    try {
+      await _onPosition(await Geolocator.getCurrentPosition().timeout(const Duration(seconds: 15)));
+      return true;
+    } catch (e) {
+      debugPrint('pushNow: $e');
+      return false;
+    }
   }
 
   Future<void> _onPosition(Position p) async {

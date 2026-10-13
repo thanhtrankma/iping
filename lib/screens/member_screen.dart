@@ -65,6 +65,35 @@ class _MemberScreenState extends State<MemberScreen> {
     });
   }
 
+  // Yêu cầu vị trí: chờ `updatedAt` của thành viên thay đổi.
+  bool _locating = false;
+  DateTime? _locateBase;
+
+  Future<void> _requestLocation(MemberLocation? loc) async {
+    try {
+      await GroupService.instance.sendPing(widget.groupId, widget.uid, 'locate');
+      setState(() {
+        _locating = true;
+        _locateBase = loc?.updatedAt;
+      });
+      if (mounted) showMessage(context, 'Đã gửi yêu cầu');
+    } catch (e) {
+      if (mounted) showMessage(context, 'Không gửi được: $e');
+    }
+  }
+
+  void _checkLocated(MemberLocation? loc) {
+    final t = loc?.updatedAt;
+    if (!_locating || t == null || t == _locateBase) return;
+    _locating = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {});
+      showMessage(context, 'Vị trí đã được cập nhật');
+      _map.move(loc!.point, 17, offset: _pinOffset);
+    });
+  }
+
   void _push(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
   Future<void> _ping(String type, String label) async {
@@ -92,6 +121,7 @@ class _MemberScreenState extends State<MemberScreen> {
               final isMe = widget.uid == _myUid;
               final center = loc?.point ?? defaultCenter;
               _centerOnce(loc);
+              _checkLocated(loc);
               return Stack(
                 children: [
                   Positioned.fill(
@@ -164,10 +194,18 @@ class _MemberScreenState extends State<MemberScreen> {
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
                               padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-                              itemCount: _pings.length,
+                              itemCount: _pings.length + 1,
                               separatorBuilder: (_, __) => const SizedBox(width: 8),
                               itemBuilder: (context, i) {
-                                final (type, emoji, label) = _pings[i];
+                                if (i == 0) {
+                                  return GlassPill(
+                                    onTap: () => _requestLocation(loc),
+                                    child: Text(_locating ? '📡  Đã gửi yêu cầu' : '📡  Cập nhật vị trí',
+                                        style: const TextStyle(
+                                            fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.brand)),
+                                  );
+                                }
+                                final (type, emoji, label) = _pings[i - 1];
                                 return GlassPill(
                                   onTap: () => _ping(type, '$emoji $label'),
                                   child: Text('$emoji  $label',
