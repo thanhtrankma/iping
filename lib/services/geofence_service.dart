@@ -46,7 +46,7 @@ class GeofenceService {
 
   Future<void> check(Position p, List<Group> groups) async {
     if (p.accuracy > _maxAccuracy) return;
-    await _checkMeetups(p);
+    await _checkMeetups(p, groups);
     final prefs = await SharedPreferences.getInstance();
 
     for (final g in groups) {
@@ -82,10 +82,12 @@ class GeofenceService {
 
 extension on GeofenceService {
   /// Tự đánh dấu "đã tới" khi người tham gia meetup đến gần điểm hẹn.
-  Future<void> _checkMeetups(Position p) async {
+  Future<void> _checkMeetups(Position p, List<Group> groups) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
+    final ids = {for (final g in groups) g.id};
     for (final entry in _meetups.entries) {
+      if (!ids.contains(entry.key)) continue;
       for (final m in entry.value) {
         if (m.statusOf(uid) != MeetupStatus.going) continue;
         final dist = Geolocator.distanceBetween(p.latitude, p.longitude, m.lat, m.lng);

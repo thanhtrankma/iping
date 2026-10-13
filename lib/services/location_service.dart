@@ -12,6 +12,7 @@ import '../models/models.dart';
 import 'explore_service.dart';
 import 'geofence_service.dart';
 import 'group_service.dart';
+import 'privacy_service.dart';
 import 'profile_service.dart';
 
 /// Theo dõi vị trí của chính người dùng và ghi vào mọi nhóm họ tham gia.
@@ -41,6 +42,7 @@ class LocationService {
       GeofenceService.instance.watch(groups);
       AvatarRegistry.instance.addGroups(groups);
     });
+    await PrivacyService.instance.load();
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_prefKey) ?? false) await start();
   }
@@ -102,6 +104,12 @@ class LocationService {
     }
   }
 
+  /// Ghi lại vị trí gần nhất (ví dụ khi một nhóm vừa hết tạm dừng).
+  Future<void> refresh() async {
+    final p = lastPosition.value;
+    if (p != null && sharing.value) await _onPosition(p);
+  }
+
   Future<void> _onPosition(Position p) async {
     lastPosition.value = p;
     // Mở sương ở màn Khám phá (chỉ lưu cho chính người dùng).
@@ -136,8 +144,14 @@ class LocationService {
       // Firestore TTL tự xoá điểm cũ hơn 30 ngày.
       'expireAt': Timestamp.fromDate(p.timestamp.add(const Duration(days: 30))),
     };
+    // Nhóm đang tạm dừng: chỉ đánh dấu "đã tắt chia sẻ" một lần, không ghi vị trí.
+    final privacy = PrivacyService.instance;
+    final active = _groups.where((g) => !privacy.isPaused(g.id)).toList();
+    for (final g in _groups) {
+      if (privacy.isPaused(g.id)) unawaited(privacy.markPaused(g.id));
+    }
     // Ghi riêng từng nhóm: một nhóm vừa rời (bị rules từ chối) không chặn các nhóm khác.
-    await Future.wait(_groups.map((g) async {
+    await Future.wait(active.map((g) async {
       final ref = _db.doc('groups/${g.id}/locations/${user.uid}');
       try {
         await ref.set(data);
@@ -147,7 +161,7 @@ class LocationService {
       }
     }));
 
-    await GeofenceService.instance.check(p, _groups);
+    await GeofenceService.instance.check(p, active);
   }
 
   Position? _lastSaved;

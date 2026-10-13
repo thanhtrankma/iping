@@ -14,6 +14,7 @@ import 'groups_screen.dart';
 import 'meetup_screen.dart';
 import 'moments_screen.dart';
 import 'places_tab.dart';
+import 'privacy_screen.dart';
 import 'profile_screen.dart';
 
 class MenuScreen extends StatelessWidget {
@@ -79,6 +80,11 @@ class MenuScreen extends StatelessWidget {
                 icon: Icons.groups_2_outlined,
                 title: 'Quản lý nhóm',
                 onTap: () => _push(context, GroupsScreen(uid: uid)),
+              ),
+              _Item(
+                icon: Icons.shield_outlined,
+                title: 'Bảo mật & Bạn bè',
+                onTap: () => _push(context, PrivacyScreen(uid: uid)),
               ),
               _Item(
                 icon: Icons.explore_outlined,

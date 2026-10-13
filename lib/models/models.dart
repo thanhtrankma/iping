@@ -13,6 +13,8 @@ class Group {
     required this.memberIds,
     required this.memberNames,
     this.memberPhotos = const {},
+    this.blockedIds = const [],
+    this.blockedNames = const {},
   });
 
   final String id;
@@ -22,6 +24,11 @@ class Group {
   final List<String> memberIds;
   final Map<String, String> memberNames;
   final Map<String, String?> memberPhotos;
+  /// Người bị chủ nhóm chặn (không thể tham gia lại bằng mã mời).
+  final List<String> blockedIds;
+  final Map<String, String> blockedNames;
+
+  bool isOwner(String? uid) => uid != null && uid == ownerId;
 
   String nameOf(String uid) => memberNames[uid] ?? 'Thành viên';
 
@@ -35,6 +42,8 @@ class Group {
       memberIds: List<String>.from(d['memberIds'] as List? ?? const []),
       memberNames: Map<String, String>.from(d['memberNames'] as Map? ?? const {}),
       memberPhotos: Map<String, String?>.from(d['memberPhotos'] as Map? ?? const {}),
+      blockedIds: List<String>.from(d['blockedIds'] as List? ?? const []),
+      blockedNames: Map<String, String>.from(d['blockedNames'] as Map? ?? const {}),
     );
   }
 }
