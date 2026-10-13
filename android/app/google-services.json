@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "174626795612",
+    "project_id": "iping-share",
+    "storage_bucket": "iping-share.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:174626795612:android:157df9f21690777dd63699",
+        "android_client_info": {
+          "package_name": "com.gannhau.gan_nhau"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRLXZX0tpjfNcCTTLqs45WFEqoqiy2qOM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

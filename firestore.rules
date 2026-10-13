@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(gid) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(gid)).data.memberIds;
+    }
+
+    function isNumber(v) {
+      return v is int || v is float;
+    }
+
+    // Hồ sơ người dùng: chỉ chính chủ đọc/ghi (chứa token push).
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Mã mời chỉ được Cloud Functions truy cập.
+    match /inviteCodes/{code} {
+      allow read, write: if false;
+    }
+
+    match /groups/{gid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+      // Tạo / tham gia / rời nhóm đi qua Cloud Functions.
+      allow create, delete: if false;
+      // Chủ nhóm được đổi tên nhóm.
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.ownerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() in [1, 50];
+
+      // Mỗi thành viên chỉ ghi được vị trí của chính mình.
+      match /locations/{uid} {
+        allow read: if isMember(gid);
+        allow write: if isMember(gid) && request.auth.uid == uid;
+
+        // Lịch sử vị trí: thành viên đọc được, chỉ chính chủ ghi.
+        match /points/{pid} {
+          allow read: if isMember(gid);
+          allow create: if isMember(gid) && request.auth.uid == uid
+            && isNumber(request.resource.data.lat)
+            && isNumber(request.resource.data.lng)
+            && request.resource.data.t is timestamp;
+          allow delete: if isMember(gid) && request.auth.uid == uid;
+        }
+      }
+
+      // Ping nhanh giữa hai thành viên.
+      match /pings/{pid} {
+        allow read: if isMember(gid)
+          && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+        allow create: if isMember(gid)
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.to in get(/databases/$(database)/documents/groups/$(gid)).data.memberIds
+          && request.resource.data.type in ['love', 'boo', 'poke', 'arrived', 'call', 'home'];
+      }
+
+      match /places/{pid} {
+        allow read, delete: if isMember(gid);
+        allow create, update: if isMember(gid)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() in [1, 60]
+          && isNumber(request.resource.data.lat)
+          && isNumber(request.resource.data.lng)
+          && isNumber(request.resource.data.radius)
+          && request.resource.data.radius >= 50
+          && request.resource.data.radius <= 5000;
+      }
+
+      match /events/{eid} {
+        allow read: if isMember(gid);
+        allow create: if isMember(gid)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.type in ['arrive', 'leave', 'sos'];
+      }
+
+      match /messages/{mid} {
+        allow read: if isMember(gid);
+        allow create: if isMember(gid)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() in [1, 1000];
+      }
+    }
+  }
+}

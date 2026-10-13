@@ -1,0 +1,147 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../models/models.dart';
+import 'trip_analyzer.dart';
+
+class GroupService {
+  GroupService._();
+  static final instance = GroupService._();
+
+  final _db = FirebaseFirestore.instance;
+  // Phải trùng region trong functions/index.js.
+  final _fn = FirebaseFunctions.instanceFor(region: 'asia-southeast1');
+
+  String get _uid => FirebaseAuth.instance.currentUser!.uid;
+  String get _name => FirebaseAuth.instance.currentUser?.displayName ?? 'Thành viên';
+
+  CollectionReference<Map<String, dynamic>> _sub(String gid, String name) =>
+      _db.collection('groups').doc(gid).collection(name);
+
+  // ---- Nhóm ----
+
+  Stream<List<Group>> myGroups(String uid) => _db
+      .collection('groups')
+      .where('memberIds', arrayContains: uid)
+      .snapshots()
+      .map((s) => s.docs.map(Group.fromDoc).toList());
+
+  Stream<Group?> group(String gid) => _db
+      .doc('groups/$gid')
+      .snapshots()
+      .map((d) => d.exists ? Group.fromDoc(d) : null);
+
+  Future<String> createGroup(String name) async {
+    final res = await _fn.httpsCallable('createGroup').call({'name': name});
+    return (res.data as Map)['groupId'] as String;
+  }
+
+  Future<String> joinGroup(String code) async {
+    final res = await _fn.httpsCallable('joinGroup').call({'code': code});
+    return (res.data as Map)['groupId'] as String;
+  }
+
+  Future<void> leaveGroup(String gid) =>
+      _fn.httpsCallable('leaveGroup').call({'groupId': gid});
+
+  // ---- Vị trí ----
+
+  Stream<List<MemberLocation>> locations(String gid) => _sub(gid, 'locations')
+      .snapshots()
+      .map((s) => s.docs.map(MemberLocation.fromDoc).toList());
+
+  /// Lịch sử vị trí của một thành viên trong khoảng thời gian.
+  Future<List<TrackPoint>> history(String gid, String uid, DateTime from, DateTime to) async {
+    final snap = await _sub(gid, 'locations')
+        .doc(uid)
+        .collection('points')
+        .where('t', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+        .where('t', isLessThan: Timestamp.fromDate(to))
+        .orderBy('t')
+        .get();
+    return [
+      for (final d in snap.docs)
+        TrackPoint(
+          lat: (d['lat'] as num).toDouble(),
+          lng: (d['lng'] as num).toDouble(),
+          speed: (d.data()['speed'] as num?)?.toDouble(),
+          time: (d['t'] as Timestamp).toDate(),
+        ),
+    ];
+  }
+
+  // ---- Ping nhanh (❤️ Yêu nhé!, 👻 Ú òa!...) ----
+
+  Future<void> sendPing(String gid, String toUid, String type) => _sub(gid, 'pings').add({
+        'from': _uid,
+        'fromName': _name,
+        'to': toUid,
+        'type': type,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+  /// Sự kiện đến/rời địa điểm của một thành viên.
+  Stream<List<GroupEvent>> memberEvents(String gid, String uid) => _sub(gid, 'events')
+      .where('uid', isEqualTo: uid)
+      .orderBy('createdAt', descending: true)
+      .limit(50)
+      .snapshots()
+      .map((s) => s.docs.map(GroupEvent.fromDoc).toList());
+
+  // ---- Địa điểm (vùng geofence) ----
+
+  Stream<List<Place>> places(String gid) =>
+      _sub(gid, 'places').orderBy('name').snapshots().map((s) => s.docs.map(Place.fromDoc).toList());
+
+  Future<void> addPlace(String gid,
+          {required String name, required double lat, required double lng, required double radius}) =>
+      _sub(gid, 'places').add({
+        'name': name,
+        'lat': lat,
+        'lng': lng,
+        'radius': radius,
+        'createdBy': _uid,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+  Future<void> deletePlace(String gid, String pid) => _sub(gid, 'places').doc(pid).delete();
+
+  // ---- Hoạt động ----
+
+  Stream<List<GroupEvent>> events(String gid) => _sub(gid, 'events')
+      .orderBy('createdAt', descending: true)
+      .limit(50)
+      .snapshots()
+      .map((s) => s.docs.map(GroupEvent.fromDoc).toList());
+
+  Future<void> addEvent(String gid,
+          {required String type, String? placeName, double? lat, double? lng}) =>
+      _sub(gid, 'events').add({
+        'type': type,
+        'uid': _uid,
+        'name': _name,
+        if (placeName != null) 'placeName': placeName,
+        if (lat != null) 'lat': lat,
+        if (lng != null) 'lng': lng,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+  Future<void> sendSos(String gid, {double? lat, double? lng}) =>
+      addEvent(gid, type: 'sos', lat: lat, lng: lng);
+
+  // ---- Trò chuyện ----
+
+  Stream<List<ChatMessage>> messages(String gid) => _sub(gid, 'messages')
+      .orderBy('createdAt', descending: true)
+      .limit(100)
+      .snapshots()
+      .map((s) => s.docs.map(ChatMessage.fromDoc).toList());
+
+  Future<void> sendMessage(String gid, String text) => _sub(gid, 'messages').add({
+        'uid': _uid,
+        'name': _name,
+        'text': text,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+}
