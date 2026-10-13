@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/models.dart';
+import '../services/all_friends_service.dart';
 import '../services/geocode_service.dart';
 import '../services/group_service.dart';
 import '../services/location_service.dart';
@@ -14,6 +15,7 @@ import '../widgets/explore_pill.dart';
 import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
 import 'activity_tab.dart';
+import 'all_friends_actions.dart';
 import 'meetup_screen.dart';
 import 'moments_screen.dart';
 import 'chat_tab.dart';
@@ -46,11 +48,17 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context, selectedId, _) {
             Group? group;
             if (groups != null && groups.isNotEmpty) {
-              group = groups.firstWhere((g) => g.id == selectedId, orElse: () => groups.first);
+              group = AllFriendsService.isAllMode(selectedId, groups)
+                  ? AllFriendsService.virtualGroup(groups)
+                  : groups.firstWhere((g) => g.id == selectedId, orElse: () => groups.first);
             }
+            // Chế độ tất cả bạn bè: dựng lại khi danh sách nhóm / thành viên đổi.
+            final key = group != null && AllFriendsService.isVirtual(group)
+                ? 'all:${groups!.map((g) => '${g.id}/${g.memberIds.length}').join(',')}'
+                : group?.id ?? 'none';
             return Scaffold(
               body: _GroupMapView(
-                key: ValueKey(group?.id ?? 'none'),
+                key: ValueKey(key),
                 uid: widget.uid,
                 group: group,
                 groups: groups ?? const [],
@@ -87,12 +95,20 @@ class _GroupMapViewState extends State<_GroupMapView> {
   Stream<List<Place>>? _places;
   Stream<List<Moment>>? _moments;
   Stream<List<Meetup>>? _meetups;
+  // Chế độ tất cả bạn bè: uid -> nhóm có vị trí mới nhất.
+  Map<String, String> _groupOf = const {};
+  bool get _all => widget.group != null && AllFriendsService.isVirtual(widget.group!);
 
   @override
   void initState() {
     super.initState();
     final g = widget.group;
-    if (g != null) {
+    if (g != null && _all) {
+      _locations = AllFriendsService.instance.watch(widget.groups).map((m) {
+        _groupOf = m.groupOf;
+        return m.locations;
+      });
+    } else if (g != null) {
       _locations = GroupService.instance.locations(g.id);
       _places = GroupService.instance.places(g.id);
       _moments = GroupService.instance.moments(g.id);
@@ -179,22 +195,28 @@ class _GroupMapViewState extends State<_GroupMapView> {
                               GlassButton(
                                 icon: Icons.menu_rounded,
                                 tooltip: 'Menu',
-                                onTap: () => _push(MenuScreen(uid: widget.uid, group: g)),
+                                onTap: () => _push(MenuScreen(uid: widget.uid, group: _all ? null : g)),
                               ),
                               if (g != null) ...[
                                 const SizedBox(height: 14),
                                 GlassButton(
                                   icon: Icons.person_add_alt_1_rounded,
                                   tooltip: 'Mời thành viên',
-                                  onTap: () => GroupActions.invite(context, g),
+                                  onTap: () => AllFriendsActions.invite(context, g, widget.groups),
                                 ),
                                 const SizedBox(height: 14),
                                 GlassButton(
                                   tooltip: 'Gửi SOS',
-                                  onTap: () => GroupActions.sos(context, g),
+                                  onTap: () => AllFriendsActions.sos(context, g, widget.groups),
                                   child: const Text('SOS',
                                       style:
                                           TextStyle(color: AppColors.sos, fontWeight: FontWeight.w900, fontSize: 16)),
+                                ),
+                                const SizedBox(height: 14),
+                                GlassButton(
+                                  icon: Icons.where_to_vote_rounded,
+                                  tooltip: 'Check-in',
+                                  onTap: () => AllFriendsActions.checkIn(context, g, widget.groups),
                                 ),
                               ],
                             ],
@@ -206,7 +228,8 @@ class _GroupMapViewState extends State<_GroupMapView> {
                                 onOpen: () => _push(const ExploreScreen()),
                                 onLeaderboard: () => g == null
                                     ? _push(const ExploreScreen())
-                                    : _push(ExploreLeaderboardScreen(groupId: g.id, myUid: widget.uid)),
+                                    : AllFriendsActions.open(context, g, widget.groups,
+                                        (x) => ExploreLeaderboardScreen(groupId: x.id, myUid: widget.uid)),
                               ),
                               const _SharingBadge(),
                             ],
@@ -229,7 +252,9 @@ class _GroupMapViewState extends State<_GroupMapView> {
                                 GlassButton(
                                   icon: Icons.chat_bubble_outline_rounded,
                                   tooltip: 'Trò chuyện',
-                                  onTap: () => _push(SubPage(title: g.name, child: ChatTab(group: g))),
+                                  onTap: () => AllFriendsActions.open(
+                                      context, g, widget.groups, (x) => SubPage(title: x.name, child: ChatTab(group: x)),
+                                      title: 'Trò chuyện với nhóm nào?'),
                                 ),
                               ],
                             ],
@@ -251,7 +276,9 @@ class _GroupMapViewState extends State<_GroupMapView> {
                       meetups: meetups,
                       momentCount: moments.length,
                       myUid: widget.uid,
-                      onOpenMember: (uid) => _push(MemberScreen(groupId: g.id, uid: uid)),
+                      onOpenMember: (uid) => _push(MemberScreen(
+                          groupId: _all ? AllFriendsService.groupFor(uid, widget.groups, _groupOf) ?? g.id : g.id,
+                          uid: uid)),
                       onOpenPage: _push,
                     ),
                 ],
@@ -424,7 +451,7 @@ class _MembersSheet extends StatelessWidget {
                     icon: Icons.person_add_alt_1_rounded,
                     color: AppColors.brand,
                     tooltip: 'Mời thành viên',
-                    onTap: () => GroupActions.invite(context, group),
+                    onTap: () => AllFriendsActions.invite(context, group, groups),
                   ),
                 ],
               ),
@@ -435,7 +462,7 @@ class _MembersSheet extends StatelessWidget {
                     child: GlassTile(
                       icon: Icons.auto_awesome_outlined,
                       label: momentCount > 0 ? 'Khoảnh khắc ($momentCount)' : 'Khoảnh khắc',
-                      onTap: () => onOpenPage(MomentsScreen(group: group)),
+                      onTap: () => AllFriendsActions.open(context, group, groups, (g) => MomentsScreen(group: g)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -443,7 +470,7 @@ class _MembersSheet extends StatelessWidget {
                     child: GlassTile(
                       icon: Icons.handshake_outlined,
                       label: 'Meetup',
-                      onTap: () => onOpenPage(MeetupListScreen(group: group)),
+                      onTap: () => AllFriendsActions.open(context, group, groups, (g) => MeetupListScreen(group: g)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -451,7 +478,8 @@ class _MembersSheet extends StatelessWidget {
                     child: GlassTile(
                       icon: Icons.place_outlined,
                       label: 'Địa điểm',
-                      onTap: () => onOpenPage(SubPage(title: 'Địa điểm', child: PlacesTab(group: group))),
+                      onTap: () => AllFriendsActions.open(
+                          context, group, groups, (g) => SubPage(title: 'Địa điểm', child: PlacesTab(group: g))),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -459,7 +487,8 @@ class _MembersSheet extends StatelessWidget {
                     child: GlassTile(
                       icon: Icons.notifications_none_rounded,
                       label: 'Hoạt động',
-                      onTap: () => onOpenPage(SubPage(title: 'Hoạt động', child: ActivityTab(group: group))),
+                      onTap: () => AllFriendsActions.open(
+                          context, group, groups, (g) => SubPage(title: 'Hoạt động', child: ActivityTab(group: g))),
                     ),
                   ),
                 ],

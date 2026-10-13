@@ -8,6 +8,9 @@ class SettingsService {
   SettingsService._();
   static final instance = SettingsService._();
 
+  /// Giá trị chọn đặc biệt: xem "Tất cả bạn bè" của mọi nhóm.
+  static const allGroups = '__all__';
+
   final mapStyle = ValueNotifier<MapStyle>(MapStyle.satellite);
   final selectedGroupId = ValueNotifier<String?>(null);
 

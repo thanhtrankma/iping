@@ -156,6 +156,24 @@ class GroupActions {
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             children: [
+              // Xem mọi người của mọi nhóm trên một bản đồ.
+              if (groups.length > 1)
+                ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  leading: const CircleAvatar(
+                    backgroundColor: AppColors.brand,
+                    child: Icon(Icons.people_alt_rounded, color: Colors.white),
+                  ),
+                  title: const Text('Tất cả bạn bè', style: TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('${groups.length} nhóm'),
+                  trailing: selectedId == SettingsService.allGroups
+                      ? const Icon(Icons.check_circle_rounded, color: AppColors.brand)
+                      : null,
+                  onTap: () {
+                    SettingsService.instance.selectGroup(SettingsService.allGroups);
+                    Navigator.pop(ctx);
+                  },
+                ),
               for (final g in groups)
                 ListTile(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
