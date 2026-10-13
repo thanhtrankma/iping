@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../theme.dart';
+import '../utils/auth_errors.dart';
 import '../widgets/common.dart';
+import 'account_dialogs.dart';
+import 'phone_sign_in_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -44,21 +47,30 @@ class _SignInScreenState extends State<SignInScreen> {
         await AuthService.instance.signIn(_email.text.trim(), _password.text);
       }
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = _message(e.code));
+      if (mounted) setState(() => _error = _message(e.code));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  String _message(String code) => switch (code) {
-        'invalid-email' => 'Email không hợp lệ.',
-        'email-already-in-use' => 'Email này đã được đăng ký.',
-        'weak-password' => 'Mật khẩu cần ít nhất 6 ký tự.',
-        'invalid-credential' || 'wrong-password' || 'user-not-found' =>
-          'Email hoặc mật khẩu không đúng.',
-        'network-request-failed' => 'Không có kết nối mạng.',
-        _ => 'Có lỗi xảy ra ($code).',
-      };
+  String _message(String code) => authErrorMessage(code);
+
+  Future<void> _google() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AuthService.instance.signInWithGoogle();
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _error = _message(e.code));
+    } catch (e) {
+      debugPrint('Google sign-in: $e');
+      if (mounted) setState(() => _error = 'Không đăng nhập được bằng Google. Hãy thử lại.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +163,17 @@ class _SignInScreenState extends State<SignInScreen> {
                                           (v == null || v.length < 6) ? 'Ít nhất 6 ký tự' : null,
                                       onFieldSubmitted: (_) => _submit(),
                                     ),
+                                    if (!_register)
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: _busy
+                                              ? null
+                                              : () => showForgotPasswordDialog(context,
+                                                  initialEmail: _email.text.trim()),
+                                          child: const Text('Quên mật khẩu?'),
+                                        ),
+                                      ),
                                     if (_error != null) ...[
                                       const SizedBox(height: 12),
                                       Container(
@@ -181,6 +204,25 @@ class _SignInScreenState extends State<SignInScreen> {
                                               child: CircularProgressIndicator(
                                                   strokeWidth: 2.5, color: Colors.white))
                                           : Text(_register ? 'Tạo tài khoản' : 'Đăng nhập'),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _OrDivider(color: scheme.onSurfaceVariant),
+                                    const SizedBox(height: 16),
+                                    OutlinedButton.icon(
+                                      style: _altButtonStyle,
+                                      onPressed: _busy ? null : _google,
+                                      icon: const _GoogleMark(),
+                                      label: const Text('Tiếp tục với Google'),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    OutlinedButton.icon(
+                                      style: _altButtonStyle,
+                                      onPressed: _busy
+                                          ? null
+                                          : () => Navigator.of(context).push(
+                                              MaterialPageRoute(builder: (_) => const PhoneSignInScreen())),
+                                      icon: const Icon(Icons.phone_iphone_rounded),
+                                      label: const Text('Tiếp tục với số điện thoại'),
                                     ),
                                     const SizedBox(height: 8),
                                     TextButton(
@@ -252,6 +294,46 @@ class _Hero extends StatelessWidget {
         Text('Luôn biết người thân đang ở đâu',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15)),
       ],
+    );
+  }
+}
+
+final _altButtonStyle = OutlinedButton.styleFrom(
+  minimumSize: const Size.fromHeight(50),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+  textStyle: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600),
+);
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider({required this.color});
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Divider(color: color.withValues(alpha: 0.3))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text('hoặc', style: TextStyle(color: color)),
+        ),
+        Expanded(child: Divider(color: color.withValues(alpha: 0.3))),
+      ],
+    );
+  }
+}
+
+/// Chữ "G" nhiều màu đơn giản (không dùng logo ảnh).
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (r) => const SweepGradient(
+        colors: [Color(0xFF4285F4), Color(0xFF34A853), Color(0xFFFBBC05), Color(0xFFEA4335), Color(0xFF4285F4)],
+      ).createShader(r),
+      child: const Text('G', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
     );
   }
 }

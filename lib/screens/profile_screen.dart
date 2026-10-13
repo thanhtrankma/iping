@@ -6,6 +6,7 @@ import '../services/profile_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
+import 'account_dialogs.dart';
 
 /// Hiện lựa chọn nguồn ảnh: chụp mới hoặc chọn từ thư viện.
 Future<ImageSource?> pickImageSource(BuildContext context, {bool allowRemove = false}) {
@@ -158,9 +159,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Text('Lưu tên'),
                   ),
                   const SizedBox(height: 14),
-                  Text('Email: ${_user.email ?? ''}',
+                  Text(
+                      _user.email != null ? 'Email: ${_user.email}' : 'Số điện thoại: ${_user.phoneNumber ?? ''}',
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            Center(
+              child: TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: AppColors.sos),
+                onPressed: () => confirmDeleteAccount(context),
+                icon: const Icon(Icons.delete_forever_outlined),
+                label: const Text('Xoá tài khoản'),
               ),
             ),
           ],
