@@ -8,6 +8,7 @@ import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/glass.dart';
 
 /// Các thao tác nhóm dùng chung giữa nhiều màn hình.
 class GroupActions {
@@ -35,20 +36,25 @@ class GroupActions {
   }
 
   static void invite(BuildContext context, Group g) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+    showGlassSheet<void>(
+      context,
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        final dark = Theme.of(ctx).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const GlassIconBadge(icon: Icons.person_add_alt_1_rounded, color: AppColors.brand, size: 56),
+              const SizedBox(height: 14),
               Text('Mời vào "${g.name}"',
-                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
               const SizedBox(height: 8),
               Text('Gửi mã này cho người bạn muốn mời. Họ chọn "Tham gia bằng mã mời" và nhập mã.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                  style: TextStyle(fontSize: 15, height: 1.35, color: scheme.onSurface.withValues(alpha: 0.55))),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -59,15 +65,13 @@ class GroupActions {
                       height: 56,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Theme.of(ctx).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
+                      decoration: ShapeDecoration(
+                        shape: glassShape(radius: 14),
+                        color: dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.6),
                       ),
                       child: Text(ch,
                           style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              color: Theme.of(ctx).colorScheme.onPrimaryContainer)),
+                              fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: scheme.primary)),
                     ),
                 ],
               ),
@@ -83,8 +87,8 @@ class GroupActions {
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -116,12 +120,7 @@ class GroupActions {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(color: AppColors.sos.withValues(alpha: 0.12), shape: BoxShape.circle),
-          child: const Icon(Icons.sos_rounded, color: AppColors.sos, size: 40),
-        ),
+        icon: const GlassIconBadge(icon: Icons.sos_rounded, color: AppColors.sos, size: 64),
         title: const Text('Gửi cảnh báo SOS?'),
         content: Text(
           'Tất cả thành viên "${g.name}" sẽ nhận thông báo khẩn cấp kèm vị trí hiện tại của bạn.',
@@ -146,71 +145,71 @@ class GroupActions {
 
   /// Chọn nhóm đang xem, kèm lối tắt tạo / tham gia nhóm.
   static void pickGroup(BuildContext context, List<Group> groups, String? selectedId) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => SafeArea(
-        child: ConstrainedBox(
+    showGlassSheet<void>(
+      context,
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        final check = Icon(Icons.check_rounded, color: scheme.primary);
+        return ConstrainedBox(
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.7),
           child: ListView(
             shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
             children: [
-              // Xem mọi người của mọi nhóm trên một bản đồ.
-              if (groups.length > 1)
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.brand,
-                    child: Icon(Icons.people_alt_rounded, color: Colors.white),
-                  ),
-                  title: const Text('Tất cả bạn bè', style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${groups.length} nhóm'),
-                  trailing: selectedId == SettingsService.allGroups
-                      ? const Icon(Icons.check_circle_rounded, color: AppColors.brand)
-                      : null,
-                  onTap: () {
-                    SettingsService.instance.selectGroup(SettingsService.allGroups);
-                    Navigator.pop(ctx);
-                  },
-                ),
-              for (final g in groups)
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.brand,
-                    child: Text(g.name.isEmpty ? '?' : g.name.characters.first.toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                  ),
-                  title: Text(g.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${g.memberIds.length} thành viên'),
-                  trailing: g.id == selectedId ? const Icon(Icons.check_circle_rounded, color: AppColors.brand) : null,
-                  onTap: () {
-                    SettingsService.instance.selectGroup(g.id);
-                    Navigator.pop(ctx);
-                  },
-                ),
-              const Divider(height: 24),
-              ListTile(
-                leading: const Icon(Icons.group_add_rounded),
-                title: const Text('Tạo nhóm mới'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  create(context);
-                },
+              const SheetTitle('Chọn nhóm'),
+              InsetGroup(
+                children: [
+                  // Xem mọi người của mọi nhóm trên một bản đồ.
+                  if (groups.length > 1)
+                    ListTile(
+                      leading: const GroupBadge(name: '', icon: Icons.people_alt_rounded, size: 38),
+                      title: const Text('Tất cả bạn bè', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('${groups.length} nhóm'),
+                      trailing: selectedId == SettingsService.allGroups ? check : null,
+                      onTap: () {
+                        SettingsService.instance.selectGroup(SettingsService.allGroups);
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                  for (final g in groups)
+                    ListTile(
+                      leading: GroupBadge(name: g.name, size: 38),
+                      title: Text(g.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('${g.memberIds.length} thành viên'),
+                      trailing: g.id == selectedId ? check : null,
+                      onTap: () {
+                        SettingsService.instance.selectGroup(g.id);
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.vpn_key_rounded),
-                title: const Text('Tham gia bằng mã mời'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  join(context);
-                },
+              const SizedBox(height: 16),
+              InsetGroup(
+                dividerIndent: 58,
+                children: [
+                  ListTile(
+                    leading: const GlassIconBadge(icon: Icons.group_add_rounded, color: AppColors.online),
+                    title: const Text('Tạo nhóm mới'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      create(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: const GlassIconBadge(icon: Icons.vpn_key_rounded, color: AppColors.orange),
+                    title: const Text('Tham gia bằng mã mời'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      join(context);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -224,9 +223,13 @@ class SubPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title), actions: actions),
-      body: child,
+    return GlassBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        appBar: GlassAppBar(title: title, actions: actions),
+        body: child,
+      ),
     );
   }
 }

@@ -11,43 +11,64 @@ import 'glass.dart';
 Future<void> showPauseSheet(BuildContext context, Group group) async {
   final privacy = PrivacyService.instance;
   final paused = privacy.isPaused(group.id);
-  final choice = await showModalBottomSheet<String>(
-    context: context,
-    builder: (ctx) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+  final choice = await showGlassSheet<String>(
+    context,
+    builder: (ctx) {
+      final scheme = Theme.of(ctx).colorScheme;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Ẩn vị trí với "${group.name}"',
-                textAlign: TextAlign.center,
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 6),
-            Text('Thành viên nhóm này sẽ thấy bạn "Đã tắt chia sẻ". Các nhóm khác không bị ảnh hưởng.',
-                textAlign: TextAlign.center, style: TextStyle(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+            const Center(child: GlassIconBadge(icon: Icons.visibility_off_rounded, color: AppColors.warning, size: 52)),
             const SizedBox(height: 12),
-            for (final p in PausePreset.values)
-              ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                leading: Icon(p == PausePreset.forever ? Icons.visibility_off_rounded : Icons.timer_outlined),
-                title: Text(p.label, style: const TextStyle(fontWeight: FontWeight.w600)),
-                onTap: () => Navigator.pop(ctx, p.name),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'Ẩn vị trí với "${group.name}"',
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5),
               ),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Thành viên nhóm này sẽ thấy bạn "Đã tắt chia sẻ". Các nhóm khác không bị ảnh hưởng.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), height: 1.35),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _SheetGroup(children: [
+              for (final p in PausePreset.values)
+                ListTile(
+                  horizontalTitleGap: 14,
+                  leading: GlassIconBadge(
+                    icon: p == PausePreset.forever ? Icons.visibility_off_rounded : Icons.timer_rounded,
+                    color: p == PausePreset.forever ? AppColors.gray : AppColors.warning,
+                  ),
+                  title: Text(p.label),
+                  onTap: () => Navigator.pop(ctx, p.name),
+                ),
+            ]),
             if (paused) ...[
-              const Divider(height: 20),
-              ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                leading: const Icon(Icons.location_on_rounded, color: AppColors.brand),
-                title: const Text('Chia sẻ lại ngay',
-                    style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.brand)),
-                onTap: () => Navigator.pop(ctx, 'resume'),
-              ),
+              const SizedBox(height: 10),
+              _SheetGroup(children: [
+                ListTile(
+                  horizontalTitleGap: 14,
+                  leading: const GlassIconBadge(icon: Icons.location_on_rounded, color: AppColors.brand),
+                  title: Text('Chia sẻ lại ngay',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+                  onTap: () => Navigator.pop(ctx, 'resume'),
+                ),
+              ]),
             ],
           ],
         ),
-      ),
-    ),
+      );
+    },
   );
   if (choice == null || !context.mounted) return;
   if (choice == 'resume') return resumeGroup(context, group);
@@ -89,9 +110,12 @@ class PausedGroupChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.visibility_off_rounded, size: 18, color: AppColors.warning),
+                const Icon(Icons.visibility_off_rounded, size: 17, color: AppColors.warning),
                 const SizedBox(width: 6),
-                Text(_short(schedule.untilOf(group.id), now), style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  _short(schedule.untilOf(group.id), now),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: -0.2),
+                ),
               ],
             ),
           ),
@@ -105,5 +129,31 @@ class PausedGroupChip extends StatelessWidget {
     final two = until.minute.toString().padLeft(2, '0');
     final sameDay = until.year == now.year && until.month == now.month && until.day == now.day;
     return 'Ẩn đến ${until.hour}:$two${sameDay ? '' : ' mai'}';
+  }
+}
+
+/// Nhóm dòng bên trong sheet kính: nền mờ nhẹ (không lồng kính trong kính), góc bo đồng tâm.
+class _SheetGroup extends StatelessWidget {
+  const _SheetGroup({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      shape: glassShape(radius: 26),
+      clipBehavior: Clip.antiAlias,
+      color: dark ? Colors.white.withValues(alpha: 0.07) : Colors.white.withValues(alpha: 0.55),
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              Divider(height: 0.5, thickness: 0.5, indent: 60, color: scheme.onSurface.withValues(alpha: 0.12)),
+            children[i],
+          ],
+        ],
+      ),
+    );
   }
 }

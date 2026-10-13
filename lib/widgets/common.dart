@@ -7,6 +7,7 @@ import '../services/location_service.dart';
 import '../services/profile_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import 'glass.dart';
 
 const defaultCenter = LatLng(21.0285, 105.8542); // Hà Nội
 
@@ -26,7 +27,15 @@ Future<String?> promptText(BuildContext context,
   return showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(title),
+      // Hộp thoại kiểu iOS: tiêu đề giữa, hai nút viên thuốc chia đều.
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      title: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+      ),
       content: TextField(
         controller: controller,
         autofocus: true,
@@ -35,11 +44,24 @@ Future<String?> promptText(BuildContext context,
         onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
-        FilledButton(
-          style: FilledButton.styleFrom(minimumSize: const Size(88, 44)),
-          onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-          child: const Text('Xong'),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                style: TextButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Huỷ'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton(
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                child: const Text('Xong'),
+              ),
+            ),
+          ],
         ),
       ],
     ),
@@ -79,21 +101,24 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(color: scheme.primaryContainer, shape: BoxShape.circle),
-              child: Icon(icon, size: 40, color: scheme.primary),
+            DecoratedBox(
+              decoration: ShapeDecoration(
+                shape: glassShape(radius: 24),
+                shadows: [
+                  BoxShadow(color: scheme.primary.withValues(alpha: 0.28), blurRadius: 24, offset: const Offset(0, 10)),
+                ],
+              ),
+              child: GlassIconBadge(icon: icon, color: scheme.primary, size: 76),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.4)),
             if (text != null) ...[
               const SizedBox(height: 6),
               Text(text!,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: scheme.onSurfaceVariant, height: 1.4)),
+                  style: TextStyle(fontSize: 15, color: scheme.onSurface.withValues(alpha: 0.55), height: 1.4)),
             ],
           ],
         ),
@@ -128,6 +153,7 @@ class MemberAvatar extends StatelessWidget {
   }
 
   Widget _build(BuildContext context, String? photo) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final avatar = AvatarCircle(uid: uid, name: name, radius: radius, dimmed: dimmed, photoUrl: photo);
     return Stack(
       clipBehavior: Clip.none,
@@ -135,10 +161,12 @@ class MemberAvatar extends StatelessWidget {
         if (ring)
           Container(
             padding: const EdgeInsets.all(3),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: dark ? Colors.white.withValues(alpha: 0.85) : Colors.white,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(blurRadius: 8, color: Colors.black26, offset: Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(blurRadius: 14, color: Colors.black.withValues(alpha: 0.18), offset: const Offset(0, 4)),
+              ],
             ),
             child: avatar,
           )
@@ -154,7 +182,7 @@ class MemberAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.online,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(color: dark ? const Color(0xFF1C1E24) : Colors.white, width: 2),
               ),
             ),
           ),
@@ -176,6 +204,8 @@ class AvatarStack extends StatelessWidget {
     final extra = members.length - shown.length;
     final step = radius * 1.4;
     final count = shown.length + (extra > 0 ? 1 : 0);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ring = BoxDecoration(color: dark ? const Color(0xFF23262E) : Colors.white, shape: BoxShape.circle);
     return SizedBox(
       width: count == 0 ? 0 : step * (count - 1) + radius * 2 + 4,
       height: radius * 2 + 4,
@@ -186,7 +216,7 @@ class AvatarStack extends StatelessWidget {
               left: i * step,
               child: Container(
                 padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                decoration: ring,
                 child: MemberAvatar(uid: shown[i].$1, name: shown[i].$2, radius: radius),
               ),
             ),
@@ -195,10 +225,10 @@ class AvatarStack extends StatelessWidget {
               left: shown.length * step,
               child: Container(
                 padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                decoration: ring,
                 child: CircleAvatar(
                   radius: radius,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
                   child: Text('+$extra', style: TextStyle(fontSize: radius * 0.75, fontWeight: FontWeight.w700)),
                 ),
               ),
@@ -231,11 +261,11 @@ class SharingSwitchCard extends StatelessWidget {
         final fg = on ? Colors.white : scheme.onSurface;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
           decoration: BoxDecoration(
             gradient: on ? AppColors.brandGradient : null,
             color: on ? null : Theme.of(context).cardTheme.color,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(26),
             boxShadow: on
                 ? [BoxShadow(color: AppColors.brand.withValues(alpha: 0.35), blurRadius: 18, offset: const Offset(0, 8))]
                 : null,
@@ -243,11 +273,11 @@ class SharingSwitchCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: on ? Colors.white.withValues(alpha: 0.2) : scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(14),
+                width: 44,
+                height: 44,
+                decoration: ShapeDecoration(
+                  color: on ? Colors.white.withValues(alpha: 0.22) : scheme.onSurface.withValues(alpha: 0.08),
+                  shape: glassShape(radius: 13),
                 ),
                 child: Icon(on ? Icons.location_on_rounded : Icons.location_off_rounded,
                     color: on ? Colors.white : scheme.onSurfaceVariant),
@@ -258,11 +288,11 @@ class SharingSwitchCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(on ? 'Đang chia sẻ vị trí' : 'Chia sẻ vị trí đang tắt',
-                        style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 16)),
+                        style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2)),
                     const SizedBox(height: 2),
                     Text(
                       on ? 'Các nhóm của bạn đang thấy bạn trên bản đồ' : 'Không ai thấy vị trí của bạn',
-                      style: TextStyle(color: fg.withValues(alpha: 0.8), fontSize: 13),
+                      style: TextStyle(color: fg.withValues(alpha: on ? 0.8 : 0.55), fontSize: 13),
                     ),
                   ],
                 ),
@@ -318,6 +348,91 @@ class AvatarCircle extends StatelessWidget {
         0, 0, 0, 1, 0,
       ]),
       child: circle,
+    );
+  }
+}
+
+/// Nhóm dòng kiểu "inset grouped" đặt BÊN TRONG một lớp kính (sheet, thẻ kính):
+/// nền trong mờ thay vì thêm một lớp kính nữa, ngăn dòng bằng đường kẻ 0,5px.
+/// Bọc [Material] trong suốt để hiệu ứng chạm của ListTile hiện đúng chỗ.
+class InsetGroup extends StatelessWidget {
+  const InsetGroup({super.key, required this.children, this.radius = 26, this.dividerIndent = 64});
+  final List<Widget> children;
+  final double radius;
+  final double dividerIndent;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: dark ? Colors.white.withValues(alpha: 0.07) : Colors.white.withValues(alpha: 0.5),
+      shape: glassShape(radius: radius),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 0.5,
+                thickness: 0.5,
+                indent: dividerIndent,
+                color: scheme.onSurface.withValues(alpha: 0.12),
+              ),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Biểu tượng nhóm: ô squircle gradient thương hiệu với chữ cái đầu (hoặc icon).
+class GroupBadge extends StatelessWidget {
+  const GroupBadge({super.key, required this.name, this.icon, this.size = 40});
+  final String name;
+  final IconData? icon;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: ShapeDecoration(shape: glassShape(radius: size * 0.3), gradient: AppColors.brandGradient),
+      child: icon != null
+          ? Icon(icon, color: Colors.white, size: size * 0.55)
+          : Text(
+              name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: size * 0.45),
+            ),
+    );
+  }
+}
+
+/// Tiêu đề lớn trong sheet kính (kiểu iOS): đậm, chữ khít.
+class SheetTitle extends StatelessWidget {
+  const SheetTitle(this.text, {super.key, this.subtitle});
+  final String text;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(text, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(subtitle!, style: TextStyle(fontSize: 14.5, color: scheme.onSurface.withValues(alpha: 0.55))),
+          ],
+        ],
+      ),
     );
   }
 }

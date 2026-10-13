@@ -28,13 +28,27 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Quản lý nhóm')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => GroupActions.create(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Tạo nhóm', style: TextStyle(fontWeight: FontWeight.w600)),
+      appBar: const GlassAppBar(title: 'Quản lý nhóm'),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: GlassPill(
+        tint: AppColors.brand,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+        onTap: () => GroupActions.create(context),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_rounded, color: Colors.white, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Tạo nhóm',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2),
+            ),
+          ],
+        ),
       ),
       body: GlassBackground(
         child: StreamBuilder<List<Group>>(
@@ -44,25 +58,40 @@ class _GroupsScreenState extends State<GroupsScreen> {
             return ValueListenableBuilder<String?>(
               valueListenable: SettingsService.instance.selectedGroupId,
               builder: (context, selectedId, _) => ListView(
-                padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 16, 110),
+                padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + 60 + 8, 16, 120),
                 children: [
-                  GlassPill(
-                    onTap: () => GroupActions.join(context),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.vpn_key_rounded, color: AppColors.brand),
-                        SizedBox(width: 12),
-                        Text('Tham gia bằng mã mời', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                        Spacer(),
-                        Icon(Icons.chevron_right_rounded),
-                      ],
-                    ),
+                  GlassSection(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    children: [
+                      ListTile(
+                        horizontalTitleGap: 14,
+                        leading: const GlassIconBadge(icon: Icons.vpn_key_rounded, color: AppColors.orange),
+                        title: const Text('Tham gia bằng mã mời', style: TextStyle(fontWeight: FontWeight.w600)),
+                        trailing: Icon(Icons.chevron_right_rounded, color: scheme.onSurface.withValues(alpha: 0.3)),
+                        onTap: () => GroupActions.join(context),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
+                  if (groups != null && groups.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 7),
+                      child: Text(
+                        'NHÓM CỦA BẠN',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          letterSpacing: 0.3,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
                   if (snap.hasError)
                     Text('Lỗi tải nhóm: ${snap.error}')
                   else if (groups == null)
-                    const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
+                    const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(child: CircularProgressIndicator.adaptive()),
+                    )
                   else if (groups.isEmpty)
                     const EmptyState(
                       icon: Icons.diversity_3_rounded,
@@ -97,29 +126,34 @@ class _GroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Glass(
-      radius: 26,
-      opacity: 0.6,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(26),
-          onTap: onTap,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return GlassPressable(
+      onTap: onTap,
+      shape: glassShape(radius: 28),
+      scale: 0.97,
+      child: Glass(
+        radius: 28,
+        opacity: selected ? 0.78 : 0.62,
+        child: Material(
+          type: MaterialType.transparency,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
+            padding: const EdgeInsets.fromLTRB(14, 14, 6, 14),
             child: Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
+                  width: 54,
+                  height: 54,
+                  decoration: ShapeDecoration(
                     gradient: AppColors.brandGradient,
-                    borderRadius: BorderRadius.circular(16),
+                    shape: glassShape(radius: 17),
+                    shadows: [
+                      BoxShadow(color: AppColors.brand.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+                    ],
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     group.name.isEmpty ? '?' : group.name.characters.first.toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+                    style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w800),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -130,10 +164,12 @@ class _GroupCard extends StatelessWidget {
                       Row(
                         children: [
                           Flexible(
-                            child: Text(group.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                            child: Text(
+                              group.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+                            ),
                           ),
                           if (selected) ...[
                             const SizedBox(width: 6),
@@ -149,14 +185,30 @@ class _GroupCard extends StatelessWidget {
                             radius: 11,
                           ),
                           const SizedBox(width: 6),
-                          Text('${group.memberIds.length} thành viên',
-                              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+                          Flexible(
+                            child: Text(
+                              '${group.memberIds.length} thành viên',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), fontSize: 13),
+                            ),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
                 PopupMenuButton<String>(
+                  tooltip: 'Tuỳ chọn',
+                  icon: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: dark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.6),
+                    ),
+                    child: Icon(Icons.more_horiz_rounded, size: 20, color: scheme.onSurface.withValues(alpha: 0.75)),
+                  ),
                   onSelected: (v) {
                     if (v == 'invite') GroupActions.invite(context, group);
                     if (v == 'members') {
@@ -166,9 +218,19 @@ class _GroupCard extends StatelessWidget {
                     if (v == 'leave') GroupActions.leave(context, group);
                   },
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'invite', child: Text('Mời thành viên')),
-                    PopupMenuItem(value: 'members', child: Text('Thành viên & chặn')),
-                    PopupMenuItem(value: 'leave', child: Text('Rời nhóm', style: TextStyle(color: AppColors.sos))),
+                    PopupMenuItem(
+                      value: 'invite',
+                      child: _MenuRow(icon: Icons.person_add_alt_1_rounded, label: 'Mời thành viên'),
+                    ),
+                    PopupMenuItem(
+                      value: 'members',
+                      child: _MenuRow(icon: Icons.group_rounded, label: 'Thành viên & chặn'),
+                    ),
+                    PopupMenuDivider(height: 8),
+                    PopupMenuItem(
+                      value: 'leave',
+                      child: _MenuRow(icon: Icons.logout_rounded, label: 'Rời nhóm', color: AppColors.sos),
+                    ),
                   ],
                 ),
               ],
@@ -176,6 +238,25 @@ class _GroupCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Dòng trong menu ngữ cảnh kiểu iOS: chữ bên trái, biểu tượng bên phải.
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({required this.icon, required this.label, this.color});
+  final IconData icon;
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w500))),
+        const SizedBox(width: 16),
+        Icon(icon, size: 20, color: color),
+      ],
     );
   }
 }

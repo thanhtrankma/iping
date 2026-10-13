@@ -26,8 +26,9 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Bảo mật & Bạn bè')),
+      appBar: const GlassAppBar(title: 'Bảo mật & Bạn bè'),
       body: GlassBackground(
         child: StreamBuilder<List<Group>>(
           stream: _groups,
@@ -36,32 +37,44 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
             return ValueListenableBuilder<PauseSchedule>(
               valueListenable: PrivacyService.instance.paused,
               builder: (context, schedule, _) => ListView(
-                padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 16, 40),
+                padding: EdgeInsets.fromLTRB(0, MediaQuery.paddingOf(context).top + 60 + 8, 0, 40),
                 children: [
-                  const SharingSwitchCard(),
-                  const SizedBox(height: 20),
                   const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Text('Chia sẻ theo nhóm', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: SharingSwitchCard(),
+                  ),
+                  const SizedBox(height: 28),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      'Chia sẻ theo nhóm',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.6),
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text('Tạm ẩn vị trí với một nhóm mà không ảnh hưởng các nhóm khác.',
-                        style: TextStyle(color: scheme.onSurfaceVariant)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      'Tạm ẩn vị trí với một nhóm mà không ảnh hưởng các nhóm khác.',
+                      style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), height: 1.35),
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   if (snap.hasError)
-                    Text('Lỗi tải nhóm: ${snap.error}')
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text('Lỗi tải nhóm: ${snap.error}'),
+                    )
                   else if (groups == null)
-                    const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
+                    const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(child: CircularProgressIndicator.adaptive()),
+                    )
                   else if (groups.isEmpty)
                     const EmptyState(icon: Icons.diversity_3_rounded, title: 'Chưa có nhóm nào')
                   else
-                    for (final g in groups) ...[
+                    for (final g in groups)
                       _GroupPrivacyCard(group: g, uid: widget.uid, paused: schedule.isPaused(g.id, DateTime.now())),
-                      const SizedBox(height: 12),
-                    ],
                 ],
               ),
             );
@@ -81,35 +94,51 @@ class _GroupPrivacyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Glass(
-      radius: 26,
-      opacity: 0.6,
-      child: Column(
-        children: [
-          ListTile(
-            contentPadding: const EdgeInsets.fromLTRB(16, 6, 8, 0),
-            leading: Icon(paused ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                color: paused ? AppColors.warning : AppColors.brand),
-            title: Text(group.name,
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text(pauseStatus(group.id)),
-            trailing: Switch(
-              value: !paused,
-              onChanged: (on) => on ? resumeGroup(context, group) : showPauseSheet(context, group),
-            ),
-            onTap: () => showPauseSheet(context, group),
+    final secondary = scheme.onSurface.withValues(alpha: 0.55);
+    return GlassSection(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      dividerIndent: 16 + 30 + 14,
+      children: [
+        ListTile(
+          horizontalTitleGap: 14,
+          contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+          leading: GlassIconBadge(
+            icon: paused ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+            color: paused ? AppColors.warning : AppColors.online,
           ),
-          ListTile(
-            contentPadding: const EdgeInsets.fromLTRB(16, 0, 12, 4),
-            leading: const Icon(Icons.group_outlined),
-            title: Text(group.isOwner(uid) ? 'Thành viên & danh sách chặn' : 'Thành viên',
-                style: TextStyle(color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600)),
-            trailing: Text('${group.memberIds.length}', style: TextStyle(color: scheme.onSurfaceVariant)),
-            onTap: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => GroupMembersScreen(groupId: group.id))),
+          title: Text(
+            group.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
-        ],
-      ),
+          subtitle: Text(
+            pauseStatus(group.id),
+            style: TextStyle(color: paused ? AppColors.warning : secondary),
+          ),
+          trailing: Switch(
+            value: !paused,
+            onChanged: (on) => on ? resumeGroup(context, group) : showPauseSheet(context, group),
+          ),
+          onTap: () => showPauseSheet(context, group),
+        ),
+        ListTile(
+          horizontalTitleGap: 14,
+          contentPadding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
+          leading: const GlassIconBadge(icon: Icons.group_rounded, color: AppColors.indigo),
+          title: Text(group.isOwner(uid) ? 'Thành viên & danh sách chặn' : 'Thành viên'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${group.memberIds.length}', style: TextStyle(color: secondary, fontSize: 15)),
+              const SizedBox(width: 2),
+              Icon(Icons.chevron_right_rounded, color: scheme.onSurface.withValues(alpha: 0.3)),
+            ],
+          ),
+          onTap: () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => GroupMembersScreen(groupId: group.id))),
+        ),
+      ],
     );
   }
 }

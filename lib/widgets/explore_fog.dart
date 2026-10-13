@@ -102,6 +102,16 @@ class _FogPainter extends CustomPainter {
     }
 
     if (areaPath != null) {
+      // Quầng sáng mềm quanh ranh giới, như mép kính phát sáng.
+      canvas.drawPath(
+        areaPath,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10
+          ..strokeJoin = StrokeJoin.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6)
+          ..color = AppColors.brand.withValues(alpha: 0.28),
+      );
       canvas.drawPath(
         areaPath,
         Paint()

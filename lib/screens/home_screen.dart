@@ -175,7 +175,14 @@ class _GroupMapViewState extends State<_GroupMapView> {
                               alignment: Alignment.topCenter,
                               child: GestureDetector(
                                 onTap: () => _push(MeetupDetailScreen(group: g!, meetupId: m.id)),
-                                child: const Icon(Icons.flag_circle_rounded, size: 44, color: AppColors.sos),
+                                child: const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                    boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black26, offset: Offset(0, 3))],
+                                  ),
+                                  child: Icon(Icons.flag_circle_rounded, size: 44, color: AppColors.sos),
+                                ),
                               ),
                             ),
                           for (final m in moments.where((m) => m.hasLocation))
@@ -185,9 +192,10 @@ class _GroupMapViewState extends State<_GroupMapView> {
                       ],
                     ),
                   ),
+                  // Lớp điều khiển nổi trên bản đồ, cách mép 14px như Apple Maps.
                   SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -199,25 +207,30 @@ class _GroupMapViewState extends State<_GroupMapView> {
                                 onTap: () => _push(MenuScreen(uid: widget.uid, group: _all ? null : g)),
                               ),
                               if (g != null) ...[
-                                const SizedBox(height: 14),
-                                GlassButton(
-                                  icon: Icons.person_add_alt_1_rounded,
-                                  tooltip: 'Mời thành viên',
-                                  onTap: () => AllFriendsActions.invite(context, g, widget.groups),
-                                ),
-                                const SizedBox(height: 14),
+                                const SizedBox(height: 12),
+                                MapControlStack(controls: [
+                                  MapControl(
+                                    icon: Icons.person_add_alt_1_rounded,
+                                    tooltip: 'Mời thành viên',
+                                    onTap: () => AllFriendsActions.invite(context, g, widget.groups),
+                                  ),
+                                  MapControl(
+                                    icon: Icons.where_to_vote_rounded,
+                                    tooltip: 'Check-in',
+                                    onTap: () => AllFriendsActions.checkIn(context, g, widget.groups),
+                                  ),
+                                ]),
+                                const SizedBox(height: 12),
                                 GlassButton(
                                   tooltip: 'Gửi SOS',
+                                  tint: AppColors.sos,
                                   onTap: () => AllFriendsActions.sos(context, g, widget.groups),
                                   child: const Text('SOS',
-                                      style:
-                                          TextStyle(color: AppColors.sos, fontWeight: FontWeight.w900, fontSize: 16)),
-                                ),
-                                const SizedBox(height: 14),
-                                GlassButton(
-                                  icon: Icons.where_to_vote_rounded,
-                                  tooltip: 'Check-in',
-                                  onTap: () => AllFriendsActions.checkIn(context, g, widget.groups),
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 15,
+                                          letterSpacing: -0.3)),
                                 ),
                               ],
                             ],
@@ -241,18 +254,24 @@ class _GroupMapViewState extends State<_GroupMapView> {
                             children: [
                               ValueListenableBuilder<MapStyle>(
                                 valueListenable: SettingsService.instance.mapStyle,
-                                builder: (context, style, _) => GlassButton(
-                                  icon: style == MapStyle.satellite ? Icons.map_outlined : Icons.satellite_alt_rounded,
-                                  tooltip: 'Đổi kiểu bản đồ',
-                                  onTap: SettingsService.instance.toggleMapStyle,
-                                ),
+                                builder: (context, style, _) => MapControlStack(controls: [
+                                  MapControl(
+                                    icon: style == MapStyle.satellite ? Icons.map_outlined : Icons.satellite_alt_rounded,
+                                    tooltip: 'Đổi kiểu bản đồ',
+                                    onTap: SettingsService.instance.toggleMapStyle,
+                                  ),
+                                  MapControl(
+                                    icon: Icons.near_me_rounded,
+                                    tooltip: 'Vị trí của tôi',
+                                    color: AppColors.brand,
+                                    onTap: _focusMe,
+                                  ),
+                                ]),
                               ),
-                              const SizedBox(height: 14),
-                              GlassButton(icon: Icons.near_me_rounded, tooltip: 'Vị trí của tôi', onTap: _focusMe),
                               if (g != null) ...[
-                                const SizedBox(height: 14),
+                                const SizedBox(height: 12),
                                 GlassButton(
-                                  icon: Icons.chat_bubble_outline_rounded,
+                                  icon: Icons.chat_bubble_rounded,
                                   tooltip: 'Trò chuyện',
                                   onTap: () => AllFriendsActions.open(
                                       context, g, widget.groups, (x) => SubPage(title: x.name, child: ChatTab(group: x)),
@@ -266,7 +285,13 @@ class _GroupMapViewState extends State<_GroupMapView> {
                     ),
                   ),
                   if (widget.loading)
-                    const Center(child: CircularProgressIndicator())
+                    const Center(
+                      child: SizedBox(
+                        width: 64,
+                        height: 64,
+                        child: Glass(circle: true, child: Center(child: CircularProgressIndicator.adaptive())),
+                      ),
+                    )
                   else if (g == null)
                     const _Onboarding()
                   else
@@ -330,27 +355,32 @@ class _Onboarding extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Align(
       alignment: Alignment.bottomCenter,
       child: SafeArea(
+        minimum: const EdgeInsets.only(bottom: 10),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Glass(
-            radius: 32,
-            padding: const EdgeInsets.all(24),
+            radius: 38,
+            opacity: 0.75,
+            blur: 20,
+            padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const AppLogo(size: 64),
                 const SizedBox(height: 16),
-                Text('Bắt đầu với IPing',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                const Text('Bắt đầu với IPing',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Tạo nhóm cho gia đình, bạn bè hoặc nhập mã mời để xem mọi người đang ở đâu.',
                   textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15, height: 1.35, color: scheme.onSurface.withValues(alpha: 0.6)),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 22),
                 FilledButton.icon(
                   icon: const Icon(Icons.group_add_rounded),
                   label: const Text('Tạo nhóm mới'),
@@ -358,10 +388,7 @@ class _Onboarding extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                   icon: const Icon(Icons.vpn_key_rounded),
                   label: const Text('Tham gia bằng mã mời'),
                   onPressed: () => GroupActions.join(context),
@@ -369,6 +396,34 @@ class _Onboarding extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Nút tròn trong sheet kính: nền trong mờ thay vì lồng thêm một lớp kính.
+class _SheetCircleButton extends StatelessWidget {
+  const _SheetCircleButton({required this.icon, required this.tooltip, required this.onTap});
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = dark ? Theme.of(context).colorScheme.primary : AppColors.brand;
+    return Tooltip(
+      message: tooltip,
+      child: GlassPressable(
+        onTap: onTap,
+        shape: const CircleBorder(),
+        scale: 0.88,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: accent.withValues(alpha: dark ? 0.22 : 0.12)),
+          child: Icon(icon, size: 22, color: accent),
         ),
       ),
     );
@@ -398,11 +453,16 @@ class _MembersSheet extends StatelessWidget {
   final ValueChanged<String> onOpenMember;
   final ValueChanged<Widget> onOpenPage;
 
+  // Sheet nổi: bo 38, cách mép 10; nội dung bên trong lùi 12 nên bo trong = 38 − 12 = 26.
+  static const _radius = 38.0;
+  static const _inset = 12.0;
+
   @override
   Widget build(BuildContext context) {
     final byUid = {for (final l in locations) l.uid: l};
     final members = [...group.memberIds]..sort((a, b) => (a == myUid ? 0 : 1).compareTo(b == myUid ? 0 : 1));
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final bottom = MediaQuery.viewPaddingOf(context).bottom;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.42,
@@ -411,47 +471,72 @@ class _MembersSheet extends StatelessWidget {
       snap: true,
       snapSizes: const [0.42],
       builder: (context, scroll) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: EdgeInsets.fromLTRB(10, 0, 10, bottom > 0 ? bottom * 0.4 + 4 : 10),
         child: Glass(
-          radius: 34,
-          opacity: 0.6,
+          radius: _radius,
+          opacity: 0.7,
+          blur: 20,
           child: ListView(
             controller: scroll,
-            padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + MediaQuery.paddingOf(context).bottom),
+            padding: const EdgeInsets.fromLTRB(_inset, 8, _inset, _inset + 4),
             children: [
               Center(
                 child: Container(
-                  width: 40,
+                  width: 36,
                   height: 5,
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(3)),
+                  decoration: ShapeDecoration(
+                    shape: const StadiumBorder(),
+                    color: scheme.onSurface.withValues(alpha: 0.22),
+                  ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => GroupActions.pickGroup(context, groups, group.id),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(group.name,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-                            ),
-                            const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
-                          ],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: GlassPressable(
+                        onTap: () => GroupActions.pickGroup(context, groups, group.id),
+                        shape: glassShape(radius: 14),
+                        scale: 0.97,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(group.name,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: scheme.onSurface.withValues(alpha: 0.08),
+                                    ),
+                                    child: Icon(Icons.keyboard_arrow_down_rounded,
+                                        size: 20, color: scheme.onSurface.withValues(alpha: 0.6)),
+                                  ),
+                                ],
+                              ),
+                              Text('${members.length} thành viên',
+                                  style: TextStyle(fontSize: 14, color: scheme.onSurface.withValues(alpha: 0.55))),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  GlassButton(
-                    size: 48,
+                  _SheetCircleButton(
                     icon: Icons.person_add_alt_1_rounded,
-                    color: AppColors.brand,
                     tooltip: 'Mời thành viên',
                     onTap: () => AllFriendsActions.invite(context, group, groups),
                   ),
@@ -462,7 +547,8 @@ class _MembersSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: GlassTile(
-                      icon: Icons.auto_awesome_outlined,
+                      icon: Icons.auto_awesome_rounded,
+                      color: AppColors.purple,
                       label: momentCount > 0 ? 'Khoảnh khắc ($momentCount)' : 'Khoảnh khắc',
                       onTap: () => AllFriendsActions.open(context, group, groups, (g) => MomentsScreen(group: g)),
                     ),
@@ -470,7 +556,8 @@ class _MembersSheet extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: GlassTile(
-                      icon: Icons.handshake_outlined,
+                      icon: Icons.handshake_rounded,
+                      color: AppColors.orange,
                       label: 'Meetup',
                       onTap: () => AllFriendsActions.open(context, group, groups, (g) => MeetupListScreen(group: g)),
                     ),
@@ -478,7 +565,8 @@ class _MembersSheet extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: GlassTile(
-                      icon: Icons.place_outlined,
+                      icon: Icons.place_rounded,
+                      color: AppColors.teal,
                       label: 'Địa điểm',
                       onTap: () => AllFriendsActions.open(
                           context, group, groups, (g) => SubPage(title: 'Địa điểm', child: PlacesTab(group: g))),
@@ -487,7 +575,8 @@ class _MembersSheet extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: GlassTile(
-                      icon: Icons.notifications_none_rounded,
+                      icon: Icons.notifications_rounded,
+                      color: AppColors.pink,
                       label: 'Hoạt động',
                       onTap: () => AllFriendsActions.open(
                           context, group, groups, (g) => SubPage(title: 'Hoạt động', child: ActivityTab(group: g))),
@@ -499,25 +588,32 @@ class _MembersSheet extends StatelessWidget {
                 const SizedBox(height: 12),
                 MeetupCard(group: group, meetup: m),
               ],
-              const SizedBox(height: 14),
-              Container(
-                decoration: BoxDecoration(
-                  color: dark ? Colors.white.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(26),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 7),
+                child: Text(
+                  'THÀNH VIÊN',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    letterSpacing: 0.3,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface.withValues(alpha: 0.5),
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    for (final uid in members)
-                      _MemberRow(
-                        uid: uid,
-                        name: byUid[uid]?.name ?? group.nameOf(uid),
-                        isMe: uid == myUid,
-                        location: byUid[uid],
-                        place: _placeOf(byUid[uid]),
-                        onTap: () => onOpenMember(uid),
-                      ),
-                  ],
-                ),
+              ),
+              InsetGroup(
+                radius: _radius - _inset,
+                dividerIndent: 80,
+                children: [
+                  for (final uid in members)
+                    _MemberRow(
+                      uid: uid,
+                      name: byUid[uid]?.name ?? group.nameOf(uid),
+                      isMe: uid == myUid,
+                      location: byUid[uid],
+                      place: _placeOf(byUid[uid]),
+                      onTap: () => onOpenMember(uid),
+                    ),
+                ],
               ),
             ],
           ),
@@ -558,7 +654,7 @@ class _MemberRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final loc = location;
-    final sub = TextStyle(color: scheme.onSurfaceVariant, fontSize: 14);
+    final sub = TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), fontSize: 14, letterSpacing: -0.1);
     final when = loc == null
         ? null
         : isFresh(loc.updatedAt) && DateTime.now().difference(loc.updatedAt!).inMinutes < 2
@@ -581,41 +677,61 @@ class _MemberRow extends StatelessWidget {
       );
     }
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(26),
+    return GlassPressable(
       onTap: onTap,
+      shape: const RoundedRectangleBorder(),
+      scale: 0.98,
+      haptic: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
         child: Row(
           children: [
             SizedBox(
-              width: 62,
-              height: 66,
+              width: 56,
+              height: 60,
               child: Stack(
                 clipBehavior: Clip.none,
                 alignment: Alignment.topCenter,
                 children: [
-                  MemberAvatar(uid: uid, name: name, radius: 30, dimmed: loc == null || !loc.sharing),
+                  MemberAvatar(uid: uid, name: name, radius: 27, dimmed: loc == null || !loc.sharing),
                   if (loc?.battery != null)
                     Positioned(bottom: 0, child: BatteryPill(level: loc!.battery!, compact: true)),
                 ],
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(isMe ? '$name (Bạn)' : name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: ShapeDecoration(
+                            shape: const StadiumBorder(),
+                            color: scheme.primary.withValues(alpha: 0.14),
+                          ),
+                          child: Text('Bạn',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: scheme.primary)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
                   subtitle,
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+            Icon(Icons.chevron_right_rounded, color: scheme.onSurface.withValues(alpha: 0.3)),
           ],
         ),
       ),
@@ -623,7 +739,7 @@ class _MemberRow extends StatelessWidget {
   }
 }
 
-/// Nhãn pin kiểu iSharing.
+/// Nhãn pin: dạng viên thuốc nhỏ (compact, đặt dưới avatar) hoặc chip có phần trăm.
 class BatteryPill extends StatelessWidget {
   const BatteryPill({super.key, required this.level, this.compact = false});
   final int level;
@@ -631,45 +747,68 @@ class BatteryPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = level <= 20 ? AppColors.sos : const Color(0xFF2EC4A6);
-    final bar = Container(
-      width: compact ? 16 : 20,
-      height: compact ? 8 : 11,
-      padding: const EdgeInsets.all(1.2),
-      decoration: BoxDecoration(
-        border: Border.all(color: color.withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      alignment: Alignment.centerLeft,
-      child: FractionallySizedBox(
-        widthFactor: (level / 100).clamp(0.1, 1),
-        child: Container(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(1.5))),
-      ),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final low = level <= 20;
+    final color = low ? AppColors.sos : AppColors.online;
+    final outline = (dark && !compact ? Colors.white : Colors.black).withValues(alpha: 0.35);
+    final bar = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: compact ? 16 : 22,
+          height: compact ? 8 : 11,
+          padding: const EdgeInsets.all(1.3),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            border: Border.all(color: outline, width: 0.8),
+            borderRadius: BorderRadius.circular(compact ? 2.5 : 3.5),
+          ),
+          child: FractionallySizedBox(
+            widthFactor: (level / 100).clamp(0.1, 1),
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(compact ? 1.2 : 2)),
+            ),
+          ),
+        ),
+        Container(
+          width: 1.5,
+          height: compact ? 3.5 : 4.5,
+          margin: const EdgeInsets.only(left: 0.8),
+          decoration: BoxDecoration(
+            color: outline,
+            borderRadius: const BorderRadius.horizontal(right: Radius.circular(1)),
+          ),
+        ),
+      ],
     );
     if (compact) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: const [BoxShadow(blurRadius: 3, color: Colors.black26)],
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        decoration: ShapeDecoration(
+          shape: const StadiumBorder(side: BorderSide(color: Colors.white, width: 0.8)),
+          color: Colors.white.withValues(alpha: 0.95),
+          shadows: [BoxShadow(blurRadius: 6, color: Colors.black.withValues(alpha: 0.18), offset: const Offset(0, 2))],
         ),
         child: bar,
       );
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+      decoration: ShapeDecoration(
+        shape: const StadiumBorder(),
+        color: (low ? AppColors.sos : (dark ? Colors.white : Colors.black)).withValues(alpha: low ? 0.14 : 0.06),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           bar,
-          const SizedBox(width: 8),
-          Text('$level%', style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(width: 7),
+          Text('$level%',
+              style: TextStyle(
+                  color: low ? AppColors.sos : Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  letterSpacing: -0.2)),
         ],
       ),
     );

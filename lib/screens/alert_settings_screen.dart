@@ -66,110 +66,106 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
     return list;
   }
 
+  /// Màu ô icon cho từng loại thông báo, như ứng dụng Cài đặt của iOS.
+  static Color _badgeColor(String key) => switch (key) {
+        'place' => AppColors.teal,
+        'sos' => AppColors.sos,
+        'message' => AppColors.online,
+        'moment' => AppColors.pink,
+        'meetup' => AppColors.purple,
+        'ping' => AppColors.orange,
+        'battery' => AppColors.warning,
+        'join' => AppColors.indigo,
+        _ => AppColors.brand,
+      };
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final title = TextStyle(fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant, fontSize: 13);
+    final secondary = scheme.onSurface.withValues(alpha: 0.55);
     return Scaffold(
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        centerTitle: true,
-        title: const Text('Quản lý cảnh báo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-      ),
+      appBar: const GlassAppBar(title: 'Quản lý cảnh báo'),
       body: GlassBackground(
         child: StreamBuilder<AlertPrefs>(
           stream: _prefs,
           builder: (context, snap) {
-            if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+            if (!snap.hasData) return const Center(child: CircularProgressIndicator.adaptive());
             final prefs = snap.data!;
             return ListView(
-              padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 16, 40),
+              padding: EdgeInsets.fromLTRB(0, MediaQuery.paddingOf(context).top + 60 + 12, 0, 40),
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: Text('THÔNG BÁO ĐẨY', style: title),
-                ),
-                Glass(
-                  radius: 26,
-                  opacity: 0.6,
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Column(
-                    children: [
-                      for (final t in alertTypes)
-                        SwitchListTile(
-                          secondary: Icon(t.icon, color: t.key == 'sos' ? AppColors.sos : null),
-                          title: Text(t.label, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          value: prefs.isOn(t.key),
-                          onChanged: (v) => _setType(t.key, v),
+                GlassSection(
+                  header: 'Thông báo đẩy',
+                  dividerIndent: 16 + 30 + 14,
+                  margin: EdgeInsets.fromLTRB(16, 0, 16, prefs.isOn('sos') ? 24 : 12),
+                  children: [
+                    for (final t in alertTypes)
+                      SwitchListTile(
+                        horizontalTitleGap: 14,
+                        secondary: GlassIconBadge(icon: t.icon, color: _badgeColor(t.key)),
+                        title: Text(
+                          t.label,
+                          style: t.key == 'sos' ? const TextStyle(fontWeight: FontWeight.w700) : null,
                         ),
-                    ],
-                  ),
+                        value: prefs.isOn(t.key),
+                        onChanged: (v) => _setType(t.key, v),
+                      ),
+                  ],
                 ),
-                if (!prefs.isOn('sos')) ...[
-                  const SizedBox(height: 12),
-                  const Glass(
-                    radius: 20,
-                    tint: AppColors.sos,
-                    opacity: 0.85,
-                    padding: EdgeInsets.all(14),
-                    child: Row(
-                      children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.white),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Cảnh báo SOS đang tắt. Bạn sẽ không biết khi người thân cần trợ giúp.',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.35),
+                if (!prefs.isOn('sos'))
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    child: Glass(
+                      radius: 24,
+                      tint: AppColors.sos,
+                      opacity: 0.85,
+                      padding: EdgeInsets.fromLTRB(14, 14, 16, 14),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_rounded, color: Colors.white, size: 26),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Cảnh báo SOS đang tắt. Bạn sẽ không biết khi người thân cần trợ giúp.',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.35),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ],
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: Text('TẮT CẢNH BÁO TỪ THÀNH VIÊN', style: title),
-                ),
                 StreamBuilder<List<Group>>(
                   stream: _groups,
                   builder: (context, gsnap) {
                     final members = _members(gsnap.data ?? const []);
-                    return Glass(
-                      radius: 26,
-                      opacity: 0.6,
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: members.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Text(
-                                gsnap.hasData ? 'Chưa có thành viên nào khác.' : 'Đang tải…',
-                                style: TextStyle(color: scheme.onSurfaceVariant),
-                              ),
-                            )
-                          : Column(
-                              children: [
-                                for (final (uid, name) in members)
-                                  SwitchListTile(
-                                    secondary: MemberAvatar(uid: uid, name: name, radius: 18),
-                                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                    subtitle: const Text('Tắt cảnh báo từ người này'),
-                                    value: prefs.isMuted(uid),
-                                    onChanged: (v) =>
-                                        _run(() => AlertPrefsService.instance.setMuted(widget.uid, uid, v)),
-                                  ),
-                              ],
+                    return GlassSection(
+                      header: 'Tắt cảnh báo từ thành viên',
+                      footer: 'Cảnh báo SOS từ thành viên đã tắt vẫn được gửi tới bạn để đảm bảo an toàn.',
+                      dividerIndent: 16 + 36 + 14,
+                      children: [
+                        if (members.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                            child: Text(
+                              gsnap.hasData ? 'Chưa có thành viên nào khác.' : 'Đang tải…',
+                              style: TextStyle(color: secondary),
                             ),
+                          )
+                        else
+                          for (final (uid, name) in members)
+                            SwitchListTile(
+                              horizontalTitleGap: 14,
+                              secondary: MemberAvatar(uid: uid, name: name, radius: 18),
+                              title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: const Text('Tắt cảnh báo từ người này'),
+                              value: prefs.isMuted(uid),
+                              onChanged: (v) => _run(() => AlertPrefsService.instance.setMuted(widget.uid, uid, v)),
+                            ),
+                      ],
                     );
                   },
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
-                  child: Text(
-                    'Cảnh báo SOS từ thành viên đã tắt vẫn được gửi tới bạn để đảm bảo an toàn.',
-                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5, height: 1.4),
-                  ),
                 ),
               ],
             );

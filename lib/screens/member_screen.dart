@@ -138,42 +138,42 @@ class _MemberScreenState extends State<MemberScreen> {
                   ),
                   SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          GlassButton(icon: Icons.arrow_back_rounded, onTap: () => Navigator.pop(context)),
-                          const Spacer(),
-                          Column(
-                            children: [
-                              if (group != null)
-                                GlassButton(
-                                  icon: Icons.chat_bubble_outline_rounded,
-                                  tooltip: 'Trò chuyện',
-                                  onTap: () => _push(SubPage(title: group.name, child: ChatTab(group: group))),
-                                ),
-                              // Chỉ chủ nhóm thấy nút xoá / chặn thành viên khác.
-                              if (group != null && !isMe && group.isOwner(_myUid)) ...[
-                                const SizedBox(height: 14),
-                                GlassButton(
-                                  icon: Icons.manage_accounts_outlined,
-                                  tooltip: 'Quản lý thành viên',
-                                  onTap: () async {
-                                    if (await MemberAdmin.showActions(context, group, widget.uid, name) &&
-                                        context.mounted) {
-                                      Navigator.pop(context);
-                                    }
-                                  },
-                                ),
-                              ],
-                              const SizedBox(height: 14),
-                              GlassButton(
-                                icon: Icons.person_pin_circle_outlined,
-                                tooltip: 'Về vị trí của $name',
-                                onTap: () => _map.move(center, 17, offset: _pinOffset),
-                              ),
-                            ],
+                          GlassButton(
+                            icon: Icons.chevron_left_rounded,
+                            tooltip: 'Quay lại',
+                            onTap: () => Navigator.pop(context),
                           ),
+                          const Spacer(),
+                          MapControlStack(controls: [
+                            if (group != null)
+                              MapControl(
+                                icon: Icons.chat_bubble_rounded,
+                                tooltip: 'Trò chuyện',
+                                onTap: () => _push(SubPage(title: group.name, child: ChatTab(group: group))),
+                              ),
+                            // Chỉ chủ nhóm thấy nút xoá / chặn thành viên khác.
+                            if (group != null && !isMe && group.isOwner(_myUid))
+                              MapControl(
+                                icon: Icons.manage_accounts_rounded,
+                                tooltip: 'Quản lý thành viên',
+                                onTap: () async {
+                                  if (await MemberAdmin.showActions(context, group, widget.uid, name) &&
+                                      context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+                                },
+                              ),
+                            MapControl(
+                              icon: Icons.person_pin_circle_rounded,
+                              tooltip: 'Về vị trí của $name',
+                              color: AppColors.brand,
+                              onTap: () => _map.move(center, 17, offset: _pinOffset),
+                            ),
+                          ]),
                         ],
                       ),
                     ),
@@ -186,30 +186,47 @@ class _MemberScreenState extends State<MemberScreen> {
                     snapSizes: const [0.5],
                     builder: (context, scroll) => ListView(
                       controller: scroll,
-                      padding: EdgeInsets.fromLTRB(8, 0, 8, 16 + MediaQuery.paddingOf(context).bottom),
+                      padding: EdgeInsets.fromLTRB(10, 0, 10, 16 + MediaQuery.paddingOf(context).bottom),
                       children: [
+                        // Hàng ping: các viên kính nổi phía trên thẻ, như hành động nhanh của Find My.
                         if (!isMe)
                           SizedBox(
-                            height: 62,
+                            height: 64,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                              clipBehavior: Clip.none,
+                              padding: const EdgeInsets.fromLTRB(2, 2, 2, 12),
                               itemCount: _pings.length + 1,
                               separatorBuilder: (_, __) => const SizedBox(width: 8),
                               itemBuilder: (context, i) {
+                                const pad = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
                                 if (i == 0) {
                                   return GlassPill(
+                                    tint: AppColors.brand,
+                                    padding: pad,
                                     onTap: () => _requestLocation(loc),
-                                    child: Text(_locating ? '📡  Đã gửi yêu cầu' : '📡  Cập nhật vị trí',
-                                        style: const TextStyle(
-                                            fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.brand)),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(_locating ? Icons.check_circle_rounded : Icons.my_location_rounded,
+                                            size: 18, color: Colors.white),
+                                        const SizedBox(width: 6),
+                                        Text(_locating ? 'Đã gửi yêu cầu' : 'Cập nhật vị trí',
+                                            style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: -0.2,
+                                                color: Colors.white)),
+                                      ],
+                                    ),
                                   );
                                 }
                                 final (type, emoji, label) = _pings[i - 1];
                                 return GlassPill(
+                                  padding: pad,
                                   onTap: () => _ping(type, '$emoji $label'),
                                   child: Text('$emoji  $label',
-                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.2)),
                                 );
                               },
                             ),
@@ -232,16 +249,19 @@ class _MemberScreenState extends State<MemberScreen> {
                               return Glass(
                                 radius: 30,
                                 opacity: 0.7,
-                                padding: const EdgeInsets.all(20),
+                                padding: const EdgeInsets.fromLTRB(16, 16, 20, 16),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.route_rounded, color: AppColors.brand),
+                                    const GlassIconBadge(icon: Icons.route_rounded, color: AppColors.indigo, size: 34),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
                                         snap.connectionState == ConnectionState.done
                                             ? 'Chưa có chuyến đi nào trong 2 ngày qua'
                                             : 'Đang tải chuyến đi gần đây…',
+                                        style: TextStyle(
+                                            fontSize: 15,
+                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                                       ),
                                     ),
                                   ],
@@ -300,19 +320,25 @@ class _DetailCard extends StatelessWidget {
         ? null
         : distanceBetween(me.latitude, me.longitude, loc.lat, loc.lng);
 
+    final secondary = scheme.onSurface.withValues(alpha: 0.55);
+
     return Glass(
-      radius: 32,
-      opacity: 0.7,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      radius: 38,
+      opacity: 0.72,
+      blur: 20,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
             child: Container(
-              width: 40,
+              width: 36,
               height: 5,
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(3)),
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: ShapeDecoration(
+                shape: const StadiumBorder(),
+                color: scheme.onSurface.withValues(alpha: 0.22),
+              ),
             ),
           ),
           Row(
@@ -321,29 +347,28 @@ class _DetailCard extends StatelessWidget {
                 child: Text(name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
               ),
               if (loc?.battery != null) BatteryPill(level: loc!.battery!),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           if (loc == null)
-            Text('Thành viên này chưa chia sẻ vị trí', style: TextStyle(color: scheme.onSurfaceVariant))
+            Text('Thành viên này chưa chia sẻ vị trí', style: TextStyle(fontSize: 15, color: secondary))
           else ...[
-            AddressText(loc.lat, loc.lng, style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant)),
+            AddressText(loc.lat, loc.lng, style: TextStyle(fontSize: 16, letterSpacing: -0.2, color: secondary)),
             const SizedBox(height: 6),
             Row(
               children: [
-                Icon(Icons.schedule_rounded, size: 18, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 6),
+                Icon(Icons.schedule_rounded, size: 16, color: secondary),
+                const SizedBox(width: 5),
                 Text(loc.sharing ? timeAgo(loc.updatedAt) : 'Đã tắt chia sẻ · ${timeAgo(loc.updatedAt)}',
-                    style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant)),
+                    style: TextStyle(fontSize: 14.5, color: secondary)),
                 if (loc.speed != null && loc.speed! > 2) ...[
                   const SizedBox(width: 12),
-                  Icon(Icons.speed_rounded, size: 18, color: scheme.onSurfaceVariant),
+                  Icon(Icons.speed_rounded, size: 16, color: secondary),
                   const SizedBox(width: 4),
-                  Text('${(loc.speed! * 3.6).round()} km/h',
-                      style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant)),
+                  Text('${(loc.speed! * 3.6).round()} km/h', style: TextStyle(fontSize: 14.5, color: secondary)),
                 ],
               ],
             ),
@@ -351,15 +376,25 @@ class _DetailCard extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              Expanded(child: GlassTile(icon: Icons.history_rounded, label: 'Lịch sử', onTap: onHistory)),
-              const SizedBox(width: 10),
-              Expanded(child: GlassTile(icon: Icons.directions_car_outlined, label: 'Lái xe', onTap: onDriving)),
-              const SizedBox(width: 10),
-              Expanded(child: GlassTile(icon: Icons.place_outlined, label: 'Địa điểm', onTap: onPlaces)),
-              const SizedBox(width: 10),
+              Expanded(
+                child: GlassTile(
+                    icon: Icons.history_rounded, color: AppColors.indigo, label: 'Lịch sử', onTap: onHistory),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GlassTile(
+                    icon: Icons.directions_car_rounded, color: AppColors.orange, label: 'Lái xe', onTap: onDriving),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child:
+                    GlassTile(icon: Icons.place_rounded, color: AppColors.teal, label: 'Địa điểm', onTap: onPlaces),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: GlassTile(
                   icon: Icons.turn_right_rounded,
+                  color: AppColors.online,
                   label: distance == null ? '—' : distanceLabel(distance).replaceAll('.', ','),
                   onTap: null,
                 ),

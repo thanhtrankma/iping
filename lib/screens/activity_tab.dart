@@ -5,6 +5,7 @@ import '../services/group_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
+import '../widgets/glass.dart';
 
 class ActivityTab extends StatefulWidget {
   const ActivityTab({super.key, required this.group});
@@ -22,99 +23,153 @@ class _ActivityTabState extends State<ActivityTab> {
         'leave' => (Icons.logout_rounded, AppColors.warning, 'đã rời ${e.placeName ?? ''}'),
         'sos' => (Icons.sos_rounded, AppColors.sos, 'đã gửi cảnh báo SOS!'),
         'checkin' => (Icons.where_to_vote_rounded, AppColors.brand, 'đã check-in tại ${e.placeName ?? ''}'),
-        'join' => (Icons.group_add_rounded, AppColors.brand, 'đã tham gia nhóm'),
-        'leave_group' => (Icons.group_remove_rounded, Colors.grey, 'đã rời nhóm'),
+        'join' => (Icons.group_add_rounded, AppColors.indigo, 'đã tham gia nhóm'),
+        'leave_group' => (Icons.group_remove_rounded, AppColors.gray, 'đã rời nhóm'),
         'low_battery' => (Icons.battery_alert_rounded, AppColors.warning, 'sắp hết pin (${e.battery ?? '?'}%)'),
         'removed' => (Icons.person_remove_rounded, AppColors.sos, 'đã bị xoá khỏi nhóm'),
-        _ => (Icons.info_outline_rounded, Colors.grey, ''),
+        _ => (Icons.info_outline_rounded, AppColors.gray, ''),
       };
+
+  /// Tiêu đề nhóm theo ngày, như danh sách thông báo của iOS.
+  String _dayLabel(DateTime t) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(t.year, t.month, t.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Hôm nay';
+    if (diff == 1) return 'Hôm qua';
+    return '${t.day}/${t.month}/${t.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return StreamBuilder<List<GroupEvent>>(
-      stream: _events,
-      builder: (context, snap) {
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-        final events = snap.data!;
-        if (events.isEmpty) {
-          return const EmptyState(
-            icon: Icons.notifications_active_rounded,
-            title: 'Chưa có hoạt động',
-            text: 'Đến/rời địa điểm, SOS và thành viên mới\nsẽ hiện ở đây.',
+    final mq = MediaQuery.of(context);
+    return ColoredBox(
+      color: Colors.transparent,
+      child: StreamBuilder<List<GroupEvent>>(
+        stream: _events,
+        builder: (context, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final events = snap.data!;
+          if (events.isEmpty) {
+            return const EmptyState(
+              icon: Icons.notifications_active_rounded,
+              title: 'Chưa có hoạt động',
+              text: 'Đến/rời địa điểm, SOS và thành viên mới\nsẽ hiện ở đây.',
+            );
+          }
+
+          // Gom theo ngày, giữ nguyên thứ tự gốc.
+          final groups = <String, List<GroupEvent>>{};
+          for (final e in events) {
+            groups.putIfAbsent(_dayLabel(e.createdAt ?? DateTime.now()), () => []).add(e);
+          }
+
+          return ListView(
+            padding: EdgeInsets.only(top: mq.padding.top + 12, bottom: mq.padding.bottom + 24),
+            children: [
+              for (final entry in groups.entries)
+                GlassSection(
+                  header: entry.key,
+                  dividerIndent: 72,
+                  children: [for (final e in entry.value) _EventRow(event: e, info: _describe(e))],
+                ),
+            ],
           );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: events.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, i) {
-            final e = events[i];
-            final (icon, color, action) = _describe(e);
-            final isSos = e.type == 'sos';
-            final hasPos = e.lat != null && e.lng != null;
-            return Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isSos ? AppColors.sos.withValues(alpha: 0.08) : Theme.of(context).cardTheme.color,
-                borderRadius: BorderRadius.circular(18),
-                border: isSos ? Border.all(color: AppColors.sos.withValues(alpha: 0.4)) : null,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      MemberAvatar(uid: e.uid, name: e.name, radius: 22),
-                      Positioned(
-                        right: -4,
-                        bottom: -4,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: Icon(icon, size: 12, color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text.rich(
-                          TextSpan(children: [
-                            TextSpan(text: e.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                            TextSpan(text: ' $action'),
-                          ]),
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: isSos ? AppColors.sos : scheme.onSurface,
-                            fontWeight: isSos ? FontWeight.w600 : FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          [
-                            '${clock(e.createdAt)} · ${timeAgo(e.createdAt)}',
-                            if (isSos && hasPos) '${e.lat!.toStringAsFixed(5)}, ${e.lng!.toStringAsFixed(5)}',
-                          ].join('\n'),
-                          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5, height: 1.4),
-                        ),
-                      ],
+        },
+      ),
+    );
+  }
+}
+
+class _EventRow extends StatelessWidget {
+  const _EventRow({required this.event, required this.info});
+  final GroupEvent event;
+  final (IconData, Color, String) info;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = event;
+    final (icon, color, action) = info;
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final isSos = e.type == 'sos';
+    final hasPos = e.lat != null && e.lng != null;
+    final secondary = scheme.onSurface.withValues(alpha: 0.55);
+
+    return Container(
+      color: isSos ? AppColors.sos.withValues(alpha: dark ? 0.18 : 0.1) : null,
+      padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              MemberAvatar(uid: e.uid, name: e.name, radius: 21),
+              Positioned(
+                right: -5,
+                bottom: -5,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color.lerp(color, Colors.white, 0.18)!, color],
+                    ),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: dark ? const Color(0xFF1E2129) : Colors.white,
+                      width: 2,
                     ),
                   ),
-                ],
+                  child: Icon(icon, size: 11, color: Colors.white),
+                ),
               ),
-            );
-          },
-        );
-      },
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text.rich(
+                  TextSpan(children: [
+                    TextSpan(text: e.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    TextSpan(text: ' $action'),
+                  ]),
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.3,
+                    letterSpacing: -0.2,
+                    color: isSos ? AppColors.sos : scheme.onSurface,
+                    fontWeight: isSos ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+                if (isSos && hasPos) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    '${e.lat!.toStringAsFixed(5)}, ${e.lng!.toStringAsFixed(5)}',
+                    style: TextStyle(color: secondary, fontSize: 12.5),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(clock(e.createdAt),
+                  style: TextStyle(color: secondary, fontSize: 13, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 2),
+              Text(timeAgo(e.createdAt), style: TextStyle(color: secondary, fontSize: 11.5)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

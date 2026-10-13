@@ -1,9 +1,12 @@
+import 'dart:ui' as ui;
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/glass.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -60,129 +63,185 @@ class _SignInScreenState extends State<SignInScreen> {
         _ => 'Có lỗi xảy ra ($code).',
       };
 
+  /// Ô nhập dạng viên thuốc, nền mờ nhẹ bên trong thẻ kính (không lồng kính trong kính).
+  InputDecoration _field(BuildContext context, String hint, IconData icon, {Widget? suffix}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final radius = BorderRadius.circular(28);
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: scheme.onSurface.withValues(alpha: 0.45)),
+      prefixIcon: Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: Icon(icon, color: scheme.onSurface.withValues(alpha: 0.55)),
+      ),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 17),
+      border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: dark ? 0.08 : 0.7), width: 0.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.primary.withValues(alpha: 0.8), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: AppColors.sos.withValues(alpha: 0.6), width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: const BorderSide(color: AppColors.sos, width: 1.5),
+      ),
+      errorStyle: const TextStyle(fontWeight: FontWeight.w500),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final secondary = scheme.onSurface.withValues(alpha: 0.55);
     return Scaffold(
       backgroundColor: AppColors.brandDeep,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.brandGradient),
+      body: _BrandBackdrop(
         child: SafeArea(
-          bottom: false,
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 48),
-                      const _Hero(),
-                      const SizedBox(height: 36),
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                          decoration: BoxDecoration(
-                            color: theme.cardTheme.color,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                          ),
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 420),
-                              child: Form(
-                                key: _form,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 32),
+                        const _Hero(),
+                        const SizedBox(height: 32),
+                        Glass(
+                          radius: 36,
+                          opacity: 0.8,
+                          blur: 22,
+                          padding: const EdgeInsets.fromLTRB(20, 26, 20, 14),
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: Form(
+                              key: _form,
+                              child: AnimatedSize(
+                                duration: const Duration(milliseconds: 280),
+                                curve: Curves.easeOutCubic,
+                                alignment: Alignment.topCenter,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    Text(_register ? 'Tạo tài khoản' : 'Chào mừng trở lại',
-                                        style: theme.textTheme.headlineSmall
-                                            ?.copyWith(fontWeight: FontWeight.w800)),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _register
-                                          ? 'Chỉ mất 30 giây để bắt đầu'
-                                          : 'Đăng nhập để xem người thân của bạn',
-                                      style: TextStyle(color: scheme.onSurfaceVariant),
+                                    AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 220),
+                                      child: Column(
+                                        key: ValueKey(_register),
+                                        children: [
+                                          Text(
+                                            _register ? 'Tạo tài khoản' : 'Chào mừng trở lại',
+                                            textAlign: TextAlign.center,
+                                            style: theme.textTheme.headlineSmall?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.6,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _register
+                                                ? 'Chỉ mất 30 giây để bắt đầu'
+                                                : 'Đăng nhập để xem người thân của bạn',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(color: secondary, fontSize: 15),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 24),
+                                    const SizedBox(height: 22),
                                     if (_register) ...[
                                       TextFormField(
                                         controller: _name,
                                         textCapitalization: TextCapitalization.words,
-                                        decoration: const InputDecoration(
-                                          hintText: 'Tên hiển thị',
-                                          prefixIcon: Icon(Icons.person_outline_rounded),
-                                        ),
+                                        textInputAction: TextInputAction.next,
+                                        decoration: _field(context, 'Tên hiển thị', Icons.person_outline_rounded),
                                         validator: (v) =>
                                             (v == null || v.trim().isEmpty) ? 'Nhập tên của bạn' : null,
                                       ),
-                                      const SizedBox(height: 12),
+                                      const SizedBox(height: 10),
                                     ],
                                     TextFormField(
                                       controller: _email,
                                       keyboardType: TextInputType.emailAddress,
+                                      textInputAction: TextInputAction.next,
                                       autofillHints: const [AutofillHints.email],
-                                      decoration: const InputDecoration(
-                                        hintText: 'Email',
-                                        prefixIcon: Icon(Icons.mail_outline_rounded),
-                                      ),
+                                      decoration: _field(context, 'Email', Icons.mail_outline_rounded),
                                       validator: (v) =>
                                           (v == null || !v.contains('@')) ? 'Email không hợp lệ' : null,
                                     ),
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 10),
                                     TextFormField(
                                       controller: _password,
                                       obscureText: !_showPassword,
                                       autofillHints: const [AutofillHints.password],
-                                      decoration: InputDecoration(
-                                        hintText: 'Mật khẩu',
-                                        prefixIcon: const Icon(Icons.lock_outline_rounded),
-                                        suffixIcon: IconButton(
-                                          icon: Icon(_showPassword
-                                              ? Icons.visibility_off_outlined
-                                              : Icons.visibility_outlined),
-                                          onPressed: () =>
-                                              setState(() => _showPassword = !_showPassword),
+                                      decoration: _field(
+                                        context,
+                                        'Mật khẩu',
+                                        Icons.lock_outline_rounded,
+                                        suffix: Padding(
+                                          padding: const EdgeInsets.only(right: 4),
+                                          child: IconButton(
+                                            color: scheme.onSurface.withValues(alpha: 0.55),
+                                            icon: Icon(_showPassword
+                                                ? Icons.visibility_off_outlined
+                                                : Icons.visibility_outlined),
+                                            onPressed: () => setState(() => _showPassword = !_showPassword),
+                                          ),
                                         ),
                                       ),
-                                      validator: (v) =>
-                                          (v == null || v.length < 6) ? 'Ít nhất 6 ký tự' : null,
+                                      validator: (v) => (v == null || v.length < 6) ? 'Ít nhất 6 ký tự' : null,
                                       onFieldSubmitted: (_) => _submit(),
                                     ),
                                     if (_error != null) ...[
                                       const SizedBox(height: 12),
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: scheme.errorContainer,
-                                          borderRadius: BorderRadius.circular(12),
+                                      DecoratedBox(
+                                        decoration: ShapeDecoration(
+                                          shape: glassShape(radius: 20),
+                                          color: AppColors.sos.withValues(alpha: 0.12),
                                         ),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.error_outline, color: scheme.onErrorContainer, size: 20),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(_error!,
-                                                  style: TextStyle(color: scheme.onErrorContainer)),
-                                            ),
-                                          ],
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.error_rounded, color: AppColors.sos, size: 20),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  _error!,
+                                                  style: const TextStyle(
+                                                    color: AppColors.sos,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
                                     const SizedBox(height: 20),
-                                    FilledButton(
-                                      onPressed: _busy ? null : _submit,
-                                      child: _busy
-                                          ? const SizedBox(
-                                              height: 22,
-                                              width: 22,
-                                              child: CircularProgressIndicator(
-                                                  strokeWidth: 2.5, color: Colors.white))
-                                          : Text(_register ? 'Tạo tài khoản' : 'Đăng nhập'),
+                                    _PrimaryButton(
+                                      busy: _busy,
+                                      label: _register ? 'Tạo tài khoản' : 'Đăng nhập',
+                                      onPressed: _submit,
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     TextButton(
                                       onPressed: _busy
                                           ? null
@@ -193,24 +252,23 @@ class _SignInScreenState extends State<SignInScreen> {
                                       child: Text.rich(TextSpan(children: [
                                         TextSpan(
                                           text: _register ? 'Đã có tài khoản? ' : 'Chưa có tài khoản? ',
-                                          style: TextStyle(color: scheme.onSurfaceVariant),
+                                          style: TextStyle(color: secondary, fontWeight: FontWeight.w500),
                                         ),
                                         TextSpan(
                                           text: _register ? 'Đăng nhập' : 'Đăng ký ngay',
-                                          style: const TextStyle(fontWeight: FontWeight.w700),
+                                          style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700),
                                         ),
                                       ])),
                                     ),
-                                    const Spacer(),
-                                    SizedBox(height: MediaQuery.paddingOf(context).bottom),
                                   ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 32),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -222,6 +280,111 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 }
 
+/// Nút chính dạng viên thuốc, gradient thương hiệu, có phát sáng và phản hồi khi chạm.
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({required this.busy, required this.label, required this.onPressed});
+  final bool busy;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPressable(
+      onTap: busy ? null : onPressed,
+      shape: const StadiumBorder(),
+      scale: 0.97,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: busy ? 0.75 : 1,
+        child: Container(
+          height: 54,
+          alignment: Alignment.center,
+          decoration: ShapeDecoration(
+            shape: const StadiumBorder(),
+            gradient: AppColors.brandGradient,
+            shadows: [
+              BoxShadow(color: AppColors.brand.withValues(alpha: 0.45), blurRadius: 22, offset: const Offset(0, 8)),
+            ],
+          ),
+          child: busy
+              ? const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                )
+              : Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Nền rực rỡ màu thương hiệu với các đốm màu đã làm mờ, để thẻ kính có thứ để khúc xạ.
+class _BrandBackdrop extends StatelessWidget {
+  const _BrandBackdrop({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: dark
+                  ? const [Color(0xFF1A2272), Color(0xFF0B0D12)]
+                  : const [Color(0xFF5B7CFF), Color(0xFF2E3FD1)],
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 50, sigmaY: 50, tileMode: TileMode.decal),
+              child: CustomPaint(painter: _BrandBlobPainter(dark)),
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+class _BrandBlobPainter extends CustomPainter {
+  _BrandBlobPainter(this.dark);
+  final bool dark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final a = dark ? 0.55 : 0.8;
+    void blob(Color c, double x, double y, double r) => canvas.drawCircle(
+          Offset(size.width * x, size.height * y),
+          size.shortestSide * r,
+          Paint()..color = c.withValues(alpha: a),
+        );
+    blob(AppColors.purple, 0.95, 0.1, 0.55);
+    blob(AppColors.teal, 0.0, 0.45, 0.5);
+    blob(AppColors.pink, 1.0, 0.75, 0.45);
+    blob(AppColors.indigo, 0.2, 1.0, 0.6);
+  }
+
+  @override
+  bool shouldRepaint(_BrandBlobPainter old) => old.dark != dark;
+}
+
 class _Hero extends StatelessWidget {
   const _Hero();
 
@@ -229,28 +392,31 @@ class _Hero extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            for (final size in [150.0, 115.0])
-              Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
-                ),
-              ),
-            const AppLogo(size: 76, onDark: true),
-          ],
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: Colors.white.withValues(alpha: 0.35), blurRadius: 50, spreadRadius: 6),
+              BoxShadow(color: AppColors.brandDeep.withValues(alpha: 0.5), blurRadius: 24, offset: const Offset(0, 12)),
+            ],
+          ),
+          child: const AppLogo(size: 92, onDark: true),
         ),
-        const SizedBox(height: 16),
-        const Text('IPing',
-            style: TextStyle(
-                color: Colors.white, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+        const SizedBox(height: 20),
+        const Text(
+          'IPing',
+          style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w800, letterSpacing: -1.2),
+        ),
         const SizedBox(height: 4),
-        Text('Luôn biết người thân đang ở đâu',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15)),
+        Text(
+          'Luôn biết người thân đang ở đâu',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.85),
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.2,
+          ),
+        ),
       ],
     );
   }

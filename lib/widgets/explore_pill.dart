@@ -68,65 +68,76 @@ class _ExplorePillState extends State<ExplorePill> {
   Widget build(BuildContext context) {
     final p = _percent;
     final value = p == null ? null : (p > 0 && p < 0.05 ? '<0,1%' : percentLabel(p));
+    final scheme = Theme.of(context).colorScheme;
+    // Viên kính cao 50px như các nút bản đồ; nút tròn bên phải đồng tâm (50 − 2×4).
     return Glass(
-      radius: 30,
-      opacity: 0.55,
-      child: Material(
-        type: MaterialType.transparency,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(30),
-              onTap: widget.onOpen,
+      capsule: true,
+      opacity: 0.6,
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GlassPressable(
+            onTap: widget.onOpen,
+            shape: const StadiumBorder(),
+            scale: 0.95,
+            child: SizedBox(
+              height: 42,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 7, 10, 7),
+                padding: const EdgeInsets.fromLTRB(12, 0, 10, 0),
                 child: value == null
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.explore_rounded, color: AppColors.brand, size: 22),
-                            SizedBox(width: 6),
-                            Text('Khám phá', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                          ],
-                        ),
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.explore_rounded, color: AppColors.brand, size: 22),
+                          SizedBox(width: 6),
+                          Text('Khám phá', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2)),
+                        ],
                       )
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(value,
                               style: const TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 19,
+                                  height: 1.05,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.6)),
+                          Text('đã khám phá',
+                              style: TextStyle(
+                                  fontSize: 11.5,
                                   height: 1.1,
-                                  fontWeight: FontWeight.w900,
-                                  fontStyle: FontStyle.italic,
-                                  letterSpacing: -0.5)),
-                          const Text('đã khám phá', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface.withValues(alpha: 0.55))),
                         ],
                       ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 5),
-              child: Tooltip(
-                message: 'Bảng xếp hạng',
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: widget.onLeaderboard,
-                  child: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: const BoxDecoration(gradient: AppColors.brandGradient, shape: BoxShape.circle),
-                    child: const Icon(Icons.leaderboard_rounded, color: Colors.white, size: 22),
-                  ),
+          ),
+          Tooltip(
+            message: 'Bảng xếp hạng',
+            child: GlassPressable(
+              onTap: widget.onLeaderboard,
+              shape: const CircleBorder(),
+              scale: 0.88,
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  gradient: AppColors.brandGradient,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 0.8),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.brand.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 3)),
+                  ],
                 ),
+                child: const Icon(Icons.leaderboard_rounded, color: Colors.white, size: 20),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

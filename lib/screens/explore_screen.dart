@@ -143,36 +143,49 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final a = _area;
     if (a == null) return;
     final cellArea = HexGrid.areaM2(HexGrid.cellAt(a.labelPoint.latitude, a.labelPoint.longitude));
-    showModalBottomSheet<void>(
-      context: context,
+    final secondary = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
+    showGlassSheet<void>(
+      context,
       builder: (context) => SafeArea(
+        top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(a.name, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
+              Text(a.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
               if (a.displayName.isNotEmpty)
                 Text(a.displayName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: secondary, fontSize: 14)),
               const SizedBox(height: 18),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(value: _percent / 100, minHeight: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(percentLabel(_percent),
+                      style: const TextStyle(
+                          fontSize: 44, fontWeight: FontWeight.w800, letterSpacing: -2, color: AppColors.brand)),
+                  const SizedBox(width: 8),
+                  Text('đã khám phá', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: secondary)),
+                ],
               ),
-              const SizedBox(height: 18),
-              _StatRow(label: 'Đã khám phá', value: percentLabel(_percent)),
-              _StatRow(label: 'Số ô đã đi qua', value: '$_explored / ${a.totalCells}'),
-              _StatRow(label: 'Diện tích đã khám phá', value: areaLabel(_explored * cellArea)),
-              _StatRow(label: 'Diện tích khu vực', value: areaLabel(a.totalCells * cellArea)),
-              _StatRow(label: 'Tổng số ô bạn đã mở', value: '${_explore.cells.length}'),
               const SizedBox(height: 10),
-              Text(
-                'Mỗi ô lục giác rộng khoảng 70 m. Đi qua đâu, sương sẽ tan ở đó.',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              _ProgressCapsule(value: _percent / 100),
+              const SizedBox(height: 18),
+              _StatGroup(rows: [
+                _StatRow(label: 'Số ô đã đi qua', value: '$_explored / ${a.totalCells}'),
+                _StatRow(label: 'Diện tích đã khám phá', value: areaLabel(_explored * cellArea)),
+                _StatRow(label: 'Diện tích khu vực', value: areaLabel(a.totalCells * cellArea)),
+                _StatRow(label: 'Tổng số ô bạn đã mở', value: '${_explore.cells.length}'),
+              ]),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  'Mỗi ô lục giác rộng khoảng 70 m. Đi qua đâu, sương sẽ tan ở đó.',
+                  style: TextStyle(color: secondary, fontSize: 13),
+                ),
               ),
             ],
           ),
@@ -262,46 +275,77 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: Row(
               children: [
                 GlassButton(icon: Icons.close_rounded, tooltip: 'Đóng', onTap: () => Navigator.pop(context)),
-                const Spacer(),
-                Glass(
-                  radius: 32,
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        InkWell(
-                          borderRadius: BorderRadius.circular(30),
-                          onTap: _showDetails,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
-                            child: Text(
-                              a == null ? 'Đang tính…' : '$percent đã khám phá',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: Tooltip(
-                            message: 'Bảng xếp hạng',
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: _openLeaderboard,
-                              child: Container(
-                                width: 46,
-                                height: 46,
-                                decoration: const BoxDecoration(gradient: AppColors.brandGradient, shape: BoxShape.circle),
-                                child: const Icon(Icons.leaderboard_rounded, color: Colors.white, size: 24),
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Glass(
+                        capsule: true,
+                        padding: const EdgeInsets.all(5),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: GlassPressable(
+                                onTap: _showDetails,
+                                shape: const StadiumBorder(),
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+                                  child: a == null
+                                      ? const Text('Đang tính…',
+                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700))
+                                      : Text.rich(
+                                          TextSpan(children: [
+                                            TextSpan(
+                                              text: percent,
+                                              style: const TextStyle(
+                                                  fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.6),
+                                            ),
+                                            TextSpan(
+                                              text: ' đã khám phá',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                                              ),
+                                            ),
+                                          ]),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                ),
                               ),
                             ),
-                          ),
+                            Tooltip(
+                              message: 'Bảng xếp hạng',
+                              child: GlassPressable(
+                                onTap: _openLeaderboard,
+                                shape: const CircleBorder(),
+                                scale: 0.9,
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    gradient: AppColors.brandGradient,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.brand.withValues(alpha: 0.4),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(Icons.leaderboard_rounded, color: Colors.white, size: 22),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-                const Spacer(),
                 GlassButton(icon: Icons.near_me_rounded, tooltip: 'Vị trí của tôi', onTap: _focusMe),
               ],
             ),
@@ -312,6 +356,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 }
 
+/// Dòng chỉ số trong nhóm (nhãn bên trái, giá trị đậm bên phải).
 class _StatRow extends StatelessWidget {
   const _StatRow({required this.label, required this.value});
   final String label;
@@ -320,13 +365,68 @@ class _StatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 15))),
-          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 15.5, letterSpacing: -0.2))),
+          Text(value, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
         ],
       ),
+    );
+  }
+}
+
+/// Nhóm dòng kiểu inset-grouped trên nền mờ (sheet đã là kính nên không lồng kính).
+class _StatGroup extends StatelessWidget {
+  const _StatGroup({required this.rows});
+  final List<Widget> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: glassShape(radius: 22),
+        color: dark ? Colors.white.withValues(alpha: 0.07) : Colors.white.withValues(alpha: 0.55),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0)
+              Divider(height: 0.5, thickness: 0.5, indent: 16, color: scheme.onSurface.withValues(alpha: 0.12)),
+            rows[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Thanh tiến độ dạng viên thuốc với phần đã đạt màu gradient thương hiệu.
+class _ProgressCapsule extends StatelessWidget {
+  const _ProgressCapsule({required this.value});
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final v = value.clamp(0.0, 1.0);
+    return Container(
+      height: 12,
+      decoration: ShapeDecoration(
+        shape: const StadiumBorder(),
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
+      ),
+      alignment: Alignment.centerLeft,
+      child: v <= 0
+          ? null
+          : FractionallySizedBox(
+              widthFactor: v < 0.03 ? 0.03 : v,
+              child: const DecoratedBox(
+                decoration: ShapeDecoration(shape: StadiumBorder(), gradient: AppColors.brandGradient),
+                child: SizedBox.expand(),
+              ),
+            ),
     );
   }
 }
@@ -339,7 +439,12 @@ class _StickerText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = TextStyle(fontSize: fontSize, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -0.5);
+    final base = TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w900,
+      height: 1.1,
+      letterSpacing: -fontSize * 0.025,
+    );
     return Stack(
       children: [
         Text(
@@ -360,7 +465,7 @@ class _StickerText extends StatelessWidget {
   }
 }
 
-/// Bong bóng phần trăm trên khu vực: "7,2% ›".
+/// Bong bóng phần trăm trên khu vực: "7,2% ›" — viên kính nhỏ nổi trên bản đồ.
 class _PercentBubble extends StatelessWidget {
   const _PercentBubble({required this.text, required this.onTap});
   final String text;
@@ -368,23 +473,16 @@ class _PercentBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final color = Theme.of(context).colorScheme.primary;
+    return GlassPill(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 7, 8, 7),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black26, offset: Offset(0, 3))],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(text,
-                style: const TextStyle(color: AppColors.brandDeep, fontSize: 16, fontWeight: FontWeight.w900)),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.brandDeep, size: 22),
-          ],
-        ),
+      padding: const EdgeInsets.fromLTRB(14, 6, 8, 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(text, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
+          Icon(Icons.chevron_right_rounded, color: color, size: 20),
+        ],
       ),
     );
   }
@@ -399,6 +497,7 @@ class _Gauge extends StatelessWidget {
 
   static const _height = 260.0;
   static const _avatar = 18.0;
+  static const _track = 16.0;
 
   @override
   Widget build(BuildContext context) {
@@ -414,24 +513,27 @@ class _Gauge extends StatelessWidget {
             top: _avatar,
             bottom: _avatar,
             child: SizedBox(
-              width: 14,
+              width: _track,
               child: Glass(
-                radius: 7,
+                capsule: true,
                 opacity: 0.7,
+                padding: const EdgeInsets.all(3),
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    width: 14,
-                    height: math.max(14, track * frac),
-                    decoration: BoxDecoration(gradient: AppColors.brandGradient, borderRadius: BorderRadius.circular(7)),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOutCubic,
+                    width: _track - 6,
+                    height: math.max(_track - 6, (track - 6) * frac),
+                    decoration: const ShapeDecoration(shape: StadiumBorder(), gradient: AppColors.brandGradient),
                   ),
                 ),
               ),
             ),
           ),
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 400),
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
             bottom: track * frac,
             child: MemberAvatar(uid: uid, name: name, radius: _avatar, ring: true),
           ),

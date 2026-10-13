@@ -32,15 +32,26 @@ class _MomentsScreenState extends State<MomentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Khoảnh khắc')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+      appBar: const GlassAppBar(title: 'Khoảnh khắc'),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: GlassPill(
+        tint: AppColors.brand,
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
           fullscreenDialog: true,
           builder: (_) => ComposeMomentScreen(group: widget.group),
         )),
-        icon: const Icon(Icons.auto_awesome_rounded),
-        label: const Text('Đăng khoảnh khắc', style: TextStyle(fontWeight: FontWeight.w700)),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Text('Đăng khoảnh khắc',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2)),
+          ],
+        ),
       ),
       body: GlassBackground(
         child: StreamBuilder<List<Moment>>(
@@ -56,10 +67,11 @@ class _MomentsScreenState extends State<MomentsScreen> {
                 text: 'Chia sẻ một bức ảnh hay một dòng trạng thái.\nKhoảnh khắc tự ẩn sau 24 giờ.',
               );
             }
+            final mq = MediaQuery.of(context);
             return ListView.separated(
-              padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 16, 110),
+              padding: EdgeInsets.fromLTRB(16, mq.padding.top + 12, 16, mq.padding.bottom + 110),
               itemCount: moments.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 14),
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (context, i) => MomentCard(groupId: widget.group.id, moment: moments[i]),
             );
           },
@@ -80,86 +92,153 @@ class MomentCard extends StatelessWidget {
     final me = FirebaseAuth.instance.currentUser?.uid;
     final liked = m.likes.contains(me);
     final scheme = Theme.of(context).colorScheme;
+    final secondary = scheme.onSurface.withValues(alpha: 0.55);
+    // Ảnh lồng trong thẻ: lề 8 px, góc bo đồng tâm (30 - 8 = 22).
+    final photoShape = glassShape(radius: 22);
     return Glass(
-      radius: 28,
-      opacity: 0.65,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 6, 10),
-            child: Row(
-              children: [
-                MemberAvatar(uid: m.uid, name: m.name, radius: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(m.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                      Row(
-                        children: [
-                          Text(timeAgo(m.createdAt),
-                              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5)),
-                          if (m.hasLocation) ...[
-                            Text(' · ', style: TextStyle(color: scheme.onSurfaceVariant)),
-                            Icon(Icons.place_rounded, size: 13, color: scheme.onSurfaceVariant),
-                            Flexible(
-                              child: AddressText(m.lat!, m.lng!,
-                                  short: true,
-                                  maxLines: 1,
-                                  style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5)),
-                            ),
+      radius: 30,
+      opacity: 0.6,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 6, 10),
+              child: Row(
+                children: [
+                  MemberAvatar(uid: m.uid, name: m.name, radius: 19),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(m.name,
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.2)),
+                        Row(
+                          children: [
+                            Text(timeAgo(m.createdAt), style: TextStyle(color: secondary, fontSize: 12.5)),
+                            if (m.hasLocation) ...[
+                              Text(' · ', style: TextStyle(color: secondary, fontSize: 12.5)),
+                              Icon(Icons.place_rounded, size: 13, color: secondary),
+                              Flexible(
+                                child: AddressText(m.lat!, m.lng!,
+                                    short: true,
+                                    maxLines: 1,
+                                    style: TextStyle(color: secondary, fontSize: 12.5)),
+                              ),
+                            ],
                           ],
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                if (m.uid == me)
-                  IconButton(
-                    tooltip: 'Xoá',
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    onPressed: () => GroupService.instance.deleteMoment(groupId, m.id),
-                  ),
-              ],
-            ),
-          ),
-          if (m.photoUrl != null)
-            GestureDetector(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => _PhotoViewer(url: m.photoUrl!),
-              )),
-              child: AspectRatio(
-                aspectRatio: 4 / 5,
-                child: CachedNetworkImage(
-                  imageUrl: m.photoUrl!,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: Colors.black12),
-                ),
+                  if (m.uid == me)
+                    IconButton(
+                      tooltip: 'Xoá',
+                      icon: Icon(Icons.delete_outline_rounded, color: secondary, size: 22),
+                      onPressed: () => GroupService.instance.deleteMoment(groupId, m.id),
+                    ),
+                ],
               ),
             ),
-          if (m.text.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Text(m.text,
-                  style: TextStyle(fontSize: m.photoUrl == null ? 20 : 15, fontWeight: m.photoUrl == null ? FontWeight.w700 : null)),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 4, 16, 6),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: liked ? AppColors.sos : null),
-                  onPressed: () => GroupService.instance.toggleLike(groupId, m),
+            if (m.photoUrl != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: GlassPressable(
+                  shape: photoShape,
+                  scale: 0.98,
+                  haptic: false,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => _PhotoViewer(url: m.photoUrl!),
+                  )),
+                  child: ClipPath(
+                    clipper: ShapeBorderClipper(shape: photoShape),
+                    child: AspectRatio(
+                      aspectRatio: 4 / 5,
+                      child: CachedNetworkImage(
+                        imageUrl: m.photoUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => ColoredBox(color: scheme.onSurface.withValues(alpha: 0.08)),
+                      ),
+                    ),
+                  ),
                 ),
-                Text(m.likes.isEmpty ? 'Thả tim' : '${m.likes.length}',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
-              ],
+              ),
+            if (m.text.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Text(m.text,
+                    style: TextStyle(
+                      fontSize: m.photoUrl == null ? 21 : 15.5,
+                      height: 1.3,
+                      letterSpacing: m.photoUrl == null ? -0.4 : -0.2,
+                      fontWeight: m.photoUrl == null ? FontWeight.w700 : null,
+                    )),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 16, 12),
+              child: Row(
+                children: [
+                  _LikeChip(
+                    liked: liked,
+                    label: m.likes.isEmpty ? 'Thả tim' : '${m.likes.length}',
+                    onTap: () => GroupService.instance.toggleLike(groupId, m),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Nút "thả tim" dạng viên thuốc, có hiệu ứng nảy khi bật.
+class _LikeChip extends StatelessWidget {
+  const _LikeChip({required this.liked, required this.label, required this.onTap});
+  final bool liked;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = liked
+        ? AppColors.sos.withValues(alpha: dark ? 0.22 : 0.12)
+        : (dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.5));
+    return GlassPressable(
+      shape: const StadiumBorder(),
+      scale: 0.92,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.fromLTRB(12, 8, 14, 8),
+        decoration: ShapeDecoration(shape: const StadiumBorder(), color: bg),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              scale: liked ? 1.15 : 1,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutBack,
+              child: Icon(
+                liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                size: 20,
+                color: liked ? AppColors.sos : scheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: liked ? AppColors.sos : scheme.onSurface,
+                )),
+          ],
+        ),
       ),
     );
   }
@@ -173,8 +252,27 @@ class _PhotoViewer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white),
-      body: InteractiveViewer(child: Center(child: CachedNetworkImage(imageUrl: url))),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(child: Center(child: CachedNetworkImage(imageUrl: url))),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+              child: Theme(
+                data: ThemeData.dark(useMaterial3: true),
+                child: GlassButton(
+                  size: 44,
+                  icon: Icons.close_rounded,
+                  tooltip: 'Đóng',
+                  onTap: () => Navigator.maybePop(context),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -228,86 +326,135 @@ class _ComposeMomentScreenState extends State<ComposeMomentScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
+    final scheme = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
+    const none = OutlineInputBorder(borderSide: BorderSide.none);
+    final photoShape = glassShape(radius: 28);
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
-        title: const Text('Khoảnh khắc mới'),
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
+        title: 'Khoảnh khắc mới',
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 14),
+          child: Center(
+            child: GlassButton(
+              size: 42,
+              icon: Icons.close_rounded,
+              tooltip: 'Đóng',
+              onTap: () => Navigator.pop(context),
+            ),
+          ),
+        ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size(72, 40)),
-              onPressed: _posting ? null : _post,
+          Center(
+            child: GlassPill(
+              tint: AppColors.brand,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              onTap: _posting ? () {} : _post,
               child: _posting
                   ? const SizedBox(
                       width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Đăng'),
+                  : const Text('Đăng',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.5)),
             ),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              MemberAvatar(uid: uid, name: FirebaseAuth.instance.currentUser?.displayName ?? '', radius: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _text,
-                  autofocus: true,
-                  maxLength: 300,
-                  minLines: 2,
-                  maxLines: 6,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(hintText: 'Bạn đang làm gì ở ${widget.group.name}?'),
-                ),
+      body: GlassBackground(
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(16, mq.padding.top + 12, 16, mq.padding.bottom + 24),
+          children: [
+            Glass(
+              radius: 28,
+              opacity: 0.65,
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MemberAvatar(uid: uid, name: FirebaseAuth.instance.currentUser?.displayName ?? '', radius: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _text,
+                      autofocus: true,
+                      maxLength: 300,
+                      minLines: 3,
+                      maxLines: 8,
+                      style: const TextStyle(fontSize: 17, height: 1.35, letterSpacing: -0.2),
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: InputDecoration(
+                        hintText: 'Bạn đang làm gì ở ${widget.group.name}?',
+                        hintStyle: TextStyle(color: scheme.onSurface.withValues(alpha: 0.45)),
+                        filled: false,
+                        contentPadding: const EdgeInsets.only(top: 8),
+                        border: none,
+                        enabledBorder: none,
+                        focusedBorder: none,
+                        counterStyle: TextStyle(color: scheme.onSurface.withValues(alpha: 0.4), fontSize: 11.5),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_photo != null)
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: AspectRatio(
-                    aspectRatio: 4 / 5,
-                    child: Image(image: FileImage(File(_photo!.path)), fit: BoxFit.cover),
+            ),
+            const SizedBox(height: 16),
+            if (_photo != null)
+              Stack(
+                children: [
+                  ClipPath(
+                    clipper: ShapeBorderClipper(shape: photoShape),
+                    child: AspectRatio(
+                      aspectRatio: 4 / 5,
+                      child: Image(image: FileImage(File(_photo!.path)), fit: BoxFit.cover),
+                    ),
+                  ),
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: GlassButton(size: 40, icon: Icons.close_rounded, onTap: () => setState(() => _photo = null)),
+                  ),
+                ],
+              )
+            else
+              GlassPressable(
+                shape: photoShape,
+                scale: 0.97,
+                onTap: _pick,
+                child: Glass(
+                  radius: 28,
+                  opacity: 0.5,
+                  child: SizedBox(
+                    height: 140,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const GlassIconBadge(icon: Icons.add_a_photo_rounded, color: AppColors.purple, size: 44),
+                        const SizedBox(height: 10),
+                        Text('Thêm ảnh',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 15.5, color: scheme.onSurface)),
+                      ],
+                    ),
                   ),
                 ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: GlassButton(size: 40, icon: Icons.close_rounded, onTap: () => setState(() => _photo = null)),
+              ),
+            const SizedBox(height: 20),
+            GlassSection(
+              margin: EdgeInsets.zero,
+              footer: 'Chỉ thành viên "${widget.group.name}" thấy được. Tự ẩn sau 24 giờ.',
+              children: [
+                SwitchListTile(
+                  secondary: const GlassIconBadge(icon: Icons.place_rounded, color: AppColors.brand),
+                  title: const Text('Gắn vị trí hiện tại'),
+                  subtitle: const Text('Khoảnh khắc sẽ hiện trên bản đồ của nhóm'),
+                  value: _withLocation,
+                  onChanged: (v) => setState(() => _withLocation = v),
                 ),
               ],
-            )
-          else
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(120),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-              ),
-              icon: const Icon(Icons.add_a_photo_rounded),
-              label: const Text('Thêm ảnh'),
-              onPressed: _pick,
             ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            secondary: const Icon(Icons.place_rounded, color: AppColors.brand),
-            title: const Text('Gắn vị trí hiện tại'),
-            subtitle: const Text('Khoảnh khắc sẽ hiện trên bản đồ của nhóm'),
-            value: _withLocation,
-            onChanged: (v) => setState(() => _withLocation = v),
-          ),
-          const SizedBox(height: 4),
-          Text('Chỉ thành viên "${widget.group.name}" thấy được. Tự ẩn sau 24 giờ.',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -322,13 +469,13 @@ Marker momentMarker(Moment m, VoidCallback onTap) => Marker(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             gradient: AppColors.brandGradient,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [BoxShadow(blurRadius: 8, color: Colors.black38)],
+            shape: glassShape(radius: 20),
+            shadows: const [BoxShadow(blurRadius: 10, offset: Offset(0, 3), color: Colors.black38)],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
+          child: ClipPath(
+            clipper: ShapeBorderClipper(shape: glassShape(radius: 17)),
             child: m.photoUrl != null
                 ? CachedNetworkImage(imageUrl: m.photoUrl!, fit: BoxFit.cover)
                 : Container(

@@ -1,20 +1,56 @@
-import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme.dart';
 
-/// Bề mặt "liquid glass": làm mờ nền phía sau, phủ lớp trắng trong suốt,
-/// viền sáng và vệt phản chiếu ở nửa trên.
+/// Liquid Glass theo kiểu iOS 26.
+///
+/// Khác với "kính mờ" cũ (blur mạnh + phủ trắng đục), Liquid Glass:
+/// - trong hơn: lớp tint mỏng, nội dung phía sau vẫn đọc được màu sắc;
+/// - tăng độ bão hoà và độ sáng của nền (vibrancy) để chữ vẫn nổi;
+/// - viền phản quang (specular rim) sáng ở góc trên-trái và dưới-phải như
+///   ánh sáng chiếu nghiêng vào một khối thuỷ tinh dày;
+/// - quầng sáng mép bên trong, giả lập hiện tượng khúc xạ ở rìa thấu kính;
+/// - góc bo liên tục (squircle) thay vì bo tròn thường;
+/// - phản hồi khi chạm: co nhẹ và loé sáng (xem [GlassPressable]).
+
+/// Hình dạng chung của các bề mặt kính.
+ShapeBorder glassShape({double radius = 28, bool circle = false, bool capsule = false}) {
+  if (circle) return const CircleBorder();
+  if (capsule) return const StadiumBorder();
+  return RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(radius));
+}
+
+/// Ma trận tăng bão hoà + sáng nhẹ cho nền phía sau kính.
+List<double> _vibrancyMatrix(double s, double brightness) {
+  const lr = 0.2126, lg = 0.7152, lb = 0.0722;
+  final a = 1 - s;
+  return [
+    lr * a + s, lg * a, lb * a, 0, brightness,
+    lr * a, lg * a + s, lb * a, 0, brightness,
+    lr * a, lg * a, lb * a + s, 0, brightness,
+    0, 0, 0, 1, 0,
+  ];
+}
+
+ui.ImageFilter glassFilter({required double blur, required bool dark}) => ui.ImageFilter.compose(
+      outer: ColorFilter.matrix(_vibrancyMatrix(dark ? 1.5 : 1.8, dark ? -6 : 10)),
+      inner: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur, tileMode: TileMode.mirror),
+    );
+
+/// Bề mặt Liquid Glass.
 class Glass extends StatelessWidget {
   const Glass({
     super.key,
     required this.child,
     this.radius = 28,
     this.padding,
-    this.blur = 22,
+    this.blur = 14,
     this.opacity = 0.55,
     this.circle = false,
+    this.capsule = false,
     this.shadow = true,
     this.tint,
   });
@@ -22,94 +58,292 @@ class Glass extends StatelessWidget {
   final Widget child;
   final double radius;
   final EdgeInsetsGeometry? padding;
+
+  /// Độ mờ của nền phía sau. Liquid Glass dùng blur vừa phải (~12–16).
   final double blur;
+
+  /// Độ đậm của lớp tint (0–1). Giá trị cao hơn = dễ đọc chữ hơn, ít trong hơn.
+  /// Thang cũ (0.55–0.85) được giữ nguyên ý nghĩa nhưng kính tổng thể trong hơn.
   final double opacity;
   final bool circle;
+  final bool capsule;
   final bool shadow;
+
+  /// Màu tint (ví dụ đỏ cho SOS). Kính có tint màu sẽ đậm hơn một chút.
   final Color? tint;
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final base = tint ?? (dark ? const Color(0xFF1C1F26) : Colors.white);
-    final ShapeBorder border =
-        circle ? const CircleBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));
-    ShapeDecoration shape(Gradient g) => ShapeDecoration(shape: border, gradient: g);
-    final clip = circle
-        ? const ShapeBorderClipper(shape: CircleBorder())
-        : ShapeBorderClipper(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)));
-    final borderRadius = circle ? null : BorderRadius.circular(radius);
+    final shape = glassShape(radius: radius, circle: circle, capsule: capsule);
+    final base = tint ?? (dark ? const Color(0xFF16181D) : Colors.white);
+    // Kính iOS 26 trong hơn hẳn: chỉ giữ khoảng một nửa độ đục của thang cũ.
+    final alpha = tint != null
+        ? (0.35 + opacity * 0.45).clamp(0.0, 0.95)
+        : (dark ? 0.18 + opacity * 0.38 : 0.08 + opacity * 0.42).clamp(0.0, 0.9);
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        shape: circle ? BoxShape.circle : BoxShape.rectangle,
-        borderRadius: borderRadius,
-        boxShadow: shadow
-            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.16), blurRadius: 24, offset: const Offset(0, 8))]
+      decoration: ShapeDecoration(
+        shape: shape,
+        shadows: shadow
+            ? [
+                // Bóng tản rộng, rất nhạt: kính "lơ lửng" trên nội dung.
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: dark ? 0.35 : 0.10),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                ),
+                // Bóng tiếp xúc gần, giúp mép dưới có chiều sâu.
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: dark ? 0.25 : 0.06),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ]
             : null,
       ),
       child: ClipPath(
-        clipper: clip,
+        clipper: ShapeBorderClipper(shape: shape),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Stack(
-            children: [
-              // Lớp kính chính.
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: shape(
-                    LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        base.withValues(alpha: (opacity + 0.15).clamp(0, 1)),
-                        base.withValues(alpha: opacity),
-                        base.withValues(alpha: (opacity - 0.1).clamp(0, 1)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              // Vệt phản chiếu ánh sáng ở phía trên.
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: shape(
-                      LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.center,
-                        colors: [
-                          Colors.white.withValues(alpha: dark ? 0.08 : 0.35),
-                          Colors.white.withValues(alpha: 0),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(padding: padding ?? EdgeInsets.zero, child: child),
-              // Viền sáng mảnh.
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: circle
-                        ? BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withValues(alpha: dark ? 0.15 : 0.7), width: 1.2),
-                          )
-                        : BoxDecoration(
-                            borderRadius: borderRadius,
-                            border: Border.all(color: Colors.white.withValues(alpha: dark ? 0.15 : 0.7), width: 1.2),
-                          ),
-                  ),
-                ),
-              ),
-            ],
+          filter: glassFilter(blur: blur, dark: dark),
+          child: CustomPaint(
+            painter: _GlassBodyPainter(shape: shape, base: base, alpha: alpha, dark: dark, tinted: tint != null),
+            foregroundPainter: _GlassRimPainter(shape: shape, dark: dark, tinted: tint != null),
+            child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
           ),
         ),
       ),
     );
   }
+}
+
+/// Lớp thân kính: tint mỏng + vệt phản chiếu phía trên + đáy hơi tối.
+class _GlassBodyPainter extends CustomPainter {
+  _GlassBodyPainter({
+    required this.shape,
+    required this.base,
+    required this.alpha,
+    required this.dark,
+    required this.tinted,
+  });
+
+  final ShapeBorder shape;
+  final Color base;
+  final double alpha;
+  final bool dark;
+  final bool tinted;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final path = shape.getOuterPath(rect);
+
+    // Tint chính, đậm hơn chút ở phía dưới để chữ dễ đọc.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            base.withValues(alpha: (alpha - 0.04).clamp(0.0, 1.0)),
+            base.withValues(alpha: (alpha + 0.06).clamp(0.0, 1.0)),
+          ],
+        ).createShader(rect),
+    );
+
+    // Vệt sáng mềm ở nửa trên (ánh sáng môi trường phản chiếu lên mặt kính).
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: const Alignment(0, 0.1),
+          colors: [
+            Colors.white.withValues(alpha: dark ? 0.07 : (tinted ? 0.22 : 0.28)),
+            Colors.white.withValues(alpha: 0),
+          ],
+        ).createShader(rect),
+    );
+
+    // Quầng sáng mép bên trong: giả lập khúc xạ ở rìa khối kính.
+    final edge = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
+      ..color = Colors.white.withValues(alpha: dark ? 0.06 : 0.22);
+    canvas.drawPath(path, edge);
+  }
+
+  @override
+  bool shouldRepaint(_GlassBodyPainter old) =>
+      old.shape != shape || old.base != base || old.alpha != alpha || old.dark != dark || old.tinted != tinted;
+}
+
+/// Viền phản quang: sáng ở góc trên-trái, mờ dần ở hai cạnh, sáng lại ở dưới-phải.
+class _GlassRimPainter extends CustomPainter {
+  _GlassRimPainter({required this.shape, required this.dark, required this.tinted});
+
+  final ShapeBorder shape;
+  final bool dark;
+  final bool tinted;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final path = shape.getOuterPath(rect.deflate(0.5));
+    final hi = dark ? 0.45 : 0.95;
+    final lo = dark ? 0.06 : (tinted ? 0.15 : 0.25);
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: hi),
+            Colors.white.withValues(alpha: lo),
+            Colors.white.withValues(alpha: lo * 0.6),
+            Colors.white.withValues(alpha: hi * 0.6),
+          ],
+          stops: const [0, 0.35, 0.65, 1],
+        ).createShader(rect),
+    );
+
+    // Đường tối rất mảnh ở mép dưới tạo độ dày cho kính.
+    if (!dark) {
+      canvas.drawPath(
+        shape.getOuterPath(rect.deflate(0.25)),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.5
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black.withValues(alpha: 0), Colors.black.withValues(alpha: 0.08)],
+            stops: const [0.6, 1],
+          ).createShader(rect),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GlassRimPainter old) => old.shape != shape || old.dark != dark || old.tinted != tinted;
+}
+
+/// Phản hồi chạm kiểu Liquid Glass: co nhẹ, loé sáng tại điểm chạm, rung nhẹ.
+class GlassPressable extends StatefulWidget {
+  const GlassPressable({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.shape,
+    this.scale = 0.94,
+    this.haptic = true,
+    this.onLongPress,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final ShapeBorder? shape;
+  final double scale;
+  final bool haptic;
+
+  @override
+  State<GlassPressable> createState() => _GlassPressableState();
+}
+
+class _GlassPressableState extends State<GlassPressable> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 120),
+    reverseDuration: const Duration(milliseconds: 380),
+  );
+  Offset? _point;
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _down(TapDownDetails d) {
+    setState(() => _point = d.localPosition);
+    _c.forward();
+  }
+
+  void _up([_]) => _c.reverse();
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null || widget.onLongPress != null;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: enabled ? _down : null,
+      onTapUp: enabled ? _up : null,
+      onTapCancel: enabled ? _up : null,
+      onLongPress: widget.onLongPress,
+      onTap: enabled
+          ? () {
+              if (widget.haptic) HapticFeedback.lightImpact();
+              widget.onTap?.call();
+            }
+          : null,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, child) {
+          // Đường cong "lò xo": vào nhanh, ra có chút nảy.
+          final t = Curves.easeOut.transform(_c.value);
+          return Transform.scale(
+            scale: 1 - (1 - widget.scale) * t,
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                child!,
+                if (_c.value > 0)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: ClipPath(
+                        clipper: ShapeBorderClipper(shape: widget.shape ?? glassShape()),
+                        child: CustomPaint(painter: _GlowPainter(_point, t)),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _GlowPainter extends CustomPainter {
+  _GlowPainter(this.point, this.t);
+  final Offset? point;
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = point ?? size.center(Offset.zero);
+    final r = size.longestSide * 0.9;
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [Colors.white.withValues(alpha: 0.35 * t), Colors.white.withValues(alpha: 0)],
+        ).createShader(Rect.fromCircle(center: c, radius: r)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GlowPainter old) => old.point != point || old.t != t;
 }
 
 /// Nút tròn bằng kính, dùng trên bản đồ.
@@ -119,9 +353,10 @@ class GlassButton extends StatelessWidget {
     this.icon,
     this.child,
     required this.onTap,
-    this.size = 54,
+    this.size = 50,
     this.color,
     this.tooltip,
+    this.tint,
   });
 
   final IconData? icon;
@@ -131,23 +366,24 @@ class GlassButton extends StatelessWidget {
   final Color? color;
   final String? tooltip;
 
+  /// Kính có màu (ví dụ nút chính). Khi có tint, biểu tượng mặc định màu trắng.
+  final Color? tint;
+
   @override
   Widget build(BuildContext context) {
-    final btn = SizedBox(
-      width: size,
-      height: size,
-      child: Glass(
-        circle: true,
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: Center(
-              child: child ??
-                  Icon(icon, size: size * 0.46, color: color ?? Theme.of(context).colorScheme.onSurface),
-            ),
-          ),
+    final fg = color ?? (tint != null ? Colors.white : Theme.of(context).colorScheme.onSurface);
+    final btn = GlassPressable(
+      onTap: onTap,
+      shape: const CircleBorder(),
+      scale: 0.9,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Glass(
+          circle: true,
+          tint: tint,
+          opacity: 0.6,
+          child: Center(child: child ?? Icon(icon, size: size * 0.44, color: fg)),
         ),
       ),
     );
@@ -157,57 +393,65 @@ class GlassButton extends StatelessWidget {
 
 /// Viên thuốc bằng kính có chữ (ví dụ "❤️ Yêu nhé!").
 class GlassPill extends StatelessWidget {
-  const GlassPill({super.key, required this.child, required this.onTap, this.padding});
+  const GlassPill({super.key, required this.child, required this.onTap, this.padding, this.tint});
   final Widget child;
   final VoidCallback onTap;
   final EdgeInsetsGeometry? padding;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
-    return Glass(
-      radius: 30,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: onTap,
-          child: Padding(
-            padding: padding ?? const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            child: child,
-          ),
-        ),
+    return GlassPressable(
+      onTap: onTap,
+      shape: const StadiumBorder(),
+      child: Glass(
+        capsule: true,
+        tint: tint,
+        opacity: 0.6,
+        padding: padding ?? const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: child,
       ),
     );
   }
 }
 
-/// Ô hành động vuông bo góc trong thẻ kính (Lịch sử, Lái xe, ...).
+/// Ô hành động trong thẻ kính (Lịch sử, Lái xe, ...).
+/// Là một lớp kính lồng bên trong kính: nền hơi đậm hơn, góc bo đồng tâm.
 class GlassTile extends StatelessWidget {
-  const GlassTile({super.key, required this.icon, required this.label, required this.onTap});
+  const GlassTile({super.key, required this.icon, required this.label, required this.onTap, this.color});
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
 
+  /// Màu biểu tượng; mặc định là màu thương hiệu.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: dark ? Colors.white.withValues(alpha: 0.08) : AppColors.brand.withValues(alpha: 0.07),
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
+    final shape = glassShape(radius: 20);
+    final accent = color ?? (dark ? Colors.white : AppColors.brand);
+    return GlassPressable(
+      onTap: onTap,
+      shape: shape,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: dark ? Colors.white.withValues(alpha: 0.07) : Colors.white.withValues(alpha: 0.45),
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 26),
+              Icon(icon, size: 25, color: accent),
               const SizedBox(height: 6),
-              Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: -0.1),
+              ),
             ],
           ),
         ),
@@ -216,7 +460,8 @@ class GlassTile extends StatelessWidget {
   }
 }
 
-/// Nền màn hình có gradient nhẹ để các thẻ kính nổi lên.
+/// Nền cho các màn hình không có bản đồ: các đốm màu lớn đã làm mờ,
+/// để kính có thứ gì đó phía sau mà "khúc xạ" (kính trên nền phẳng trông như giấy).
 class GlassBackground extends StatelessWidget {
   const GlassBackground({super.key, required this.child});
   final Widget child;
@@ -224,17 +469,325 @@ class GlassBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
+    final blobs = dark
+        ? const [Color(0xFF2B3A8F), Color(0xFF5B2E8A), Color(0xFF0F5C5A)]
+        : const [Color(0xFFB9C8FF), Color(0xFFE4CCFF), Color(0xFFBFEBDD)];
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(color: dark ? const Color(0xFF0B0D12) : const Color(0xFFF2F4FA)),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
+              child: CustomPaint(painter: _BlobPainter(blobs, dark)),
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+class _BlobPainter extends CustomPainter {
+  _BlobPainter(this.colors, this.dark);
+  final List<Color> colors;
+  final bool dark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final a = dark ? 0.55 : 0.85;
+    void blob(Color c, double x, double y, double r) => canvas.drawCircle(
+          Offset(size.width * x, size.height * y),
+          size.shortestSide * r,
+          Paint()..color = c.withValues(alpha: a),
+        );
+    blob(colors[0], 0.05, 0.08, 0.75);
+    blob(colors[1], 0.95, 0.38, 0.6);
+    blob(colors[2], 0.2, 0.9, 0.7);
+  }
+
+  @override
+  bool shouldRepaint(_BlobPainter old) => old.dark != dark || old.colors != colors;
+}
+
+/// Nhóm danh sách kiểu "inset grouped" của iOS, làm bằng kính.
+/// Các con được ngăn bằng đường kẻ mảnh, thụt vào theo [dividerIndent].
+class GlassSection extends StatelessWidget {
+  const GlassSection({
+    super.key,
+    required this.children,
+    this.header,
+    this.footer,
+    this.dividerIndent = 56,
+    this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 20),
+  });
+
+  final List<Widget> children;
+  final String? header;
+  final String? footer;
+  final double dividerIndent;
+  final EdgeInsetsGeometry margin;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final divider = Divider(
+      height: 0.5,
+      thickness: 0.5,
+      indent: dividerIndent,
+      color: scheme.onSurface.withValues(alpha: 0.12),
+    );
+    return Padding(
+      padding: margin,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (header != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 7),
+              child: Text(
+                header!.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  letterSpacing: 0.3,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+          Glass(
+            radius: 26,
+            opacity: 0.7,
+            child: Material(
+              type: MaterialType.transparency,
+              child: Column(
+                children: [
+                  for (var i = 0; i < children.length; i++) ...[
+                    if (i > 0) divider,
+                    children[i],
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (footer != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 7, 16, 0),
+              child: Text(
+                footer!,
+                style: TextStyle(fontSize: 12.5, color: scheme.onSurface.withValues(alpha: 0.5)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ô biểu tượng màu bo squircle, dùng làm leading cho dòng cài đặt (như iOS Settings).
+class GlassIconBadge extends StatelessWidget {
+  const GlassIconBadge({super.key, required this.icon, required this.color, this.size = 30});
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: ShapeDecoration(
+        shape: glassShape(radius: size * 0.27),
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: dark
-              ? const [Color(0xFF10131A), Color(0xFF1A2033)]
-              : const [Color(0xFFEAF0FF), Color(0xFFF6F3FF), Color(0xFFEFF7F4)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color.lerp(color, Colors.white, 0.18)!, color],
         ),
       ),
-      child: child,
+      child: Icon(icon, size: size * 0.62, color: Colors.white),
+    );
+  }
+}
+
+/// Thanh tab nổi dạng viên thuốc kính, có "thấu kính" trượt theo tab đang chọn.
+class GlassTabBar extends StatelessWidget {
+  const GlassTabBar({
+    super.key,
+    required this.items,
+    required this.index,
+    required this.onChanged,
+  });
+
+  final List<({IconData icon, String label})> items;
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Glass(
+      capsule: true,
+      opacity: 0.65,
+      padding: const EdgeInsets.all(4),
+      child: LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth / items.length;
+        return SizedBox(
+          height: 56,
+          child: Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 420),
+                curve: Curves.easeOutBack,
+                left: w * index,
+                top: 0,
+                bottom: 0,
+                width: w,
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    shape: const StadiumBorder(),
+                    color: dark ? Colors.white.withValues(alpha: 0.14) : scheme.primary.withValues(alpha: 0.12),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          onChanged(i);
+                        },
+                        child: _TabItem(item: items[i], selected: i == index),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _TabItem extends StatelessWidget {
+  const _TabItem({required this.item, required this.selected});
+  final ({IconData icon, String label}) item;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = selected ? scheme.primary : scheme.onSurface.withValues(alpha: 0.75);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        AnimatedScale(
+          scale: selected ? 1.08 : 1,
+          duration: const Duration(milliseconds: 250),
+          child: Icon(item.icon, size: 24, color: color),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          item.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 10.5, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: color),
+        ),
+      ],
+    );
+  }
+}
+
+/// Mở bottom sheet dạng kính nổi (cách mép màn hình, bo góc lớn) như sheet iOS 26.
+Future<T?> showGlassSheet<T>(
+  BuildContext context, {
+  required WidgetBuilder builder,
+  bool isScrollControlled = true,
+}) {
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: isScrollControlled,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    showDragHandle: false,
+    barrierColor: Colors.black.withValues(alpha: 0.18),
+    builder: (ctx) {
+      final bottom = MediaQuery.of(ctx).viewPadding.bottom;
+      return Padding(
+        padding: EdgeInsets.fromLTRB(8, 0, 8, bottom > 0 ? bottom * 0.4 + 4 : 8),
+        child: Glass(
+          radius: 38,
+          opacity: 0.85,
+          blur: 24,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 8, bottom: 4),
+                    width: 36,
+                    height: 5,
+                    decoration: ShapeDecoration(
+                      shape: const StadiumBorder(),
+                      color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.22),
+                    ),
+                  ),
+                ),
+                Flexible(child: builder(ctx)),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// AppBar trong suốt dùng trên [GlassBackground]: tiêu đề lớn kiểu iOS,
+/// nút quay lại là nút kính tròn.
+class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const GlassAppBar({super.key, required this.title, this.actions, this.leading});
+  final String title;
+  final List<Widget>? actions;
+  final Widget? leading;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(60);
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+    return AppBar(
+      toolbarHeight: 60,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      centerTitle: true,
+      leadingWidth: 64,
+      leading: leading ??
+          (canPop
+              ? Padding(
+                  padding: const EdgeInsets.only(left: 14),
+                  child: Center(
+                    child: GlassButton(
+                      size: 42,
+                      icon: Icons.chevron_left_rounded,
+                      tooltip: 'Quay lại',
+                      onTap: () => Navigator.of(context).maybePop(),
+                    ),
+                  ),
+                )
+              : null),
+      title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
+      actions: actions == null ? null : [...actions!, const SizedBox(width: 10)],
     );
   }
 }

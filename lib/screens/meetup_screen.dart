@@ -33,7 +33,7 @@ String _timeLabel(DateTime t) {
 (String, Color, IconData) statusInfo(MeetupStatus s) => switch (s) {
       MeetupStatus.going => ('Đang tới', AppColors.brand, Icons.directions_run_rounded),
       MeetupStatus.arrived => ('Đã tới', AppColors.online, Icons.check_circle_rounded),
-      MeetupStatus.declined => ('Không đi', Colors.grey, Icons.cancel_rounded),
+      MeetupStatus.declined => ('Không đi', AppColors.gray, Icons.cancel_rounded),
       MeetupStatus.invited => ('Chưa trả lời', AppColors.warning, Icons.help_rounded),
     };
 
@@ -52,14 +52,16 @@ class _MeetupListScreenState extends State<MeetupListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Meetup')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+      appBar: const GlassAppBar(title: 'Meetup'),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _FloatingAction(
+        icon: Icons.add_location_alt_rounded,
+        label: 'Tạo điểm hẹn',
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => CreateMeetupScreen(group: widget.group),
         )),
-        icon: const Icon(Icons.add_location_alt_rounded),
-        label: const Text('Tạo điểm hẹn', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: GlassBackground(
         child: StreamBuilder<List<Meetup>>(
@@ -75,11 +77,29 @@ class _MeetupListScreenState extends State<MeetupListScreen> {
                 text: 'Chọn một điểm hẹn và giờ hẹn.\nCả nhóm sẽ thấy ai đang tới và còn bao xa.',
               );
             }
-            return ListView.separated(
-              padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 16, 110),
-              itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) => MeetupCard(group: widget.group, meetup: list[i]),
+            final mq = MediaQuery.of(context);
+            return ListView(
+              padding: EdgeInsets.only(top: mq.padding.top + 12, bottom: mq.padding.bottom + 110),
+              children: [
+                GlassSection(
+                  header: 'Đang diễn ra',
+                  dividerIndent: 76,
+                  children: [
+                    for (final m in list)
+                      GlassPressable(
+                        scale: 0.98,
+                        shape: const RoundedRectangleBorder(),
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => MeetupDetailScreen(group: widget.group, meetupId: m.id),
+                        )),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                          child: _MeetupSummary(meetup: m),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             );
           },
         ),
@@ -88,6 +108,8 @@ class _MeetupListScreenState extends State<MeetupListScreen> {
   }
 }
 
+/// Thẻ meetup nhỏ (dùng trên màn hình chính, nằm trong bảng kính).
+/// Không dùng kính lồng kính: chỉ là lớp nền mờ nhẹ, góc bo đồng tâm.
 class MeetupCard extends StatelessWidget {
   const MeetupCard({super.key, required this.group, required this.meetup});
   final Group group;
@@ -95,45 +117,151 @@ class MeetupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final shape = glassShape(radius: 22);
+    return GlassPressable(
+      shape: shape,
+      scale: 0.97,
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => MeetupDetailScreen(group: group, meetupId: meetup.id),
+      )),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: dark ? Colors.white.withValues(alpha: 0.07) : Colors.white.withValues(alpha: 0.5),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+          child: _MeetupSummary(meetup: meetup),
+        ),
+      ),
+    );
+  }
+}
+
+/// Nội dung một dòng meetup: biểu tượng cờ, tên, giờ hẹn và số người.
+class _MeetupSummary extends StatelessWidget {
+  const _MeetupSummary({required this.meetup});
+  final Meetup meetup;
+
+  @override
+  Widget build(BuildContext context) {
     final m = meetup;
+    final scheme = Theme.of(context).colorScheme;
     final going = m.participants.values.where((s) => s == MeetupStatus.going).length;
     final arrived = m.participants.values.where((s) => s == MeetupStatus.arrived).length;
-    return Glass(
-      radius: 26,
-      opacity: 0.65,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(26),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => MeetupDetailScreen(group: group, meetupId: m.id),
-          )),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(gradient: AppColors.brandGradient, borderRadius: BorderRadius.circular(16)),
-                  child: const Icon(Icons.flag_rounded, color: Colors.white),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(m.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 2),
-                      Text('${_timeLabel(m.time)} · $arrived đã tới · $going đang tới',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded),
-              ],
-            ),
+    return Row(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: ShapeDecoration(shape: glassShape(radius: 14), gradient: AppColors.brandGradient),
+          child: const Icon(Icons.flag_rounded, color: Colors.white, size: 24),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(m.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
+              const SizedBox(height: 2),
+              Text('${_timeLabel(m.time)} · $arrived đã tới · $going đang tới',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), fontSize: 13.5)),
+            ],
           ),
+        ),
+        Icon(Icons.chevron_right_rounded, color: scheme.onSurface.withValues(alpha: 0.3)),
+      ],
+    );
+  }
+}
+
+/// Nút hành động chính nổi dạng viên thuốc kính có màu thương hiệu.
+class _FloatingAction extends StatelessWidget {
+  const _FloatingAction({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPill(
+      tint: AppColors.brand,
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 21),
+          const SizedBox(width: 8),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Nhóm dòng bên trong một bảng kính: nền mờ nhẹ (không phải kính lồng kính),
+/// ngăn cách bằng đường kẻ mảnh 0.5px.
+class _InsetGroup extends StatelessWidget {
+  const _InsetGroup({required this.children, this.dividerIndent = 16});
+  final List<Widget> children;
+  final double dividerIndent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final shape = glassShape(radius: 20);
+    return ClipPath(
+      clipper: ShapeBorderClipper(shape: shape),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: dark ? Colors.white.withValues(alpha: 0.07) : Colors.white.withValues(alpha: 0.5),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 0.5,
+                    thickness: 0.5,
+                    indent: dividerIndent,
+                    color: scheme.onSurface.withValues(alpha: 0.12),
+                  ),
+                children[i],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Thanh nắm kéo của sheet kính.
+class _Grabber extends StatelessWidget {
+  const _Grabber();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 36,
+        height: 5,
+        decoration: ShapeDecoration(
+          shape: const StadiumBorder(),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.22),
         ),
       ),
     );
@@ -228,17 +356,30 @@ class _CreateMeetupScreenState extends State<CreateMeetupScreen> {
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
               child: Row(
                 children: [
-                  GlassButton(icon: Icons.arrow_back_rounded, onTap: () => Navigator.pop(context)),
-                  const SizedBox(width: 12),
+                  GlassButton(
+                    size: 46,
+                    icon: Icons.chevron_left_rounded,
+                    tooltip: 'Quay lại',
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 10),
                   const Expanded(
                     child: Glass(
-                      radius: 27,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-                      child: Text('Chạm bản đồ để chọn điểm hẹn',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      capsule: true,
+                      opacity: 0.65,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                      child: Row(children: [
+                        Icon(Icons.touch_app_rounded, size: 18, color: AppColors.sos),
+                        SizedBox(width: 8),
+                        Flexible(
+                          child: Text('Chạm bản đồ để chọn điểm hẹn',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: -0.2)),
+                        ),
+                      ]),
                     ),
                   ),
                 ],
@@ -249,45 +390,83 @@ class _CreateMeetupScreenState extends State<CreateMeetupScreen> {
             alignment: Alignment.bottomCenter,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                 child: Glass(
-                  radius: 32,
-                  opacity: 0.75,
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextField(
-                        controller: _title,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
-                          hintText: 'Tên cuộc hẹn (vd: Cà phê cuối tuần)',
-                          prefixIcon: Icon(Icons.flag_outlined),
+                  radius: 34,
+                  opacity: 0.78,
+                  padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(left: 6, bottom: 12),
+                          child: Text('Điểm hẹn mới',
+                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          const Icon(Icons.place_rounded, color: AppColors.sos, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(child: AddressText(_point.latitude, _point.longitude, maxLines: 1)),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.schedule_rounded, color: AppColors.brand),
-                        title: Text(_timeLabel(_time), style: const TextStyle(fontWeight: FontWeight.w700)),
-                        trailing: const Text('Đổi giờ'),
-                        onTap: _pickTime,
-                      ),
-                      FilledButton.icon(
-                        icon: const Icon(Icons.send_rounded),
-                        label: const Text('Tạo & mời cả nhóm'),
-                        onPressed: _saving ? null : _save,
-                      ),
-                    ],
+                        TextField(
+                          controller: _title,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            hintText: 'Tên cuộc hẹn (vd: Cà phê cuối tuần)',
+                            prefixIcon: Icon(Icons.flag_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _InsetGroup(
+                          dividerIndent: 52,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                              child: Row(
+                                children: [
+                                  const GlassIconBadge(icon: Icons.place_rounded, color: AppColors.sos, size: 28),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: AddressText(_point.latitude, _point.longitude, maxLines: 1)),
+                                ],
+                              ),
+                            ),
+                            InkWell(
+                              onTap: _pickTime,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                                child: Row(
+                                  children: [
+                                    const GlassIconBadge(
+                                        icon: Icons.schedule_rounded, color: AppColors.brand, size: 28),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(_timeLabel(_time),
+                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5)),
+                                    ),
+                                    Text('Đổi giờ',
+                                        style: TextStyle(
+                                            color: Theme.of(context).colorScheme.primary,
+                                            fontWeight: FontWeight.w600)),
+                                    Icon(Icons.chevron_right_rounded,
+                                        size: 20,
+                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        FilledButton.icon(
+                          icon: _saving
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.send_rounded),
+                          label: const Text('Tạo & mời cả nhóm'),
+                          onPressed: _saving ? null : _save,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -333,7 +512,11 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
         content: const Text('Cuộc hẹn sẽ biến mất khỏi danh sách của cả nhóm.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Kết thúc')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.sos),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Kết thúc'),
+          ),
         ],
       ),
     );
@@ -404,16 +587,22 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                 ),
                 SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
                     child: Row(
                       children: [
-                        GlassButton(icon: Icons.arrow_back_rounded, onTap: () => Navigator.pop(context)),
+                        GlassButton(
+                          size: 46,
+                          icon: Icons.chevron_left_rounded,
+                          tooltip: 'Quay lại',
+                          onTap: () => Navigator.pop(context),
+                        ),
                         const Spacer(),
                         if (m.createdBy == _me)
                           GlassPill(
                             onTap: () => _end(m),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                             child: const Text('Kết thúc',
-                                style: TextStyle(color: AppColors.sos, fontWeight: FontWeight.w800)),
+                                style: TextStyle(color: AppColors.sos, fontWeight: FontWeight.w700, fontSize: 15)),
                           ),
                       ],
                     ),
@@ -423,91 +612,127 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                   initialChildSize: 0.45,
                   minChildSize: 0.25,
                   maxChildSize: 0.85,
-                  builder: (context, scroll) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Glass(
-                      radius: 34,
-                      opacity: 0.7,
-                      child: ListView(
-                        controller: scroll,
-                        padding: EdgeInsets.fromLTRB(18, 12, 18, 16 + MediaQuery.paddingOf(context).bottom),
-                        children: [
-                          Center(
-                            child: Container(
-                              width: 40,
-                              height: 5,
-                              decoration:
-                                  BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(3)),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(m.title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 4),
-                          Row(
+                  builder: (context, scroll) {
+                    final scheme = Theme.of(context).colorScheme;
+                    final secondary = scheme.onSurface.withValues(alpha: 0.55);
+                    final bottom = MediaQuery.paddingOf(context).bottom;
+                    return Padding(
+                      padding: EdgeInsets.fromLTRB(8, 0, 8, bottom > 0 ? bottom * 0.4 + 4 : 8),
+                      child: Glass(
+                        radius: 38,
+                        opacity: 0.78,
+                        blur: 20,
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: ListView(
+                            controller: scroll,
+                            padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + bottom * 0.6),
                             children: [
-                              const Icon(Icons.schedule_rounded, size: 18, color: AppColors.brand),
-                              const SizedBox(width: 6),
-                              Text(_timeLabel(m.time), style: const TextStyle(fontWeight: FontWeight.w700)),
-                              Text('  ·  ${m.createdByName} tạo',
-                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                              const _Grabber(),
+                              const SizedBox(height: 14),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(m.title,
+                                        style: const TextStyle(
+                                            fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.schedule_rounded, size: 17, color: AppColors.brand),
+                                        const SizedBox(width: 6),
+                                        Text(_timeLabel(m.time), style: const TextStyle(fontWeight: FontWeight.w600)),
+                                        Flexible(
+                                          child: Text('  ·  ${m.createdByName} tạo',
+                                              overflow: TextOverflow.ellipsis, style: TextStyle(color: secondary)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Padding(
+                                          padding: EdgeInsets.only(top: 1),
+                                          child: Icon(Icons.place_rounded, size: 17, color: AppColors.sos),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: AddressText(m.lat, m.lng,
+                                              maxLines: 2, style: TextStyle(color: secondary)),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              if (myStatus != MeetupStatus.arrived)
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor:
+                                              myStatus == MeetupStatus.going ? AppColors.online : AppColors.brand,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        icon: Icon(myStatus == MeetupStatus.going
+                                            ? Icons.check_rounded
+                                            : Icons.directions_run_rounded),
+                                        label: Text(myStatus == MeetupStatus.going ? 'Đang tới' : 'Tôi sẽ tới'),
+                                        onPressed: () => GroupService.instance
+                                            .setMeetupStatus(widget.group.id, m.id, MeetupStatus.going),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
+                                          foregroundColor: myStatus == MeetupStatus.declined
+                                              ? secondary
+                                              : scheme.onSurface,
+                                        ),
+                                        onPressed: () => GroupService.instance
+                                            .setMeetupStatus(widget.group.id, m.id, MeetupStatus.declined),
+                                        child: Text(myStatus == MeetupStatus.declined ? 'Đã từ chối' : 'Không đi'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 22),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 7),
+                                child: Text('THÀNH VIÊN',
+                                    style: TextStyle(
+                                        fontSize: 12.5,
+                                        letterSpacing: 0.3,
+                                        fontWeight: FontWeight.w600,
+                                        color: scheme.onSurface.withValues(alpha: 0.5))),
+                              ),
+                              _InsetGroup(
+                                dividerIndent: 70,
+                                children: [
+                                  for (final uid in widget.group.memberIds)
+                                    _ParticipantRow(
+                                      uid: uid,
+                                      name: byUid[uid]?.name ?? widget.group.nameOf(uid),
+                                      status: m.statusOf(uid),
+                                      location: byUid[uid],
+                                      meetup: m,
+                                      onTap: byUid[uid] == null ? null : () => _map.move(byUid[uid]!.point, 16),
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.place_rounded, size: 18, color: AppColors.sos),
-                              const SizedBox(width: 6),
-                              Expanded(child: AddressText(m.lat, m.lng, maxLines: 2)),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          if (myStatus != MeetupStatus.arrived)
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton.icon(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor:
-                                          myStatus == MeetupStatus.going ? AppColors.online : AppColors.brand,
-                                    ),
-                                    icon: Icon(myStatus == MeetupStatus.going
-                                        ? Icons.check_rounded
-                                        : Icons.directions_run_rounded),
-                                    label: Text(myStatus == MeetupStatus.going ? 'Đang tới' : 'Tôi sẽ tới'),
-                                    onPressed: () => GroupService.instance
-                                        .setMeetupStatus(widget.group.id, m.id, MeetupStatus.going),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: OutlinedButton(
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(52),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                    ),
-                                    onPressed: () => GroupService.instance
-                                        .setMeetupStatus(widget.group.id, m.id, MeetupStatus.declined),
-                                    child: Text(myStatus == MeetupStatus.declined ? 'Đã từ chối' : 'Không đi'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          const SizedBox(height: 16),
-                          const Text('Thành viên', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 6),
-                          for (final uid in widget.group.memberIds)
-                            _ParticipantRow(
-                              uid: uid,
-                              name: byUid[uid]?.name ?? widget.group.nameOf(uid),
-                              status: m.statusOf(uid),
-                              location: byUid[uid],
-                              meetup: m,
-                              onTap: byUid[uid] == null ? null : () => _map.move(byUid[uid]!.point, 16),
-                            ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ],
             );
@@ -549,27 +774,32 @@ class _ParticipantRow extends StatelessWidget {
       detail = 'Cách ${distanceLabel(d)}';
       if (status == MeetupStatus.going) detail += ' · ~${durationText(estimateEta(d, loc.speed))}';
     }
+    final secondary = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Row(
           children: [
             MemberAvatar(uid: uid, name: name, radius: 22, dimmed: status == MeetupStatus.declined),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                  Text(detail, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5, letterSpacing: -0.2)),
+                  const SizedBox(height: 1),
+                  Text(detail, style: TextStyle(color: secondary, fontSize: 13)),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+              decoration: ShapeDecoration(shape: const StadiumBorder(), color: color.withValues(alpha: 0.14)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

@@ -9,6 +9,8 @@ import 'services/location_service.dart';
 import 'services/notification_service.dart';
 import 'services/settings_service.dart';
 import 'theme.dart';
+import 'widgets/common.dart';
+import 'widgets/glass.dart';
 
 class IPingApp extends StatelessWidget {
   const IPingApp({super.key});
@@ -35,12 +37,44 @@ class AuthGate extends StatelessWidget {
       stream: AuthService.instance.authChanges(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const _Splash();
         }
         final user = snap.data;
         if (user == null) return const SignInScreen();
         return SignedInShell(key: ValueKey(user.uid), uid: user.uid);
       },
+    );
+  }
+}
+
+/// Màn chờ khi đang kiểm tra đăng nhập: logo phát sáng trên nền kính.
+class _Splash extends StatelessWidget {
+  const _Splash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: GlassBackground(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: AppColors.brand.withValues(alpha: 0.35), blurRadius: 40, spreadRadius: 4),
+                  ],
+                ),
+                child: const AppLogo(size: 84),
+              ),
+              const SizedBox(height: 28),
+              const CircularProgressIndicator.adaptive(),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

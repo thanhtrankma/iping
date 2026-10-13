@@ -7,40 +7,36 @@ import '../services/group_service.dart';
 import '../services/location_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/glass.dart';
 import 'group_actions.dart';
 
 /// Thao tác ở chế độ "Tất cả bạn bè" và check-in.
 class AllFriendsActions {
   /// Hỏi người dùng chọn một nhóm.
   static Future<Group?> chooseGroup(BuildContext context, List<Group> groups, {String title = 'Chọn nhóm'}) {
-    return showModalBottomSheet<Group>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.7),
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-                child: Text(title, style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-              ),
-              for (final g in groups)
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.brand,
-                    child: Text(g.name.isEmpty ? '?' : g.name.characters.first.toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+    return showGlassSheet<Group>(
+      context,
+      builder: (ctx) => ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.7),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+          children: [
+            SheetTitle(title),
+            InsetGroup(
+              children: [
+                for (final g in groups)
+                  ListTile(
+                    leading: GroupBadge(name: g.name, size: 38),
+                    title: Text(g.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text('${g.memberIds.length} thành viên'),
+                    trailing: Icon(Icons.chevron_right_rounded,
+                        color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.3)),
+                    onTap: () => Navigator.pop(ctx, g),
                   ),
-                  title: Text(g.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${g.memberIds.length} thành viên'),
-                  onTap: () => Navigator.pop(ctx, g),
-                ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -73,12 +69,7 @@ class AllFriendsActions {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(color: AppColors.sos.withValues(alpha: 0.12), shape: BoxShape.circle),
-          child: const Icon(Icons.sos_rounded, color: AppColors.sos, size: 40),
-        ),
+        icon: const GlassIconBadge(icon: Icons.sos_rounded, color: AppColors.sos, size: 64),
         title: const Text('Gửi cảnh báo SOS?'),
         content: Text(
           'Thành viên của cả ${groups.length} nhóm sẽ nhận thông báo khẩn cấp kèm vị trí hiện tại của bạn.',
@@ -122,7 +113,7 @@ class AllFriendsActions {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.where_to_vote_rounded, color: AppColors.brand, size: 40),
+        icon: const GlassIconBadge(icon: Icons.where_to_vote_rounded, color: AppColors.brand, size: 64),
         title: const Text('Check-in tại đây?'),
         content: Text('$address\n\n$who sẽ nhận thông báo.', textAlign: TextAlign.center),
         actionsAlignment: MainAxisAlignment.center,
