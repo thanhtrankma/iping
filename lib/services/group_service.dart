@@ -187,7 +187,7 @@ class GroupService {
       .map((s) => s.docs.map(GroupEvent.fromDoc).toList());
 
   Future<void> addEvent(String gid,
-          {required String type, String? placeName, double? lat, double? lng}) =>
+          {required String type, String? placeName, double? lat, double? lng, int? battery}) =>
       _sub(gid, 'events').add({
         'type': type,
         'uid': _uid,
@@ -195,6 +195,7 @@ class GroupService {
         if (placeName != null) 'placeName': placeName,
         if (lat != null) 'lat': lat,
         if (lng != null) 'lng': lng,
+        if (battery != null) 'battery': battery,
         'createdAt': FieldValue.serverTimestamp(),
       });
 

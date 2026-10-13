@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
+import 'battery_alert_service.dart';
 import 'explore_service.dart';
 import 'geofence_service.dart';
 import 'group_service.dart';
@@ -41,6 +42,7 @@ class LocationService {
       GeofenceService.instance.watch(groups);
       AvatarRegistry.instance.addGroups(groups);
     });
+    BatteryAlertService.instance.start();
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_prefKey) ?? false) await start();
   }
@@ -52,6 +54,7 @@ class LocationService {
     _groupSub = null;
     _groups = [];
     GeofenceService.instance.watch(const []);
+    await BatteryAlertService.instance.stop();
   }
 
   /// Trả về thông báo lỗi nếu không bắt đầu được, `null` nếu thành công.
@@ -148,6 +151,7 @@ class LocationService {
     }));
 
     await GeofenceService.instance.check(p, _groups);
+    if (battery != null) await BatteryAlertService.instance.check(level: battery);
   }
 
   Position? _lastSaved;

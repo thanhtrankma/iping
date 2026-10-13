@@ -5,6 +5,7 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
+const { wantsAlert } = require('./alert_prefs');
 
 initializeApp();
 setGlobalOptions({ region: 'asia-southeast1' });
@@ -144,19 +145,22 @@ exports.leaveGroup = onCall(async (req) => {
 
 // ---------- Thông báo đẩy ----------
 
+// `exceptUid` là người gửi: không gửi cho họ và dùng để lọc theo `mutedUids` của người nhận.
 async function notifyGroup(groupId, exceptUid, notification, data) {
   const g = await db.doc(`groups/${groupId}`).get();
   if (!g.exists) return;
   const targets = (g.get('memberIds') || []).filter((m) => m !== exceptUid);
-  await notifyUsers(groupId, targets, notification, data);
+  await notifyUsers(groupId, targets, notification, data, exceptUid);
 }
 
-async function notifyUsers(groupId, targets, notification, data) {
+async function notifyUsers(groupId, targets, notification, data, senderUid) {
   if (targets.length === 0) return;
 
   const userSnaps = await db.getAll(...targets.map((m) => db.doc(`users/${m}`)));
   const tokenOwners = new Map();
   for (const u of userSnaps) {
+    // Tôn trọng cài đặt "Quản lý cảnh báo" của người nhận.
+    if (!wantsAlert(u.data(), data.type, senderUid)) continue;
     for (const t of u.get('fcmTokens') || []) tokenOwners.set(t, u.id);
   }
   const tokens = [...tokenOwners.keys()];
@@ -206,6 +210,9 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     case 'meetup_arrive':
       notification = { title: groupName, body: `📍 ${e.name} đã tới điểm hẹn ${e.placeName || ''}` };
       break;
+    case 'low_battery':
+      notification = { title: groupName, body: `🔋 ${e.name} sắp hết pin (${e.battery}%)` };
+      break;
     default:
       return;
   }
@@ -238,7 +245,8 @@ exports.onPing = onDocumentCreated('groups/{groupId}/pings/{pingId}', async (eve
   const groupId = event.params.groupId;
   const g = await db.doc(`groups/${groupId}`).get();
   if (!(g.get('memberIds') || []).includes(p.to)) return;
-  await notifyUsers(groupId, [p.to], { title: p.fromName || 'IPing', body: PING_TEXT[p.type] }, { type: 'ping' });
+  await notifyUsers(groupId, [p.to], { title: p.fromName || 'IPing', body: PING_TEXT[p.type] }, { type: 'ping' },
+    p.from);
 });
 
 // ---------- Hồ sơ: đồng bộ tên & ảnh vào các nhóm ----------

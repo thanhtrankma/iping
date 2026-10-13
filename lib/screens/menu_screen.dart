@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import 'activity_tab.dart';
+import 'alert_settings_screen.dart';
 import 'explore_screen.dart';
 import 'group_actions.dart';
 import 'groups_screen.dart';
@@ -84,6 +85,11 @@ class MenuScreen extends StatelessWidget {
                 icon: Icons.explore_outlined,
                 title: 'Khám phá',
                 onTap: () => _push(context, const ExploreScreen()),
+              ),
+              _Item(
+                icon: Icons.notifications_active_outlined,
+                title: 'Quản lý cảnh báo',
+                onTap: () => _push(context, AlertSettingsScreen(uid: uid)),
               ),
               if (g != null) ...[
                 _Item(

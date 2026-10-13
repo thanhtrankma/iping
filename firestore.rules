@@ -120,7 +120,12 @@ service cloud.firestore {
         allow read: if isMember(gid);
         allow create: if isMember(gid)
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive'];
+          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'low_battery']
+          // Cảnh báo pin yếu phải kèm mức pin hợp lệ.
+          && (request.resource.data.type != 'low_battery'
+              || (request.resource.data.battery is int
+                  && request.resource.data.battery >= 0
+                  && request.resource.data.battery <= 100));
       }
 
       // Điểm khám phá: thành viên đọc được, mỗi người chỉ ghi điểm của mình.
