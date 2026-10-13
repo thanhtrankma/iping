@@ -46,23 +46,20 @@ Future<String?> promptText(BuildContext context,
   );
 }
 
+/// Logo IPing (ảnh trong assets/branding, sinh bằng scripts/make_branding.py).
 class AppLogo extends StatelessWidget {
   const AppLogo({super.key, this.size = 40, this.onDark = false});
   final double size;
+  /// Giữ để tương thích; logo mới đã có viền kính nên dùng được trên mọi nền.
   final bool onDark;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Image.asset(
+      'assets/branding/logo_rounded_512.png',
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        gradient: onDark ? null : AppColors.brandGradient,
-        color: onDark ? Colors.white.withValues(alpha: 0.18) : null,
-        borderRadius: BorderRadius.circular(size * 0.3),
-        border: onDark ? Border.all(color: Colors.white.withValues(alpha: 0.35)) : null,
-      ),
-      child: Icon(Icons.wifi_tethering_rounded, color: Colors.white, size: size * 0.58),
+      filterQuality: FilterQuality.medium,
     );
   }
 }
