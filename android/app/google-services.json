@@ -66,6 +66,14 @@
           }
         },
         {
+          "client_id": "174626795612-oc3i629kpigulnglue5d3ola33ln2rs6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.iping.app",
+            "certificate_hash": "14ffe7eac3803901075dfc1749a7417b9b17ad9f"
+          }
+        },
+        {
           "client_id": "174626795612-hkaniikupmhn2015hllhkct756eta8dq.apps.googleusercontent.com",
           "client_type": 3
         }
