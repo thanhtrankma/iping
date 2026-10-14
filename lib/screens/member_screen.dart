@@ -98,6 +98,7 @@ class _MemberScreenState extends State<MemberScreen> {
   Future<void> _requestLocation(MemberLocation? loc) async {
     try {
       await GroupService.instance.sendPing(widget.groupId, widget.uid, 'locate');
+      if (!mounted) return;
       setState(() {
         _locating = true;
         _locateBase = loc?.updatedAt;
