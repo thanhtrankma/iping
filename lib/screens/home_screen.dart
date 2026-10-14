@@ -135,6 +135,8 @@ class _GroupMapViewState extends State<_GroupMapView> {
       _moments = GroupService.instance.moments(g.id);
       _meetups = GroupService.instance.activeMeetups(g.id);
     }
+    LocationService.instance.lastPosition.addListener(_onLastPosition);
+    _locateDevice();
     if (g != null) {
       _safeTrips = _watchSafeTrips(_all ? widget.groups.map((x) => x.id).toList() : [g.id]);
       _safeTick = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -145,6 +147,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
 
   @override
   void dispose() {
+    LocationService.instance.lastPosition.removeListener(_onLastPosition);
     _map.dispose();
     _sheet.dispose();
     _safeTick?.cancel();
@@ -220,6 +223,37 @@ class _GroupMapViewState extends State<_GroupMapView> {
 
   bool _centered = false;
 
+  // Căn bản đồ theo vị trí THẬT của máy khi mở app. Bản ghi vị trí trên server có thể cũ
+  // (ví dụ đang tắt chia sẻ, hoặc tài khoản từng đăng nhập trên máy khác) nên chỉ dùng tạm.
+  LatLng? _device;
+  bool _deviceCentered = false;
+  bool _userMoved = false;
+
+  void _centerOnDevice(LatLng p) {
+    _device = p;
+    if (!mounted || _userMoved) return;
+    _deviceCentered = true;
+    _centered = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_userMoved) _map.move(p, 16);
+    });
+  }
+
+  void _onLastPosition() {
+    final p = LocationService.instance.lastPosition.value;
+    if (p != null && !_deviceCentered) _centerOnDevice(LatLng(p.latitude, p.longitude));
+  }
+
+  Future<void> _locateDevice() async {
+    final p = await LocationService.instance.devicePosition(
+      onFresh: (p) {
+        // Vị trí hệ thống nhớ có thể đã cũ: có vị trí mới thì cập nhật nếu người dùng chưa kéo bản đồ.
+        if (!_userMoved) _centerOnDevice(LatLng(p.latitude, p.longitude));
+      },
+    );
+    if (p != null && !_deviceCentered) _centerOnDevice(LatLng(p.latitude, p.longitude));
+  }
+
   void _push(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
   Future<void> _focusMe() async {
@@ -268,7 +302,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                 };
                 final center = me != null
                     ? LatLng(me.latitude, me.longitude)
-                    : myLoc?.point ?? (locs.isNotEmpty ? locs.first.point : defaultCenter);
+                    : _device ?? myLoc?.point ?? (locs.isNotEmpty ? locs.first.point : defaultCenter);
                 // Bản đồ tạo trước khi dữ liệu về: đưa về đúng chỗ ở lần đầu có vị trí.
                 if (!_centered && (me != null || locs.isNotEmpty)) {
                   _centered = true;
@@ -285,6 +319,9 @@ class _GroupMapViewState extends State<_GroupMapView> {
                         center: center,
                         zoom: 16,
                         onTap: (_, __) => _collapseSheet(),
+                        onPositionChanged: (_, hasGesture) {
+                          if (hasGesture) _userMoved = true;
+                        },
                         layers: [
                           ...placeLayers(places),
                           ...safeTripLayers(safeTrips, current: travellerPos, now: safeNow, onTap: _openSafeTrip),

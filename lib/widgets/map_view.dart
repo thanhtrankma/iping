@@ -24,6 +24,7 @@ class IPingMap extends StatelessWidget {
     this.layers = const [],
     this.interactive = true,
     this.onTap,
+    this.onPositionChanged,
     this.fit,
     this.style,
   });
@@ -34,6 +35,7 @@ class IPingMap extends StatelessWidget {
   final List<Widget> layers;
   final bool interactive;
   final void Function(TapPosition, LatLng)? onTap;
+  final void Function(MapCamera camera, bool hasGesture)? onPositionChanged;
   final CameraFit? fit;
 
   /// Ép kiểu bản đồ, bỏ qua cài đặt của người dùng.
@@ -53,6 +55,7 @@ class IPingMap extends StatelessWidget {
             initialZoom: zoom,
             initialCameraFit: fit,
             onTap: onTap,
+            onPositionChanged: onPositionChanged,
             interactionOptions: InteractionOptions(
               flags: interactive ? InteractiveFlag.all & ~InteractiveFlag.rotate : InteractiveFlag.none,
             ),
