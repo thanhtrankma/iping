@@ -154,17 +154,31 @@ class AuthService {
 
   /// Dừng chia sẻ và gỡ token push trước khi mất quyền ghi.
   Future<void> _stopServices(String uid) async {
-    await LocationService.instance.stop();
-    await LocationService.instance.dispose();
-    await ExploreService.instance.dispose();
-    await NotificationService.instance.unregister(uid);
+    // Khi mất mạng, lệnh ghi Firestore chờ server mãi: mỗi bước có giới hạn thời gian và không chặn bước sau.
+    Future<void> step(String name, Future<void> Function() f) async {
+      try {
+        await f().timeout(const Duration(seconds: 5));
+      } catch (e) {
+        debugPrint('Sign-out $name: $e');
+      }
+    }
+
+    await step('location.stop', LocationService.instance.stop);
+    await step('location.dispose', LocationService.instance.dispose);
+    await step('explore', ExploreService.instance.dispose);
+    await step('notifications', () => NotificationService.instance.unregister(uid));
   }
 
   Future<void> signOut() async {
     final uid = user?.uid;
-    if (uid != null) await _stopServices(uid);
-    await _signOutGoogle();
-    await _auth.signOut();
+    try {
+      if (uid != null) await _stopServices(uid);
+      await _signOutGoogle().timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('Sign-out cleanup: $e');
+    } finally {
+      await _auth.signOut();
+    }
   }
 
   /// Xoá vĩnh viễn tài khoản qua Cloud Function `deleteAccount` rồi đăng xuất.
