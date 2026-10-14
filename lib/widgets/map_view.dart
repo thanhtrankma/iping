@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../config/map_tiles.dart';
 import '../models/models.dart';
 import '../services/profile_service.dart';
 import '../services/settings_service.dart';
@@ -13,8 +14,7 @@ import 'glass.dart';
 
 /// Bản đồ dùng chung, tự đổi giữa vệ tinh và bản đồ thường theo cài đặt.
 ///
-/// Ảnh vệ tinh của Esri World Imagery chỉ phù hợp để phát triển; khi phát hành
-/// cần tài khoản ArcGIS hoặc chuyển sang nhà cung cấp có giấy phép.
+/// Nguồn tile lấy từ `config/map_tiles.dart` (MapTiler khi có key).
 class IPingMap extends StatelessWidget {
   const IPingMap({
     super.key,
@@ -57,28 +57,14 @@ class IPingMap extends StatelessWidget {
             ),
           ),
           children: [
-            if (satellite) ...[
-              TileLayer(
-                urlTemplate:
-                    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                userAgentPackageName: 'com.iping.app',
-                maxNativeZoom: 19,
-              ),
-              TileLayer(
-                urlTemplate:
-                    'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-                userAgentPackageName: 'com.iping.app',
-                maxNativeZoom: 19,
-              ),
-            ] else
-              osmTileLayer(),
+            if (satellite) ...satelliteTileLayers(context) else streetTileLayer(context),
             ...layers,
             Align(
               alignment: Alignment.bottomLeft,
               child: Padding(
                 padding: const EdgeInsets.all(6),
                 child: Text(
-                  satellite ? '© Esri, Maxar' : '© OpenStreetMap',
+                  mapAttribution(satellite: satellite),
                   style: TextStyle(
                     fontSize: 9,
                     color: satellite ? Colors.white70 : Colors.black54,

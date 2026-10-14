@@ -1,6 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../services/location_service.dart';
@@ -10,13 +9,6 @@ import '../utils/format.dart';
 import 'glass.dart';
 
 const defaultCenter = LatLng(21.0285, 105.8542); // Hà Nội
-
-/// Lớp bản đồ OpenStreetMap. Khi phát hành thật, nên dùng nhà cung cấp tile
-/// riêng (MapTiler, Mapbox...) theo chính sách sử dụng của OSM.
-TileLayer osmTileLayer() => TileLayer(
-      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      userAgentPackageName: 'com.iping.app',
-    );
 
 void showMessage(BuildContext context, String text) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));

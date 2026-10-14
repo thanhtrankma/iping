@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../config/map_tiles.dart';
 import '../models/models.dart';
 import '../services/group_service.dart';
 import '../services/location_service.dart';
@@ -212,7 +213,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                 onTap: (_, p) => setState(() => _point = p),
               ),
               children: [
-                osmTileLayer(),
+                streetTileLayer(context),
                 CircleLayer(circles: [
                   CircleMarker(
                     point: _point,
@@ -232,6 +233,15 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                     child: const Icon(Icons.location_pin, size: 44, color: AppColors.brand),
                   ),
                 ]),
+                // Ghi nguồn bản đồ, đặt dưới thanh trên vì phía dưới bị bảng chỉnh bán kính che.
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(6, MediaQuery.paddingOf(context).top + 64, 10, 0),
+                    child: Text(mapAttribution(satellite: false),
+                        style: const TextStyle(fontSize: 9, color: Colors.black54)),
+                  ),
+                ),
               ],
             ),
           ),
