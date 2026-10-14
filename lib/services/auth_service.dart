@@ -69,6 +69,26 @@ class AuthService {
     return true;
   }
 
+  // ---- Apple (chỉ iOS) ----
+
+  /// Đăng nhập bằng Apple qua Firebase (native trên iOS). Trả về `false` nếu người dùng tự huỷ.
+  Future<bool> signInWithApple() async {
+    final provider = AppleAuthProvider()
+      ..addScope('email')
+      ..addScope('name');
+    final UserCredential cred;
+    try {
+      cred = await _auth.signInWithProvider(provider);
+    } on FirebaseAuthException catch (e) {
+      if (const {'canceled', 'web-context-canceled', 'user-cancelled'}.contains(e.code)) return false;
+      rethrow;
+    }
+    final u = cred.user!;
+    // Apple chỉ gửi tên ở lần đầu; không có thì màn đăng nhập sẽ hỏi tên (xem [needsName]).
+    await _ensureProfile(u, isNew: cred.additionalUserInfo?.isNewUser ?? false, name: u.displayName);
+    return true;
+  }
+
   // ---- Số điện thoại ----
 
   /// Gửi mã OTP. [onAutoVerified] được gọi khi Android tự đọc được mã và đã đăng nhập xong.

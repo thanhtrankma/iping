@@ -42,7 +42,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 24 | Tạm ẩn vị trí trong một khoảng thời gian | ✅ | `privacy_screen.dart`: ẩn theo từng nhóm 1h / 8h / tới sáng / vô hạn |
 | 25 | Chỉ đường tới thành viên / mở Google Maps | ❌ | Chỉ hiện khoảng cách |
 | 26 | Đăng nhập Email | ✅ | |
-| 27 | Đăng nhập Google / Apple / số điện thoại | ⚠️ | Google + số điện thoại (OTP) đã có (`sign_in_screen.dart`, `phone_sign_in_screen.dart`). **Chưa có Apple**: App Store bắt buộc khi có đăng nhập Google, cần tài khoản Apple Developer |
+| 27 | Đăng nhập Google / Apple / số điện thoại | ✅ | Google, số điện thoại (OTP) và Sign in with Apple (chỉ hiện trên iOS, `AppleAuthProvider`, entitlement `com.apple.developer.applesignin`). Apple cần ký bằng tài khoản Apple Developer khi build lên máy/App Store |
 | 28 | Quên mật khẩu | ✅ | Link "Quên mật khẩu?" → `sendPasswordResetEmail` (`account_dialogs.dart`) |
 | 29 | Xoá tài khoản | ✅ | Hồ sơ → Xoá tài khoản (gõ XOÁ để xác nhận) → callable `deleteAccount`: rời mọi nhóm, xoá users/{uid}, ảnh Storage, tài khoản Auth |
 | 30 | Ảnh đại diện, tên hiển thị | ✅ | `profile_screen.dart` |

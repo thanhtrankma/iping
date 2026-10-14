@@ -10,8 +10,8 @@ import '../utils/auth_errors.dart';
 import '../utils/phone.dart';
 import '../widgets/glass.dart';
 
-/// Sau khi đăng nhập bằng số điện thoại: hỏi tên nếu là người mới, rồi về màn chính.
-void _finishPhoneSignIn(NavigatorState nav) {
+/// Sau khi đăng nhập bằng số điện thoại / Apple: hỏi tên nếu chưa có, rồi về màn chính.
+void finishSignIn(NavigatorState nav) {
   if (AuthService.instance.needsName) {
     nav.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const PhoneNameScreen()),
@@ -144,7 +144,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
           });
         }
       },
-      onAutoVerified: () => _finishPhoneSignIn(nav),
+      onAutoVerified: () => finishSignIn(nav),
     )
         .catchError((Object e) {
       if (mounted) {
@@ -255,7 +255,7 @@ class _OtpScreenState extends State<OtpScreen> {
     });
     final nav = Navigator.of(context);
     try {
-      if (await AuthService.instance.verifyPhoneCode(_verificationId, code)) _finishPhoneSignIn(nav);
+      if (await AuthService.instance.verifyPhoneCode(_verificationId, code)) finishSignIn(nav);
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = authErrorMessage(e.code));
     } finally {
@@ -280,7 +280,7 @@ class _OtpScreenState extends State<OtpScreen> {
       onError: (e) {
         if (mounted) setState(() => _error = authErrorMessage(e.code));
       },
-      onAutoVerified: () => _finishPhoneSignIn(nav),
+      onAutoVerified: () => finishSignIn(nav),
     );
   }
 

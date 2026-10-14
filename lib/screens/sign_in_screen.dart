@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
@@ -51,6 +52,24 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = authErrorMessage(e.code));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _apple() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final ok = await AuthService.instance.signInWithApple();
+      if (ok && mounted) finishSignIn(Navigator.of(context));
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _error = authErrorMessage(e.code));
+    } catch (e) {
+      debugPrint('Apple sign-in: $e');
+      if (mounted) setState(() => _error = 'Không đăng nhập được bằng Apple. Hãy thử lại.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -264,6 +283,20 @@ class _SignInScreenState extends State<SignInScreen> {
                                     const SizedBox(height: 14),
                                     _OrDivider(color: secondary),
                                     const SizedBox(height: 14),
+                                    // Sign in with Apple: bắt buộc trên iOS khi có đăng nhập Google (App Store 4.8).
+                                    if (defaultTargetPlatform == TargetPlatform.iOS) ...[
+                                      FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Colors.black,
+                                          foregroundColor: Colors.white,
+                                          minimumSize: const Size.fromHeight(50),
+                                        ),
+                                        onPressed: _busy ? null : _apple,
+                                        icon: const Icon(Icons.apple, size: 24),
+                                        label: const Text('Tiếp tục với Apple'),
+                                      ),
+                                      const SizedBox(height: 10),
+                                    ],
                                     OutlinedButton.icon(
                                       onPressed: _busy ? null : _google,
                                       icon: const _GoogleMark(),
