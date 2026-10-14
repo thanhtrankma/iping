@@ -582,8 +582,6 @@ class _MembersSheet extends StatelessWidget {
     final byUid = {for (final l in locations) l.uid: l};
     final members = [...group.memberIds]..sort((a, b) => (a == myUid ? 0 : 1).compareTo(b == myUid ? 0 : 1));
     final scheme = Theme.of(context).colorScheme;
-    final bottom = MediaQuery.viewPaddingOf(context).bottom;
-
     return DraggableScrollableSheet(
       initialChildSize: 0.42,
       minChildSize: 0.2,
@@ -591,7 +589,7 @@ class _MembersSheet extends StatelessWidget {
       snap: true,
       snapSizes: const [0.42],
       builder: (context, scroll) => Padding(
-        padding: EdgeInsets.fromLTRB(10, 0, 10, bottom > 0 ? bottom * 0.4 + 4 : 10),
+        padding: EdgeInsets.fromLTRB(10, 0, 10, floatingBottomGap(context, min: 10)),
         child: Glass(
           radius: _radius,
           opacity: 0.7,

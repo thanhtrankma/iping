@@ -23,20 +23,28 @@ ShapeBorder glassShape({double radius = 28, bool circle = false, bool capsule = 
   return RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(radius));
 }
 
-/// Ma trận tăng bão hoà + sáng nhẹ cho nền phía sau kính.
-List<double> _vibrancyMatrix(double s, double brightness) {
+/// Ma trận màu cho nền phía sau kính: tăng bão hoà [s], nén tương phản [contrast]
+/// quanh màu xám giữa rồi cộng [lift] (thang 0–255).
+///
+/// iOS 26 (chế độ sáng) giữ kính sáng và trong trên mọi nền, kể cả ảnh vệ tinh tối:
+/// nền được nén tương phản và nâng sáng (giống "luminosity" của vật liệu Apple), chỉ tăng
+/// bão hoà nhẹ. Tăng bão hoà mạnh trên nền tối sẽ ra màu xám đục.
+List<double> _vibrancyMatrix(double s, double contrast, double lift) {
   const lr = 0.2126, lg = 0.7152, lb = 0.0722;
   final a = 1 - s;
+  final c = contrast;
+  // Giữ màu xám giữa (128) cố định khi nén tương phản, rồi nâng sáng.
+  final offset = 128 * (1 - c) + lift;
   return [
-    lr * a + s, lg * a, lb * a, 0, brightness,
-    lr * a, lg * a + s, lb * a, 0, brightness,
-    lr * a, lg * a, lb * a + s, 0, brightness,
+    c * (lr * a + s), c * lg * a, c * lb * a, 0, offset,
+    c * lr * a, c * (lg * a + s), c * lb * a, 0, offset,
+    c * lr * a, c * lg * a, c * (lb * a + s), 0, offset,
     0, 0, 0, 1, 0,
   ];
 }
 
 ui.ImageFilter glassFilter({required double blur, required bool dark}) => ui.ImageFilter.compose(
-      outer: ColorFilter.matrix(_vibrancyMatrix(dark ? 1.5 : 1.8, dark ? -6 : 10)),
+      outer: ColorFilter.matrix(dark ? _vibrancyMatrix(1.4, 0.85, -14) : _vibrancyMatrix(1.35, 0.7, 34)),
       inner: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur, tileMode: TileMode.mirror),
     );
 
@@ -80,7 +88,7 @@ class Glass extends StatelessWidget {
     // Kính iOS 26 trong hơn hẳn: chỉ giữ khoảng một nửa độ đục của thang cũ.
     final alpha = tint != null
         ? (0.35 + opacity * 0.45).clamp(0.0, 0.95)
-        : (dark ? 0.18 + opacity * 0.38 : 0.08 + opacity * 0.42).clamp(0.0, 0.9);
+        : (dark ? 0.18 + opacity * 0.38 : 0.14 + opacity * 0.40).clamp(0.0, 0.9);
 
     return DecoratedBox(
       decoration: ShapeDecoration(
@@ -704,6 +712,18 @@ class _TabItem extends StatelessWidget {
   }
 }
 
+/// Khoảng cách từ đáy màn hình tới các bảng kính nổi (sheet, thanh dưới).
+///
+/// - iOS: vạch home được phép nằm đè nhẹ lên kính (như iOS 26) nên chỉ chừa ~40%.
+/// - Android: thanh điều hướng (3 nút hoặc vạch cử chỉ) vẽ đè lên app khi edge-to-edge,
+///   nên phải chừa đủ chiều cao của nó, nếu không các nút sẽ đè lên nội dung.
+double floatingBottomGap(BuildContext context, {double min = 8}) {
+  final bottom = MediaQuery.viewPaddingOf(context).bottom;
+  if (bottom <= 0) return min;
+  if (Theme.of(context).platform == TargetPlatform.iOS) return bottom * 0.4 + 4;
+  return bottom + 6;
+}
+
 /// Mở bottom sheet dạng kính nổi (cách mép màn hình, bo góc lớn) như sheet iOS 26.
 Future<T?> showGlassSheet<T>(
   BuildContext context, {
@@ -718,9 +738,8 @@ Future<T?> showGlassSheet<T>(
     showDragHandle: false,
     barrierColor: Colors.black.withValues(alpha: 0.18),
     builder: (ctx) {
-      final bottom = MediaQuery.of(ctx).viewPadding.bottom;
       return Padding(
-        padding: EdgeInsets.fromLTRB(8, 0, 8, bottom > 0 ? bottom * 0.4 + 4 : 8),
+        padding: EdgeInsets.fromLTRB(8, 0, 8, floatingBottomGap(ctx)),
         child: Glass(
           radius: 38,
           opacity: 0.85,

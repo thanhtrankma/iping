@@ -624,7 +624,7 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                     final secondary = scheme.onSurface.withValues(alpha: 0.55);
                     final bottom = MediaQuery.paddingOf(context).bottom;
                     return Padding(
-                      padding: EdgeInsets.fromLTRB(8, 0, 8, bottom > 0 ? bottom * 0.4 + 4 : 8),
+                      padding: EdgeInsets.fromLTRB(8, 0, 8, floatingBottomGap(context)),
                       child: Glass(
                         radius: 38,
                         opacity: 0.78,

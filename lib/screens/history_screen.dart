@@ -337,7 +337,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final today = _startOfDay(DateTime.now());
-    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     return Scaffold(
       body: FutureBuilder<List<Segment>>(
         future: _timeline,
@@ -414,7 +413,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 minChildSize: 0.2,
                 maxChildSize: 0.88,
                 builder: (context, scroll) => Padding(
-                  padding: EdgeInsets.fromLTRB(8, 0, 8, bottomInset > 0 ? bottomInset * 0.4 + 4 : 8),
+                  padding: EdgeInsets.fromLTRB(8, 0, 8, floatingBottomGap(context)),
                   child: Glass(
                     radius: 38,
                     opacity: 0.72,
