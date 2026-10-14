@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'group_service.dart';
+import 'privacy_service.dart';
 import 'location_service.dart';
 
 /// Máy trạng thái cảnh báo pin yếu: báo một lần mỗi chu kỳ xả pin.
@@ -81,7 +82,8 @@ class BatteryAlertService {
     if (!fire) return;
 
     // Ghi riêng từng nhóm: một nhóm lỗi không chặn nhóm khác.
-    await Future.wait(loc.groups.map((g) async {
+    // Không gửi cho nhóm đang tạm ẩn vị trí.
+    await Future.wait(loc.groups.where((g) => !PrivacyService.instance.isPaused(g.id)).map((g) async {
       try {
         await GroupService.instance.addEvent(g.id, type: 'low_battery', battery: lvl);
       } catch (e) {

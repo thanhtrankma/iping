@@ -1,14 +1,14 @@
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/models.dart';
 import 'location_service.dart';
+import 'privacy_service.dart';
 
 /// "Về an toàn": người dùng báo cho nhóm mình đang đi tới đâu và dự kiến tới lúc nào.
 ///
@@ -119,7 +119,9 @@ class SafeTripService {
       final trip = SafeTrip.fromDoc(snap);
       if (!trip.isOpen) return;
       tx.update(ref, {'status': SafeTripStatus.arrived.name, 'endedAt': FieldValue.serverTimestamp()});
-      tx.set(_event(gid), _eventData('safe_arrive', trip.destName, lat: lat, lng: lng));
+      // Nhóm đang tạm ẩn vị trí: vẫn báo "đã tới" nhưng không kèm toạ độ.
+      final hide = PrivacyService.instance.isPaused(gid);
+      tx.set(_event(gid), _eventData('safe_arrive', trip.destName, lat: hide ? null : lat, lng: hide ? null : lng));
     });
   }
 
