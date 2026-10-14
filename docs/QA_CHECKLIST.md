@@ -57,7 +57,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 39 | Check-in kèm địa chỉ | ➕ | `all_friends_actions.dart` |
 | 40 | Xem Tất cả bạn bè (gộp mọi nhóm) | ➕ | `all_friends_service.dart` |
 
-**Tóm tắt (cập nhật 14/10, HEAD `90e74e0`):** 40 dòng gồm 33 ✅, 1 ⚠️ (phát hiện va chạm, bản beta), 0 ❌, 6 ➕. Cả 16 bug ở Phần C đã sửa (mới kiểm tra bằng đọc code và test tự động).
+**Tóm tắt (cập nhật 14/10, commit `fc8656f`):** 40 dòng gồm 33 ✅, 1 ⚠️ (phát hiện va chạm, bản beta), 0 ❌, 6 ➕. Cả 16 bug ở Phần C đã sửa (mới kiểm tra bằng đọc code và test tự động).
 
 Nên làm trước, vì ảnh hưởng tới việc lên store hoặc là tính năng iSharing hay được nhắc tới:
 - Xoá tài khoản (#29), quên mật khẩu (#28)
