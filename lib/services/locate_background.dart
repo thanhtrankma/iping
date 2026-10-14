@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:battery_plus/battery_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,6 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../firebase_options.dart';
 import 'location_service.dart';
+import 'pause_schedule.dart';
+import 'privacy_service.dart';
 
 /// Xử lý push khi app ở nền / đã tắt (chạy trong isolate riêng).
 /// Với yêu cầu vị trí: nếu đang bật chia sẻ thì lấy một vị trí và ghi vào nhóm yêu cầu.
@@ -25,6 +28,12 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     await prefs.reload();
     // Tắt chia sẻ thì chỉ hiện thông báo (hệ thống tự hiện), không gửi vị trí.
     if (!(prefs.getBool(LocationService.sharingPrefKey) ?? false)) return;
+    // Nhóm đang tạm ẩn vị trí: không gửi toạ độ thật.
+    final raw = prefs.getString(PrivacyService.prefKey);
+    if (raw != null &&
+        PauseSchedule.fromJson(jsonDecode(raw) as Map<String, dynamic>).isPaused(gid, DateTime.now())) {
+      return;
+    }
 
     final user = FirebaseAuth.instance.currentUser ??
         await FirebaseAuth.instance.authStateChanges().first.timeout(const Duration(seconds: 5), onTimeout: () => null);
@@ -50,7 +59,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
       'sharing': true,
       'updatedAt': FieldValue.serverTimestamp(),
       'clientAt': Timestamp.fromDate(p.timestamp),
-    });
+    }, SetOptions(merge: true));
   } catch (e) {
     debugPrint('Background locate: $e');
   }

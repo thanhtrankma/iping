@@ -15,7 +15,8 @@ class PrivacyService {
   PrivacyService._();
   static final instance = PrivacyService._();
 
-  static const _prefKey = 'paused_groups';
+  /// Khoá SharedPreferences lưu các nhóm đang tạm ẩn (handler chạy nền cũng đọc).
+  static const prefKey = 'paused_groups';
 
   final paused = ValueNotifier<PauseSchedule>(const PauseSchedule());
 
@@ -27,7 +28,7 @@ class PrivacyService {
   Future<void> load() async {
     if (_loaded) return;
     _loaded = true;
-    final raw = (await SharedPreferences.getInstance()).getString(_prefKey);
+    final raw = (await SharedPreferences.getInstance()).getString(prefKey);
     if (raw != null) {
       try {
         paused.value = PauseSchedule.fromJson(jsonDecode(raw) as Map<String, dynamic>).prune(DateTime.now());
@@ -89,7 +90,7 @@ class PrivacyService {
   }
 
   Future<void> _save() async =>
-      (await SharedPreferences.getInstance()).setString(_prefKey, jsonEncode(paused.value.toJson()));
+      (await SharedPreferences.getInstance()).setString(prefKey, jsonEncode(paused.value.toJson()));
 
   /// Hẹn giờ tới hạn gần nhất để tự bật lại.
   void _schedule() {
