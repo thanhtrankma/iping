@@ -309,6 +309,9 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     case 'low_battery':
       notification = { title: groupName, body: `🔋 ${e.name} sắp hết pin (${e.battery}%)` };
       break;
+    case 'speeding':
+      notification = { title: groupName, body: `🚗 ${e.name} đang chạy ${e.speed} km/h, quá tốc độ 80 km/h` };
+      break;
     case 'offline':
       notification = {
         title: groupName,

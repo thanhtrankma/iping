@@ -13,6 +13,7 @@ const PREF_KEY = {
   meetup: 'meetup',
   ping: 'ping',
   low_battery: 'battery',
+  speeding: 'speeding',
   offline: 'offline',
   location_off: 'offline',
   safe_start: 'safe',

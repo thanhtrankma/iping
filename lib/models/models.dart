@@ -133,6 +133,7 @@ class GroupEvent {
     required this.lng,
     required this.createdAt,
     this.battery,
+    this.speed,
     this.dueAt,
   });
 
@@ -145,6 +146,8 @@ class GroupEvent {
   final double? lng;
   final DateTime? createdAt;
   final int? battery;
+  /// km/h (sự kiện chạy quá tốc độ).
+  final int? speed;
   /// Giờ dự kiến tới (sự kiện "Về an toàn").
   final DateTime? dueAt;
 
@@ -160,6 +163,7 @@ class GroupEvent {
       lng: (d['lng'] as num?)?.toDouble(),
       createdAt: _date(d['createdAt']),
       battery: (d['battery'] as num?)?.toInt(),
+      speed: (d['speed'] as num?)?.toInt(),
       dueAt: _date(d['dueAt']),
     );
   }

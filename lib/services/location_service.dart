@@ -15,6 +15,7 @@ import 'geofence_service.dart';
 import 'safe_trip_service.dart';
 import 'group_service.dart';
 import 'privacy_service.dart';
+import 'speeding_tracker.dart';
 import 'profile_service.dart';
 
 /// Theo dõi vị trí của chính người dùng và ghi vào mọi nhóm họ tham gia.
@@ -151,8 +152,24 @@ class LocationService {
     }
   }
 
+  final _speeding = SpeedingTracker();
+
+  /// Chạy quá 80 km/h: báo ngay cho các nhóm (không gửi cho nhóm đang tạm ẩn).
+  void _checkSpeeding(Position p) {
+    if (p.speed < 0 || p.accuracy > 50) return;
+    final kmh = p.speed * 3.6;
+    if (!_speeding.update(kmh, p.timestamp)) return;
+    for (final g in _groups) {
+      if (PrivacyService.instance.isPaused(g.id)) continue;
+      GroupService.instance
+          .addEvent(g.id, type: 'speeding', speed: kmh.round())
+          .catchError((Object e) => debugPrint('speeding ${g.id}: $e'));
+    }
+  }
+
   Future<void> _onPosition(Position p) async {
     _reportedOff = false;
+    if (sharing.value) _checkSpeeding(p);
     lastPosition.value = p;
     // Mở sương ở màn Khám phá (chỉ lưu cho chính người dùng).
     ExploreService.instance.record(p.latitude, p.longitude, accuracy: p.accuracy, time: p.timestamp);

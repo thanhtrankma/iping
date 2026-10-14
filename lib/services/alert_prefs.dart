@@ -19,6 +19,7 @@ const alertTypes = [
   AlertType('meetup', 'Meetup', Icons.handshake_outlined),
   AlertType('ping', 'Ping', Icons.waving_hand_outlined),
   AlertType('battery', 'Pin yếu', Icons.battery_alert_rounded),
+  AlertType('speeding', 'Chạy quá tốc độ', Icons.speed_rounded),
   AlertType('offline', 'Mất kết nối / tắt định vị', Icons.location_disabled_rounded),
   AlertType('join', 'Thành viên mới', Icons.group_add_outlined),
 ];
@@ -33,6 +34,7 @@ String? alertPrefKeyFor(String type) => switch (type) {
       'moment' => 'moment',
       'ping' => 'ping',
       'low_battery' => 'battery',
+      'speeding' => 'speeding',
       'offline' || 'location_off' => 'offline',
       'safe_start' || 'safe_arrive' || 'safe_end' || 'safe_ok' || 'safe_extend' => 'safe',
       // Quá giờ "Về an toàn" là cảnh báo khẩn: đi theo công tắc SOS.

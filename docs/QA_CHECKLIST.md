@@ -23,7 +23,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 5 | Tốc độ hiện tại | ✅ | `member_screen.dart` |
 | 6 | Lịch sử vị trí (bản trả phí lưu 30 ngày) | ✅ | `history_screen.dart`, TTL 30 ngày |
 | 7 | Dòng thời gian dừng / di chuyển | ✅ | `trip_analyzer.dart` |
-| 8 | Báo cáo lái xe, cảnh báo chạy quá tốc độ | ⚠️ | Có báo cáo và điểm an toàn. **Không có push ngay khi đang chạy quá tốc độ** |
+| 8 | Báo cáo lái xe, cảnh báo chạy quá tốc độ | ✅ | Có báo cáo + điểm an toàn, và push ngay khi chạy > 80 km/h: `SpeedingTracker` (2 lần đo liên tiếp, cooldown 10 phút) → event `speeding` (rules kiểm tra speed 81–400), khoá cảnh báo `speeding` |
 | 9 | Phát hiện va chạm (crash detection) | ❌ | |
 | 10 | Đến/rời địa điểm (geofence) + push | ✅ | `geofence_service.dart`, `onGroupEvent` |
 | 11 | Lịch sử ra/vào địa điểm theo từng người | ✅ | `PlaceHistoryScreen` trong `driving_screen.dart` |

@@ -26,6 +26,7 @@ class _ActivityTabState extends State<ActivityTab> {
         'join' => (Icons.group_add_rounded, AppColors.indigo, 'đã tham gia nhóm'),
         'leave_group' => (Icons.group_remove_rounded, AppColors.gray, 'đã rời nhóm'),
         'low_battery' => (Icons.battery_alert_rounded, AppColors.warning, 'sắp hết pin (${e.battery ?? '?'}%)'),
+        'speeding' => (Icons.speed_rounded, AppColors.sos, 'chạy ${e.speed ?? '?'} km/h, quá tốc độ'),
         'offline' => (Icons.signal_wifi_off_rounded, AppColors.gray, 'không cập nhật vị trí hơn 1 giờ'),
         'location_off' => (Icons.location_disabled_rounded, AppColors.warning, 'đã tắt định vị'),
         'removed' => (Icons.person_remove_rounded, AppColors.sos, 'đã bị xoá khỏi nhóm'),

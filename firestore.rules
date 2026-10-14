@@ -126,13 +126,18 @@ service cloud.firestore {
         allow read: if isMember(gid);
         allow create: if isMember(gid)
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'low_battery', 'checkin', 'location_off',
+          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'low_battery', 'checkin', 'location_off', 'speeding',
                                          'safe_start', 'safe_arrive', 'safe_end', 'safe_ok', 'safe_extend']
           // Cảnh báo pin yếu phải kèm mức pin hợp lệ.
           && (request.resource.data.type != 'low_battery'
               || (request.resource.data.battery is int
                   && request.resource.data.battery >= 0
-                  && request.resource.data.battery <= 100));
+                  && request.resource.data.battery <= 100))
+          // Chạy quá tốc độ phải kèm tốc độ hợp lệ (km/h).
+          && (request.resource.data.type != 'speeding'
+              || (request.resource.data.speed is int
+                  && request.resource.data.speed > 80
+                  && request.resource.data.speed <= 400));
       }
 
       // Về an toàn: mỗi người một chuyến (doc id = uid). Chỉ server đánh dấu quá giờ
