@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 import '../services/auth_service.dart';
+import '../services/group_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -18,8 +19,38 @@ import 'places_tab.dart';
 import 'privacy_screen.dart';
 import 'profile_screen.dart';
 
-class MenuScreen extends StatelessWidget {
+class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key, required this.uid, required this.group});
+  final String uid;
+  final Group? group;
+
+  @override
+  State<MenuScreen> createState() => _MenuScreenState();
+}
+
+/// Theo dõi danh sách nhóm để menu không giữ nhóm cũ sau khi đã rời / bị xoá khỏi nhóm.
+class _MenuScreenState extends State<MenuScreen> {
+  late final Stream<List<Group>> _groups = GroupService.instance.myGroups(widget.uid);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Group>>(
+      stream: _groups,
+      builder: (context, snap) {
+        final initial = widget.group;
+        final groups = snap.data;
+        // Chưa có dữ liệu thì dùng nhóm được truyền vào; có rồi thì lấy bản mới nhất (hoặc null nếu đã rời).
+        final current = initial == null || groups == null
+            ? initial
+            : groups.where((g) => g.id == initial.id).firstOrNull;
+        return _MenuView(uid: widget.uid, group: current);
+      },
+    );
+  }
+}
+
+class _MenuView extends StatelessWidget {
+  const _MenuView({required this.uid, required this.group});
   final String uid;
   final Group? group;
 

@@ -142,7 +142,13 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
           appBar: GlassAppBar(title: g == null ? 'Thành viên' : g.name),
           body: GlassBackground(
             child: g == null
-                ? const Center(child: CircularProgressIndicator.adaptive())
+                ? (snap.connectionState == ConnectionState.waiting && !snap.hasError
+                    ? const Center(child: CircularProgressIndicator.adaptive())
+                    : const EmptyState(
+                        icon: Icons.group_off_rounded,
+                        title: 'Không xem được nhóm này',
+                        text: 'Nhóm đã bị xoá hoặc bạn không còn là thành viên.',
+                      ))
                 : ListView(
                     padding: EdgeInsets.fromLTRB(0, MediaQuery.paddingOf(context).top + 60 + 12, 0, 40),
                     children: [

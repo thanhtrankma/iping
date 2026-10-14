@@ -221,6 +221,6 @@ Chạy bằng Emulator (`firebase emulators:start`) hoặc thử trực tiếp t
 | 14/10 | (đọc code) | SO-02 | **BUG-08** `group_actions.dart` không bắt lỗi khi `leave`/`sos` thất bại, người dùng không thấy báo gì | TB | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-09** Thiếu kiểm tra `mounted` sau `await`: `member_screen._requestLocation`, `profile_screen._changePhoto`, `sign_in_screen` | TB | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-10** Chế độ Tất cả bạn bè: lỗi ở một nhóm làm mất hết marker (`all_friends_service.dart:89`) | TB | Đã sửa |
-| 14/10 | (đọc code) | GR-07 | **BUG-11** Menu giữ group cũ sau khi rời nhóm. Màn thành viên quay vòng mãi khi nhóm bị xoá | Thấp | Mở |
+| 14/10 | (đọc code) | GR-07 | **BUG-11** Menu giữ group cũ sau khi rời nhóm. Màn thành viên quay vòng mãi khi nhóm bị xoá | Thấp | Đã sửa |
 | 14/10 | (đọc code) | HI-07 | **BUG-12** `history_screen.dart` tạo `MapController()` trong `build`, nên rebuild là mất vị trí pan/zoom. Nhiều MapController không được dispose | Thấp | Mở |
 | 14/10 | (đọc code) | — | **BUG-13** Hồ sơ: lỗi khi lưu tên hoặc xoá ảnh không hiện thông báo. Bắt đầu Về an toàn khi offline thì nút quay mãi | Thấp | Mở |
