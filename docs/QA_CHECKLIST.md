@@ -40,7 +40,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 22 | Đổi tên nhóm | ✅ | Chủ nhóm: Quản lý nhóm → ⋯ → "Đổi tên nhóm" (`GroupActions.rename`, 1–50 ký tự, khớp rules) |
 | 23 | Bật/tắt chia sẻ vị trí (ẩn vị trí) | ✅ | Nút "Bật chia sẻ"; mặc định tắt |
 | 24 | Tạm ẩn vị trí trong một khoảng thời gian | ✅ | `privacy_screen.dart`: ẩn theo từng nhóm 1h / 8h / tới sáng / vô hạn |
-| 25 | Chỉ đường tới thành viên / mở Google Maps | ❌ | Chỉ hiện khoảng cách |
+| 25 | Chỉ đường tới thành viên / mở Google Maps | ✅ | Màn thành viên → ô khoảng cách → mở chỉ đường: Apple Maps trên iOS, Google Maps trên Android (`url_launcher`, `utils/directions.dart`) |
 | 26 | Đăng nhập Email | ✅ | |
 | 27 | Đăng nhập Google / Apple / số điện thoại | ✅ | Google, số điện thoại (OTP) và Sign in with Apple (chỉ hiện trên iOS, `AppleAuthProvider`, entitlement `com.apple.developer.applesignin`). Apple cần ký bằng tài khoản Apple Developer khi build lên máy/App Store |
 | 28 | Quên mật khẩu | ✅ | Link "Quên mật khẩu?" → `sendPasswordResetEmail` (`account_dialogs.dart`) |

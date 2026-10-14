@@ -12,6 +12,7 @@ import '../services/location_service.dart';
 import '../services/safe_trip_service.dart';
 import '../services/trip_analyzer.dart';
 import '../theme.dart';
+import '../utils/directions.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
@@ -461,11 +462,14 @@ class _DetailCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
+                // Bấm để chỉ đường tới thành viên (Apple Maps / Google Maps).
                 child: GlassTile(
                   icon: Icons.turn_right_rounded,
                   color: AppColors.online,
-                  label: distance == null ? '—' : distanceLabel(distance).replaceAll('.', ','),
-                  onTap: null,
+                  label: distance != null
+                      ? distanceLabel(distance).replaceAll('.', ',')
+                      : (loc != null && !isMe ? 'Chỉ đường' : '—'),
+                  onTap: loc == null || isMe ? null : () => openDirections(context, loc.lat, loc.lng),
                 ),
               ),
             ],
