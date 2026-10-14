@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -164,6 +166,12 @@ class SafeTripService {
           _mine.remove(gid);
           _arriving.remove(gid);
         }
+      }, onError: (Object e) {
+        // Vd. vừa bị xoá khỏi nhóm (permission-denied): bỏ theo dõi nhóm này.
+        debugPrint('Safe trip $gid: $e');
+        _subs.remove(gid)?.cancel();
+        _mine.remove(gid);
+        _arriving.remove(gid);
       });
     }
   }
