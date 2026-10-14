@@ -536,6 +536,10 @@ exports.deleteAccount = onCall({ timeoutSeconds: 300 }, async (req) => {
     await Promise.all(moments.docs.map((m) => db.recursiveDelete(m.ref)));
   }
 
+  // Chat 1-1 của người này (cả nội dung tin nhắn).
+  const dms = await db.collection('dms').where('members', 'array-contains', uid).get();
+  await Promise.all(dms.docs.map((d) => db.recursiveDelete(d.ref)));
+
   // 2. Ảnh đại diện và ảnh khoảnh khắc trên Storage.
   const bucket = getStorage().bucket();
   await bucket.deleteFiles({ prefix: `avatars/${uid}/` });
@@ -594,6 +598,10 @@ exports.onDmMessage = onDocumentCreated('dms/{dmId}/messages/{messageId}', async
   if (!m) return;
   const dm = (await db.doc(`dms/${event.params.dmId}`).get()).data();
   if (!dm || !(dm.members || []).includes(m.uid)) return;
+  // Hai người phải vẫn còn chung nhóm (người bị chặn / xoá / đã rời không gửi push được).
+  const g = await db.doc(`groups/${dm.groupId}`).get();
+  const ids = g.exists ? g.get('memberIds') || [] : [];
+  if (!dm.members.every((u) => ids.includes(u))) return;
   const others = dm.members.filter((u) => u !== m.uid);
   await notifyUsers(dm.groupId || '', others, {
     title: `💬 ${await displayName(m.uid)}`,

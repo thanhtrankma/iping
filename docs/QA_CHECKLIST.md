@@ -225,3 +225,5 @@ Chạy bằng Emulator (`firebase emulators:start`) hoặc thử trực tiếp t
 | 14/10 | (đọc code) | HI-07 | **BUG-12** `history_screen.dart` tạo `MapController()` trong `build`, nên rebuild là mất vị trí pan/zoom. Nhiều MapController không được dispose | Thấp | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-13** Hồ sơ: lỗi khi lưu tên hoặc xoá ảnh không hiện thông báo. Bắt đầu Về an toàn khi offline thì nút quay mãi | Thấp | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-14** `checkStaleLocations` báo "mất kết nối" nhầm cho người ngồi yên > 1 giờ (distanceFilter 25 m, không có heartbeat). Sửa: client ghi `lastSeenAt` mỗi 15 phút khi đang chia sẻ; server dựa vào `lastSeenAt`, ngưỡng 4 giờ; push ghi "chưa thấy hoạt động" | TB | Đã sửa |
+| 14/10 | (đọc code) | — | **BUG-15** Người bị chặn / xoá khỏi nhóm vẫn đọc và gửi chat 1-1, vẫn bắn push. Sửa: rules `dms/messages` yêu cầu cả hai còn trong `groups/{dm.groupId}.memberIds`; `onDmMessage` kiểm tra lại; `ensureThread` chuyển sang nhóm chung hiện tại | TB | Đã sửa |
+| 14/10 | (đọc code) | AU-10 | **BUG-16** `deleteAccount` không xoá chat 1-1. Sửa: xoá mọi `dms` có `members` chứa uid (kèm `messages`) | TB | Đã sửa |

@@ -20,9 +20,15 @@ class DmService {
   Future<String> ensureThread(String otherUid, String groupId) async {
     final id = threadId(_uid, otherUid);
     final ref = _db.doc('dms/$id');
-    if (!(await ref.get()).exists) {
+    final snap = await ref.get();
+    if (!snap.exists) {
       final members = [_uid, otherUid]..sort();
       await ref.set({'members': members, 'groupId': groupId, 'createdAt': FieldValue.serverTimestamp()});
+    } else if (snap.data()?['groupId'] != groupId) {
+      // Nhóm cũ có thể không còn chung: chuyển cuộc trò chuyện sang nhóm chung hiện tại.
+      try {
+        await ref.update({'groupId': groupId});
+      } catch (_) {}
     }
     return id;
   }

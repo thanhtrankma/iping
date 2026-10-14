@@ -33,9 +33,15 @@ service cloud.firestore {
     }
 
     // Mã mời chỉ được Cloud Functions truy cập.
-    // Chat 1-1: dms/{uidA_uidB} (uid xếp tăng dần). Chỉ tạo được khi cả hai cùng ở trong `groupId`.
-    function dmMembers(dmId) {
-      return get(/databases/$(database)/documents/dms/$(dmId)).data.members;
+    // Chat 1-1: dms/{uidA_uidB} (uid xếp tăng dần), gắn với một nhóm chung `groupId`.
+    // Chỉ dùng được khi cả hai vẫn là thành viên của nhóm đó (bị chặn / xoá / rời nhóm → khoá).
+    function bothInGroup(members, gid) {
+      let ids = get(/databases/$(database)/documents/groups/$(gid)).data.memberIds;
+      return members[0] in ids && members[1] in ids;
+    }
+    function dmOpen(dmId) {
+      let dm = get(/databases/$(database)/documents/dms/$(dmId)).data;
+      return request.auth.uid in dm.members && bothInGroup(dm.members, dm.groupId);
     }
     match /dms/{dmId} {
       // resource == null: cho phép kiểm tra cuộc trò chuyện đã tồn tại chưa.
@@ -47,14 +53,17 @@ service cloud.firestore {
         && request.resource.data.members[0] < request.resource.data.members[1]
         && dmId == request.resource.data.members[0] + '_' + request.resource.data.members[1]
         && request.resource.data.groupId is string
-        && request.resource.data.members[0] in get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.memberIds
-        && request.resource.data.members[1] in get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.memberIds;
+        && bothInGroup(request.resource.data.members, request.resource.data.groupId);
+      // Cập nhật tin cuối, hoặc chuyển sang một nhóm chung khác (cả hai phải đang ở nhóm mới).
       allow update: if signedIn() && request.auth.uid in resource.data.members
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastText', 'lastUid', 'lastAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastText', 'lastUid', 'lastAt', 'groupId'])
+        && request.resource.data.members == resource.data.members
+        && request.resource.data.groupId is string
+        && bothInGroup(resource.data.members, request.resource.data.groupId);
 
       match /messages/{mid} {
-        allow read: if signedIn() && request.auth.uid in dmMembers(dmId);
-        allow create: if signedIn() && request.auth.uid in dmMembers(dmId)
+        allow read: if signedIn() && dmOpen(dmId);
+        allow create: if signedIn() && dmOpen(dmId)
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.text is string
           && lenIn(request.resource.data.text, 1, 1000);
