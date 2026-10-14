@@ -136,7 +136,10 @@ class _GroupMapViewState extends State<_GroupMapView> {
       _meetups = GroupService.instance.activeMeetups(g.id);
     }
     LocationService.instance.lastPosition.addListener(_onLastPosition);
-    _locateDevice();
+    // Sau khung hình đầu: màn giải thích quyền là một bảng nổi, không mở được giữa lúc đang dựng.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _locateDevice();
+    });
     if (g != null) {
       _safeTrips = _watchSafeTrips(_all ? widget.groups.map((x) => x.id).toList() : [g.id]);
       _safeTick = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -223,8 +226,9 @@ class _GroupMapViewState extends State<_GroupMapView> {
 
   bool _centered = false;
 
-  // Căn bản đồ theo vị trí THẬT của máy khi mở app. Bản ghi vị trí trên server có thể cũ
-  // (ví dụ đang tắt chia sẻ, hoặc tài khoản từng đăng nhập trên máy khác) nên chỉ dùng tạm.
+  // Căn bản đồ theo vị trí THẬT của máy khi mở app (chưa có quyền thì hỏi, cho phép xong thì chuyển về).
+  // Bản ghi vị trí trên server có thể cũ (đang tắt chia sẻ, tài khoản từng đăng nhập trên máy khác)
+  // nên chỉ dùng tạm trong lúc chờ.
   LatLng? _device;
   bool _deviceCentered = false;
   bool _userMoved = false;

@@ -159,13 +159,20 @@ class LocationService {
     }
   }
 
-  /// Vị trí của máy để căn bản đồ khi mở app, KHÔNG hỏi quyền và không cần bật chia sẻ.
+  bool _askedOnOpen = false;
+
+  /// Vị trí của máy để căn bản đồ khi mở app, không cần bật chia sẻ.
+  /// Chưa có quyền thì hỏi như thường lệ (màn giải thích → hộp thoại hệ thống); cho phép xong mới lấy vị trí.
   /// Trả về vị trí cũ hệ thống còn nhớ trước (tức thì), rồi vị trí mới qua [onFresh].
   Future<Position?> devicePosition({void Function(Position)? onFresh}) async {
     if (lastPosition.value != null) return lastPosition.value;
     try {
       final perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return null;
+      final granted = perm == LocationPermission.whileInUse || perm == LocationPermission.always;
+      // Mỗi lần mở app chỉ hỏi một lần, không hỏi lại mỗi khi đổi nhóm.
+      if (!granted && _askedOnOpen) return null;
+      _askedOnOpen = true;
+      if (await _ensurePermission() != null) return null;
       final cached = await Geolocator.getLastKnownPosition();
       final fresh = Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
