@@ -200,7 +200,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Scaffold(
+    return BackdropGroup(child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -344,6 +344,6 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

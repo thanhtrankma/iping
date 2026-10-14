@@ -147,7 +147,7 @@ class _MemberScreenState extends State<MemberScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BackdropGroup(child: Scaffold(
       body: StreamBuilder<Group?>(
         stream: _group,
         builder: (context, gSnap) => StreamBuilder<List<Place>>(
@@ -369,7 +369,7 @@ class _MemberScreenState extends State<MemberScreen> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

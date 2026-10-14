@@ -211,7 +211,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
   @override
   Widget build(BuildContext context) {
     final g = widget.group;
-    return StreamBuilder<List<GroupSafeTrip>>(
+    return BackdropGroup(child: StreamBuilder<List<GroupSafeTrip>>(
       stream: _safeTrips,
       builder: (context, safeSnap) => StreamBuilder<List<Moment>>(
         stream: _moments,
@@ -428,7 +428,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

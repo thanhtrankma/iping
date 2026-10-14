@@ -261,7 +261,7 @@ class _SafeTripScreenState extends State<SafeTripScreen> {
   Widget build(BuildContext context) {
     final me = _me;
     final d = _dest;
-    return Scaffold(
+    return BackdropGroup(child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -359,7 +359,7 @@ class _SafeTripScreenState extends State<SafeTripScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _panel(BuildContext context) {

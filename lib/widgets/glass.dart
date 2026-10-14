@@ -48,7 +48,23 @@ ui.ImageFilter glassFilter({required double blur, required bool dark}) => ui.Ima
       inner: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur, tileMode: TileMode.mirror),
     );
 
+/// Đánh dấu vùng có nền tĩnh, đã mờ sẵn (xem [GlassBackground]).
+///
+/// Kính nằm trên nền này không cần BackdropFilter: làm mờ lại một nền vốn đã mờ cho kết quả
+/// gần như y hệt, nhưng tốn một lượt blur toàn vùng ở mỗi khung hình khi cuộn.
+class GlassStaticBackdrop extends InheritedWidget {
+  const GlassStaticBackdrop({super.key, required super.child});
+
+  static bool of(BuildContext context) => context.getInheritedWidgetOfExactType<GlassStaticBackdrop>() != null;
+
+  @override
+  bool updateShouldNotify(GlassStaticBackdrop oldWidget) => false;
+}
+
 /// Bề mặt Liquid Glass.
+///
+/// Các kính cùng nằm dưới một [BackdropGroup] (ví dụ lớp điều khiển trên bản đồ) dùng chung
+/// một lần đọc nền, nên thêm nút kính không làm tăng chi phí theo cấp số.
 class Glass extends StatelessWidget {
   const Glass({
     super.key,
@@ -86,40 +102,37 @@ class Glass extends StatelessWidget {
     final shape = glassShape(radius: radius, circle: circle, capsule: capsule);
     final base = tint ?? (dark ? const Color(0xFF16181D) : Colors.white);
     // Kính iOS 26 trong hơn hẳn: chỉ giữ khoảng một nửa độ đục của thang cũ.
-    final alpha = tint != null
-        ? (0.35 + opacity * 0.45).clamp(0.0, 0.95)
-        : (dark ? 0.18 + opacity * 0.38 : 0.14 + opacity * 0.40).clamp(0.0, 0.9);
+    // Nền tĩnh: bỏ BackdropFilter, tint đậm hơn chút để bù phần vibrancy.
+    final staticBackdrop = GlassStaticBackdrop.of(context);
+    final alpha = (tint != null
+            ? (0.35 + opacity * 0.45).clamp(0.0, 0.95)
+            : (dark ? 0.18 + opacity * 0.38 : 0.14 + opacity * 0.40).clamp(0.0, 0.9)) +
+        (staticBackdrop ? 0.08 : 0.0);
+
+    final body = CustomPaint(
+      painter: _GlassBodyPainter(shape: shape, base: base, alpha: alpha, dark: dark, tinted: tint != null),
+      foregroundPainter: _GlassRimPainter(shape: shape, dark: dark, tinted: tint != null),
+      child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
+    );
 
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: shape,
+        // Một bóng tản vừa phải: kính "lơ lửng" trên nội dung. (Hai bóng blur lớn trên mỗi
+        // nút kính tốn GPU đáng kể khi bản đồ vẽ lại liên tục.)
         shadows: shadow
             ? [
-                // Bóng tản rộng, rất nhạt: kính "lơ lửng" trên nội dung.
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.35 : 0.10),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
-                ),
-                // Bóng tiếp xúc gần, giúp mép dưới có chiều sâu.
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.25 : 0.06),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withValues(alpha: dark ? 0.38 : 0.11),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
                 ),
               ]
             : null,
       ),
       child: ClipPath(
         clipper: ShapeBorderClipper(shape: shape),
-        child: BackdropFilter(
-          filter: glassFilter(blur: blur, dark: dark),
-          child: CustomPaint(
-            painter: _GlassBodyPainter(shape: shape, base: base, alpha: alpha, dark: dark, tinted: tint != null),
-            foregroundPainter: _GlassRimPainter(shape: shape, dark: dark, tinted: tint != null),
-            child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
-          ),
-        ),
+        child: staticBackdrop ? body : BackdropFilter.grouped(filter: glassFilter(blur: blur, dark: dark), child: body),
       ),
     );
   }
@@ -174,13 +187,18 @@ class _GlassBodyPainter extends CustomPainter {
         ).createShader(rect),
     );
 
-    // Quầng sáng mép bên trong: giả lập khúc xạ ở rìa khối kính.
-    final edge = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
-      ..color = Colors.white.withValues(alpha: dark ? 0.06 : 0.22);
-    canvas.drawPath(path, edge);
+    // Quầng sáng mép bên trong: giả lập khúc xạ ở rìa khối kính. Vẽ bằng vài nét viền
+    // nhạt dần thay cho MaskFilter.blur (blur trên path phải tính lại ở mỗi khung hình).
+    final edgeAlpha = dark ? 0.05 : 0.16;
+    for (var i = 0; i < 3; i++) {
+      canvas.drawPath(
+        shape.getOuterPath(rect.deflate(1.0 + i * 1.6)),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6
+          ..color = Colors.white.withValues(alpha: edgeAlpha * (1 - i / 3)),
+      );
+    }
   }
 
   @override
@@ -484,15 +502,14 @@ class GlassBackground extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         ColoredBox(color: dark ? const Color(0xFF0B0D12) : const Color(0xFFF2F4FA)),
+        // Đốm màu vẽ bằng RadialGradient tự mờ dần, không cần ImageFiltered blur toàn màn hình
+        // (Impeller không có raster cache nên blur đó bị tính lại ở mỗi khung hình khi cuộn).
         Positioned.fill(
           child: IgnorePointer(
-            child: ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.decal),
-              child: CustomPaint(painter: _BlobPainter(blobs, dark)),
-            ),
+            child: RepaintBoundary(child: CustomPaint(painter: _BlobPainter(blobs, dark))),
           ),
         ),
-        child,
+        GlassStaticBackdrop(child: child),
       ],
     );
   }
@@ -506,11 +523,21 @@ class _BlobPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final a = dark ? 0.55 : 0.85;
-    void blob(Color c, double x, double y, double r) => canvas.drawCircle(
-          Offset(size.width * x, size.height * y),
-          size.shortestSide * r,
-          Paint()..color = c.withValues(alpha: a),
-        );
+    void blob(Color c, double x, double y, double r) {
+      final center = Offset(size.width * x, size.height * y);
+      // Bán kính lớn hơn vòng tròn gốc để phần mờ dần giống blur sigma 60 trước đây.
+      final radius = size.shortestSide * r + 90;
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [c.withValues(alpha: a), c.withValues(alpha: a * 0.85), c.withValues(alpha: 0)],
+            stops: const [0, 0.55, 1],
+          ).createShader(Rect.fromCircle(center: center, radius: radius)),
+      );
+    }
+
     blob(colors[0], 0.05, 0.08, 0.75);
     blob(colors[1], 0.95, 0.38, 0.6);
     blob(colors[2], 0.2, 0.9, 0.7);

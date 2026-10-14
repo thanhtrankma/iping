@@ -337,7 +337,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final today = _startOfDay(DateTime.now());
-    return Scaffold(
+    return BackdropGroup(child: Scaffold(
       body: FutureBuilder<List<Segment>>(
         future: _timeline,
         builder: (context, snap) {
@@ -488,7 +488,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           );
         },
       ),
-    );
+    ));
   }
 }
 
@@ -794,7 +794,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     final trip = widget.trip;
     final pts = tripLatLngs(trip);
     final color = trip.isDrive ? AppColors.brand : AppColors.teal;
-    return Scaffold(
+    return BackdropGroup(child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -896,7 +896,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

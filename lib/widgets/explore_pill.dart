@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../services/area_service.dart';
 import '../services/explore_service.dart';
+import '../services/hex_grid.dart';
 import '../services/location_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
@@ -58,10 +59,29 @@ class _ExplorePillState extends State<ExplorePill> {
     _recount();
   }
 
+  // Đếm dồn: chỉ kiểm tra các ô mới thêm từ lần trước (cells chỉ tăng, giữ thứ tự thêm vào).
+  // Đếm lại toàn bộ mỗi khi có ô mới tốn O(số ô × số đỉnh ranh giới) trên luồng UI.
+  ExploreArea? _countedArea;
+  int _processed = 0;
+  int _inArea = 0;
+  HexCell? _first;
+
   void _recount() {
     final a = _area;
     if (a == null || a.totalCells == 0 || !mounted) return;
-    setState(() => _percent = math.min(100, a.exploredIn(_explore.cells) * 100 / a.totalCells));
+    final cells = _explore.cells;
+    // Đổi khu vực, hoặc tập ô bị xoá và nạp lại (đổi tài khoản): đếm lại từ đầu.
+    if (!identical(a, _countedArea) || cells.length < _processed || (cells.isNotEmpty && cells.first != _first)) {
+      _countedArea = a;
+      _first = cells.isEmpty ? null : cells.first;
+      _processed = 0;
+      _inArea = 0;
+    }
+    if (cells.length > _processed) {
+      _inArea += a.exploredIn(cells.skip(_processed));
+      _processed = cells.length;
+    }
+    setState(() => _percent = math.min(100, _inArea * 100 / a.totalCells));
   }
 
   @override

@@ -102,16 +102,18 @@ class _FogPainter extends CustomPainter {
     }
 
     if (areaPath != null) {
-      // Quầng sáng mềm quanh ranh giới, như mép kính phát sáng.
-      canvas.drawPath(
-        areaPath,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 10
-          ..strokeJoin = StrokeJoin.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6)
-          ..color = AppColors.brand.withValues(alpha: 0.28),
-      );
+      // Quầng sáng mềm quanh ranh giới, như mép kính phát sáng. Hai nét rộng nhạt thay cho
+      // MaskFilter.blur: ranh giới có hàng nghìn đỉnh, blur nó ở mỗi khung hình khi kéo bản đồ rất nặng.
+      for (final (width, alpha) in const [(16.0, 0.10), (10.0, 0.18)]) {
+        canvas.drawPath(
+          areaPath,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = width
+            ..strokeJoin = StrokeJoin.round
+            ..color = AppColors.brand.withValues(alpha: alpha),
+        );
+      }
       canvas.drawPath(
         areaPath,
         Paint()

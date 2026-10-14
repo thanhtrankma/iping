@@ -203,7 +203,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final pad = MediaQuery.paddingOf(context);
     final percent = _percent > 0 && _percent < 0.05 ? '< 0,1%' : percentLabel(_percent);
 
-    return Scaffold(
+    return BackdropGroup(child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -353,7 +353,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

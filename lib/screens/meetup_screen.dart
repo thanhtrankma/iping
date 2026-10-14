@@ -333,7 +333,7 @@ class _CreateMeetupScreenState extends State<CreateMeetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BackdropGroup(child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -475,7 +475,7 @@ class _CreateMeetupScreenState extends State<CreateMeetupScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -534,7 +534,7 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BackdropGroup(child: Scaffold(
       body: StreamBuilder<Meetup?>(
         stream: _meetup,
         builder: (context, mSnap) => StreamBuilder<List<MemberLocation>>(
@@ -746,7 +746,7 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
           },
         ),
       ),
-    );
+    ));
   }
 }
 
