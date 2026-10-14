@@ -58,6 +58,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
       if (battery != null) 'battery': battery,
       'sharing': true,
       'updatedAt': FieldValue.serverTimestamp(),
+      'lastSeenAt': FieldValue.serverTimestamp(),
       'clientAt': Timestamp.fromDate(p.timestamp),
     }, SetOptions(merge: true));
   } catch (e) {

@@ -48,7 +48,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 30 | Ảnh đại diện, tên hiển thị | ✅ | `profile_screen.dart` |
 | 31 | Bấm vào push thì mở đúng màn hình | ✅ | `push_router.dart`: `onMessageOpenedApp` + `getInitialMessage`, điều hướng theo `groupId`/`type` (thành viên, chat, khoảnh khắc, meetup, Về an toàn) |
 | 32 | Cài đặt bật/tắt từng loại thông báo | ✅ | `alert_settings_screen.dart` + lọc phía server `alert_prefs.js`. Chưa tắt được `checkin` và `locate` |
-| 33 | Báo khi thành viên mất kết nối hoặc tắt định vị | ✅ | Scheduled `checkStaleLocations` (15 phút): đang chia sẻ mà > 1 giờ không cập nhật → event `offline` + push (một lần mỗi đợt). Client gửi `location_off` khi GPS tắt / quyền bị thu hồi. Tắt được bằng khoá `offline` trong Quản lý cảnh báo |
+| 33 | Báo khi thành viên mất kết nối hoặc tắt định vị | ✅ | Scheduled `checkStaleLocations` (15 phút): đang chia sẻ mà `lastSeenAt` > 4 giờ (client heartbeat 15 phút, kể cả đứng yên) → event `offline` + push "chưa thấy hoạt động" (một lần mỗi đợt). Client gửi `location_off` khi GPS tắt / quyền bị thu hồi. Khoá cảnh báo `offline` |
 | 34 | Vệ tinh / bản đồ thường | ✅ | `toggleMapStyle` |
 | 35 | Khoảnh khắc (ảnh + vị trí, hết hạn sau 24h) | ➕ | `moments_screen.dart` |
 | 36 | Meetup / điểm hẹn | ➕ | `meetup_screen.dart` |
@@ -224,3 +224,4 @@ Chạy bằng Emulator (`firebase emulators:start`) hoặc thử trực tiếp t
 | 14/10 | (đọc code) | GR-07 | **BUG-11** Menu giữ group cũ sau khi rời nhóm. Màn thành viên quay vòng mãi khi nhóm bị xoá | Thấp | Đã sửa |
 | 14/10 | (đọc code) | HI-07 | **BUG-12** `history_screen.dart` tạo `MapController()` trong `build`, nên rebuild là mất vị trí pan/zoom. Nhiều MapController không được dispose | Thấp | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-13** Hồ sơ: lỗi khi lưu tên hoặc xoá ảnh không hiện thông báo. Bắt đầu Về an toàn khi offline thì nút quay mãi | Thấp | Đã sửa |
+| 14/10 | (đọc code) | — | **BUG-14** `checkStaleLocations` báo "mất kết nối" nhầm cho người ngồi yên > 1 giờ (distanceFilter 25 m, không có heartbeat). Sửa: client ghi `lastSeenAt` mỗi 15 phút khi đang chia sẻ; server dựa vào `lastSeenAt`, ngưỡng 4 giờ; push ghi "chưa thấy hoạt động" | TB | Đã sửa |

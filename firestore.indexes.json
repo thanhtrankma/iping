@@ -51,7 +51,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "updatedAt",
+          "fieldPath": "lastSeenAt",
           "order": "ASCENDING"
         }
       ]

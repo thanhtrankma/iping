@@ -315,7 +315,7 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     case 'offline':
       notification = {
         title: groupName,
-        body: `📵 ${e.name} không cập nhật vị trí từ ${hhmm(e.lastAt)} (mất kết nối hoặc hết pin?)`,
+        body: `📵 Chưa thấy ${e.name} hoạt động từ ${hhmm(e.lastAt)} (có thể mất mạng, hết pin hoặc tắt máy)`,
       };
       break;
     case 'location_off':
@@ -554,30 +554,33 @@ exports.deleteAccount = onCall({ timeoutSeconds: 300 }, async (req) => {
 
 // ---------- Mất kết nối ----------
 
-const STALE_MS = 60 * 60 * 1000;
+// Client ghi `lastSeenAt` mỗi 15 phút khi đang chia sẻ (kể cả đứng yên). Ngưỡng 4 giờ chừa chỗ cho iOS
+// tạm dừng app chạy nền, để không báo nhầm người chỉ đang ngồi yên / ngủ.
+const STALE_MS = 4 * 60 * 60 * 1000;
 
-/// Mỗi 15 phút: thành viên đang chia sẻ mà hơn 1 giờ không cập nhật vị trí → báo nhóm một lần cho mỗi đợt.
+/// Mỗi 15 phút: thành viên đang chia sẻ mà quá 4 giờ không thấy hoạt động → báo nhóm một lần cho mỗi đợt.
 exports.checkStaleLocations = onSchedule({ schedule: 'every 15 minutes', timeZone: 'Asia/Ho_Chi_Minh' }, async () => {
   const cutoff = new Date(Date.now() - STALE_MS);
+  // Doc chưa có lastSeenAt (bản app cũ) không khớp truy vấn nên không bị báo nhầm.
   const snap = await db.collectionGroup('locations')
     .where('sharing', '==', true)
-    .where('updatedAt', '<=', cutoff)
+    .where('lastSeenAt', '<=', cutoff)
     .get();
 
   await Promise.all(snap.docs.map(async (doc) => {
     const d = doc.data();
-    // Đã báo cho lần cập nhật cuối này rồi (client ghi đè cả doc khi có vị trí mới → tự reset).
-    if (d.offlineAlertedFor && d.updatedAt && d.offlineAlertedFor.isEqual(d.updatedAt)) return;
+    // Đã báo cho lần hoạt động cuối này rồi (heartbeat / vị trí mới sẽ đổi lastSeenAt → tự reset).
+    if (d.offlineAlertedFor && d.lastSeenAt && d.offlineAlertedFor.isEqual(d.lastSeenAt)) return;
     const groupRef = doc.ref.parent.parent;
     const uid = doc.id;
     const g = await groupRef.get();
     if (!g.exists || !(g.get('memberIds') || []).includes(uid)) return;
-    await doc.ref.update({ offlineAlertedFor: d.updatedAt });
+    await doc.ref.update({ offlineAlertedFor: d.lastSeenAt });
     await groupRef.collection('events').add({
       type: 'offline',
       uid,
       name: d.name || 'Thành viên',
-      lastAt: d.updatedAt,
+      lastAt: d.lastSeenAt,
       createdAt: FieldValue.serverTimestamp(),
     });
   }));

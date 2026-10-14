@@ -55,6 +55,8 @@ class LocationService {
   }
 
   Future<void> dispose() async {
+    _heartbeat?.cancel();
+    _heartbeat = null;
     await _posSub?.cancel();
     await _groupSub?.cancel();
     _posSub = null;
@@ -75,6 +77,7 @@ class LocationService {
         .listen(_onPosition, onError: _onStreamError);
     sharing.value = true;
     (await SharedPreferences.getInstance()).setBool(_prefKey, true);
+    _startHeartbeat();
 
     try {
       _onPosition(await Geolocator.getCurrentPosition());
@@ -82,6 +85,28 @@ class LocationService {
       debugPrint('getCurrentPosition: $e');
     }
     return null;
+  }
+
+  /// Ghi `lastSeenAt` định kỳ khi đang chia sẻ, kể cả khi đứng yên (distanceFilter không phát vị trí mới).
+  /// Server dựa vào đây để phân biệt "ngồi yên" với "mất kết nối" (checkStaleLocations).
+  static const heartbeatInterval = Duration(minutes: 15);
+  Timer? _heartbeat;
+
+  void _startHeartbeat() {
+    _heartbeat?.cancel();
+    _heartbeat = Timer.periodic(heartbeatInterval, (_) => _beat());
+  }
+
+  Future<void> _beat() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || !sharing.value) return;
+    for (final g in _groups) {
+      if (PrivacyService.instance.isPaused(g.id)) continue;
+      _db
+          .doc('groups/${g.id}/locations/$uid')
+          .set({'lastSeenAt': FieldValue.serverTimestamp()}, SetOptions(merge: true))
+          .catchError((Object e) => debugPrint('heartbeat ${g.id}: $e'));
+    }
   }
 
   bool _reportedOff = false;
@@ -105,6 +130,8 @@ class LocationService {
   Future<void> stop() async {
     await _posSub?.cancel();
     _posSub = null;
+    _heartbeat?.cancel();
+    _heartbeat = null;
     sharing.value = false;
     (await SharedPreferences.getInstance()).setBool(_prefKey, false);
 
@@ -191,6 +218,7 @@ class LocationService {
       if (battery != null) 'battery': battery,
       'sharing': true,
       'updatedAt': FieldValue.serverTimestamp(),
+      'lastSeenAt': FieldValue.serverTimestamp(),
       // Giờ thiết bị, dùng tạm khi giờ server chưa về (ghi offline / độ trễ).
       'clientAt': Timestamp.fromDate(p.timestamp),
     };
