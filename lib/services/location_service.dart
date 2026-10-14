@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
+import '../screens/location_disclosure.dart';
 import 'battery_alert_service.dart';
 import 'explore_service.dart';
 import 'geofence_service.dart';
@@ -69,7 +70,7 @@ class LocationService {
 
   /// Trả về thông báo lỗi nếu không bắt đầu được, `null` nếu thành công.
   Future<String?> start() async {
-    final err = await _ensurePermission();
+    final err = await _ensurePermission(background: true);
     if (err != null) return err;
 
     await _posSub?.cancel();
@@ -294,16 +295,30 @@ class LocationService {
     return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: distanceFilter);
   }
 
-  Future<String?> _ensurePermission() async {
+  /// [background]: đang bật chia sẻ → sau khi có quyền "khi dùng app" thì xin thêm "Luôn cho phép" (hỏi một lần).
+  Future<String?> _ensurePermission({bool background = false}) async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       return 'Hãy bật dịch vụ định vị (GPS) trên thiết bị.';
     }
     var perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+    if (perm == LocationPermission.denied) {
+      // Google Play: phải giải thích và người dùng đồng ý TRƯỚC hộp thoại xin quyền của hệ thống.
+      if (!await LocationDisclosure.ensureAccepted()) {
+        return 'Bạn cần đồng ý cho IPing dùng vị trí để chia sẻ với nhóm.';
+      }
+      perm = await Geolocator.requestPermission();
+    }
     if (perm == LocationPermission.denied) return 'Bạn chưa cấp quyền vị trí.';
     if (perm == LocationPermission.deniedForever) {
       return 'Quyền vị trí đang bị chặn. Hãy bật lại trong Cài đặt của thiết bị.';
     }
+    if (background && perm == LocationPermission.whileInUse) {
+      if (await LocationDisclosure.askBackground()) {
+        // Android 11+ mở trang Cài đặt để chọn "Luôn cho phép"; từ chối thì vẫn chạy khi mở app.
+        await Geolocator.requestPermission();
+      }
+    }
     return null;
   }
+
 }

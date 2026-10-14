@@ -3,7 +3,7 @@
 # Chạy từ thư mục gốc dự án: ./scripts/setup_platforms.sh
 set -euo pipefail
 
-ORG="${ORG:-com.gannhau}"
+ORG="${ORG:-com.iping}"
 
 if [ ! -d ios ] || [ ! -d android ]; then
   flutter create --org "$ORG" --project-name gan_nhau --platforms ios,android .

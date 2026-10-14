@@ -48,6 +48,50 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:174626795612:android:c698d6bf460bcc15d63699",
+        "android_client_info": {
+          "package_name": "com.iping.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "174626795612-4g6v20ld8pbj5f094f06de55699hcero.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.iping.app",
+            "certificate_hash": "f44d0f49657b52c61cccaf6f2393c5d4a56e7058"
+          }
+        },
+        {
+          "client_id": "174626795612-hkaniikupmhn2015hllhkct756eta8dq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRLXZX0tpjfNcCTTLqs45WFEqoqiy2qOM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "174626795612-hkaniikupmhn2015hllhkct756eta8dq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "174626795612-ij2b5ulu4qsgv5jcvgp5sl0mev2bima0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.gannhau.ganNhau"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

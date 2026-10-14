@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>174626795612-ij2b5ulu4qsgv5jcvgp5sl0mev2bima0.apps.googleusercontent.com</string>
+	<string>174626795612-pieh0bkglpv7talp7dvolqmgb0bgjmsi.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.174626795612-ij2b5ulu4qsgv5jcvgp5sl0mev2bima0</string>
+	<string>com.googleusercontent.apps.174626795612-pieh0bkglpv7talp7dvolqmgb0bgjmsi</string>
 	<key>ANDROID_CLIENT_ID</key>
-	<string>174626795612-eslmc5soi3550vea9978qbk9dn85hp0f.apps.googleusercontent.com</string>
+	<string>174626795612-4g6v20ld8pbj5f094f06de55699hcero.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDIf6gJEKh41LdCJQ4xsz-F8NtqGFSX4Ko</string>
 	<key>GCM_SENDER_ID</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.gannhau.ganNhau</string>
+	<string>com.iping.app</string>
 	<key>PROJECT_ID</key>
 	<string>iping-share</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:174626795612:ios:9e5b3c5ded0c7effd63699</string>
+	<string>1:174626795612:ios:d3b5e5ef29418ec3d63699</string>
 </dict>
 </plist>

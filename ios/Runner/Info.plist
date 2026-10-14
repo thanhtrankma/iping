@@ -29,15 +29,15 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.174626795612-ij2b5ulu4qsgv5jcvgp5sl0mev2bima0</string>
-				<string>app-1-174626795612-ios-9e5b3c5ded0c7effd63699</string>
+				<string>com.googleusercontent.apps.174626795612-pieh0bkglpv7talp7dvolqmgb0bgjmsi</string>
+				<string>app-1-174626795612-ios-d3b5e5ef29418ec3d63699</string>
 			</array>
 		</dict>
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>com.gannhau.gan_nhau.invite</string>
+			<string>com.iping.app.invite</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>iping</string>
@@ -49,7 +49,7 @@
 	<key>FlutterDeepLinkingEnabled</key>
 	<false/>
 	<key>GIDClientID</key>
-	<string>174626795612-ij2b5ulu4qsgv5jcvgp5sl0mev2bima0.apps.googleusercontent.com</string>
+	<string>174626795612-pieh0bkglpv7talp7dvolqmgb0bgjmsi.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>

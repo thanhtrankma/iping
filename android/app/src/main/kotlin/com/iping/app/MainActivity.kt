@@ -1,4 +1,4 @@
-package com.gannhau.gan_nhau
+package com.iping.app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

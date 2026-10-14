@@ -1,0 +1,6 @@
+# Sao chép thành android/key.properties (file này KHÔNG được đưa lên git) rồi điền thông tin khoá.
+# storeFile tính từ thư mục android/app.
+storePassword=MAT_KHAU_KEYSTORE
+keyPassword=MAT_KHAU_KEY
+keyAlias=upload
+storeFile=../../keys/iping-upload.jks

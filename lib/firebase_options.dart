@@ -51,19 +51,19 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBRLXZX0tpjfNcCTTLqs45WFEqoqiy2qOM',
-    appId: '1:174626795612:android:157df9f21690777dd63699',
+    appId: '1:174626795612:android:c698d6bf460bcc15d63699',
     messagingSenderId: '174626795612',
     projectId: 'iping-share',
     storageBucket: 'iping-share.firebasestorage.app',
   );
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDIf6gJEKh41LdCJQ4xsz-F8NtqGFSX4Ko',
-    appId: '1:174626795612:ios:9e5b3c5ded0c7effd63699',
+    appId: '1:174626795612:ios:d3b5e5ef29418ec3d63699',
     messagingSenderId: '174626795612',
     projectId: 'iping-share',
     storageBucket: 'iping-share.firebasestorage.app',
-    androidClientId: '174626795612-eslmc5soi3550vea9978qbk9dn85hp0f.apps.googleusercontent.com',
-    iosClientId: '174626795612-ij2b5ulu4qsgv5jcvgp5sl0mev2bima0.apps.googleusercontent.com',
-    iosBundleId: 'com.gannhau.ganNhau',
+    androidClientId: '174626795612-4g6v20ld8pbj5f094f06de55699hcero.apps.googleusercontent.com',
+    iosClientId: '174626795612-pieh0bkglpv7talp7dvolqmgb0bgjmsi.apps.googleusercontent.com',
+    iosBundleId: 'com.iping.app',
   );
 }

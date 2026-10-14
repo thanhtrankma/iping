@@ -18,3 +18,8 @@ android/local.properties
 android/app/.cxx/
 .claude/
 dist/
+# Khoá ký app (không bao giờ đưa lên git)
+android/key.properties
+keys/
+*.jks
+*.keystore
