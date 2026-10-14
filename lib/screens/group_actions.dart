@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -109,7 +111,15 @@ class GroupActions {
       ),
     );
     if (ok != true) return false;
-    await GroupService.instance.leaveGroup(g.id);
+    try {
+      await GroupService.instance.leaveGroup(g.id);
+    } on FirebaseFunctionsException catch (e) {
+      if (context.mounted) showMessage(context, e.message ?? 'Không rời nhóm được. Hãy thử lại.');
+      return false;
+    } catch (e) {
+      if (context.mounted) showMessage(context, 'Không rời nhóm được: $e');
+      return false;
+    }
     if (SettingsService.instance.selectedGroupId.value == g.id) {
       await SettingsService.instance.selectGroup(null);
     }
@@ -138,9 +148,18 @@ class GroupActions {
       ),
     );
     if (ok != true) return;
-    final pos = await LocationService.instance.currentPosition();
-    await GroupService.instance.sendSos(g.id, lat: pos?.latitude, lng: pos?.longitude);
-    if (context.mounted) showMessage(context, 'Đã gửi SOS đến cả nhóm');
+    try {
+      final pos = await LocationService.instance.currentPosition();
+      // Mất mạng thì Firestore giữ lệnh trong hàng đợi và tự gửi khi có mạng lại.
+      await GroupService.instance
+          .sendSos(g.id, lat: pos?.latitude, lng: pos?.longitude)
+          .timeout(const Duration(seconds: 10));
+      if (context.mounted) showMessage(context, 'Đã gửi SOS đến cả nhóm');
+    } on TimeoutException {
+      if (context.mounted) showMessage(context, 'Chưa có mạng: SOS sẽ tự gửi ngay khi có kết nối. Hãy gọi điện nếu khẩn cấp.');
+    } catch (e) {
+      if (context.mounted) showMessage(context, 'Không gửi được SOS: $e. Hãy gọi điện nếu khẩn cấp.');
+    }
   }
 
   /// Chọn nhóm đang xem, kèm lối tắt tạo / tham gia nhóm.

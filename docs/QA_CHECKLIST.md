@@ -218,7 +218,7 @@ Chạy bằng Emulator (`firebase emulators:start`) hoặc thử trực tiếp t
 | 14/10 | (đọc code) | — | **BUG-05** Rules không kiểm tra `fromName`/`name`, nên một thành viên có thể gửi push SOS hoặc ping mạo danh tên người khác | TB | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-06** Ping `locate` không giới hạn tần suất, có thể spam push và làm hao pin máy người bị yêu cầu | Thấp | Mở |
 | 14/10 | (đọc code) | AU-05 | **BUG-07** Đăng xuất khi mất mạng bị treo: `signOut` chờ ghi Firestore trước, không có thông báo lỗi | TB | Đã sửa |
-| 14/10 | (đọc code) | SO-02 | **BUG-08** `group_actions.dart` không bắt lỗi khi `leave`/`sos` thất bại, người dùng không thấy báo gì | TB | Mở |
+| 14/10 | (đọc code) | SO-02 | **BUG-08** `group_actions.dart` không bắt lỗi khi `leave`/`sos` thất bại, người dùng không thấy báo gì | TB | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-09** Thiếu kiểm tra `mounted` sau `await`: `member_screen._requestLocation`, `profile_screen._changePhoto`, `sign_in_screen` | TB | Mở |
 | 14/10 | (đọc code) | — | **BUG-10** Chế độ Tất cả bạn bè: lỗi ở một nhóm làm mất hết marker (`all_friends_service.dart:89`) | TB | Mở |
 | 14/10 | (đọc code) | GR-07 | **BUG-11** Menu giữ group cũ sau khi rời nhóm. Màn thành viên quay vòng mãi khi nhóm bị xoá | Thấp | Mở |

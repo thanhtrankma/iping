@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
@@ -88,13 +90,22 @@ class AllFriendsActions {
     );
     if (ok != true) return;
     final pos = await LocationService.instance.currentPosition();
+    // 1 = đã gửi, 0 = đang chờ mạng (Firestore tự gửi lại), -1 = lỗi.
     final results = await Future.wait(groups.map((x) => GroupService.instance
         .sendSos(x.id, lat: pos?.latitude, lng: pos?.longitude)
-        .then((_) => true, onError: (_) => false)));
-    final sent = results.where((r) => r).length;
+        .timeout(const Duration(seconds: 10))
+        .then((_) => 1, onError: (Object e) => e is TimeoutException ? 0 : -1)));
+    final sent = results.where((r) => r == 1).length;
+    final queued = results.where((r) => r == 0).length;
     if (context.mounted) {
       showMessage(
-          context, sent == groups.length ? 'Đã gửi SOS đến tất cả nhóm' : 'Đã gửi SOS đến $sent/${groups.length} nhóm');
+        context,
+        queued > 0
+            ? 'Chưa có mạng: SOS sẽ tự gửi ngay khi có kết nối. Hãy gọi điện nếu khẩn cấp.'
+            : sent == groups.length
+                ? 'Đã gửi SOS đến tất cả nhóm'
+                : 'Đã gửi SOS đến $sent/${groups.length} nhóm',
+      );
     }
   }
 
