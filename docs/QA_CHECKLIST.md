@@ -35,7 +35,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 17 | **Yêu cầu cập nhật vị trí** (đánh thức máy người kia) | ✅ | Ping `locate` + `locate_background.dart` (BUG-01 đã sửa) |
 | 18 | Tạo nhóm, nhiều nhóm, chuyển nhóm | ✅ | `groups_screen.dart`, `pickGroup` |
 | 19 | Mời bằng mã | ✅ | Mã 6 ký tự |
-| 20 | Mời bằng link / SMS / share sheet | ⚠️ | Chỉ có nút sao chép mã, không có link mời hay share sheet |
+| 20 | Mời bằng link / SMS / share sheet | ✅ | Bảng mời có QR (`qr_flutter`), mã 6 ký tự, sao chép và share sheet (`share_plus`). Link `iping://join?code=…` (`app_links`) mở hộp thoại tham gia; ô nhập mã nhận cả link và có quét QR (`mobile_scanner`). Đã thử trên emulator |
 | 21 | Chủ nhóm xoá thành viên | ✅ | `removeMember` / `unblockMember`, `member_admin.dart`. Có thêm chặn thành viên |
 | 22 | Đổi tên nhóm | ✅ | Chủ nhóm: Quản lý nhóm → ⋯ → "Đổi tên nhóm" (`GroupActions.rename`, 1–50 ký tự, khớp rules) |
 | 23 | Bật/tắt chia sẻ vị trí (ẩn vị trí) | ✅ | Nút "Bật chia sẻ"; mặc định tắt |

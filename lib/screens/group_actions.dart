@@ -10,6 +10,7 @@ import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'invite_screens.dart';
 import '../widgets/glass.dart';
 
 /// Các thao tác nhóm dùng chung giữa nhiều màn hình.
@@ -21,9 +22,17 @@ class GroupActions {
   }
 
   static Future<void> join(BuildContext context) async {
-    final code = await promptText(context, title: 'Tham gia nhóm', label: 'Nhập mã mời 6 ký tự', upperCase: true);
+    // Nhập mã, dán link mời hoặc quét QR.
+    final code = await promptJoinCode(context);
     if (code == null || code.isEmpty || !context.mounted) return;
     await _run(context, () => GroupService.instance.joinGroup(code));
+  }
+
+  /// Tham gia bằng mã có sẵn (link mời / QR). Trả về id nhóm nếu thành công.
+  static Future<String?> joinCode(BuildContext context, String code) async {
+    String? gid;
+    await _run(context, () async => gid = await GroupService.instance.joinGroup(code));
+    return gid;
   }
 
   static Future<void> _run(BuildContext context, Future<String> Function() action) async {
@@ -43,7 +52,7 @@ class GroupActions {
       builder: (ctx) {
         final scheme = Theme.of(ctx).colorScheme;
         final dark = Theme.of(ctx).brightness == Brightness.dark;
-        return Padding(
+        return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -54,10 +63,12 @@ class GroupActions {
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
               const SizedBox(height: 8),
-              Text('Gửi mã này cho người bạn muốn mời. Họ chọn "Tham gia bằng mã mời" và nhập mã.',
+              Text('Cho người bạn muốn mời quét mã QR, hoặc gửi link / mã 6 ký tự để họ "Tham gia bằng mã mời".',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 15, height: 1.35, color: scheme.onSurface.withValues(alpha: 0.55))),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              InviteQr(code: g.inviteCode),
+              const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -87,6 +98,8 @@ class GroupActions {
                   showMessage(context, 'Đã sao chép mã mời');
                 },
               ),
+              const SizedBox(height: 10),
+              ShareInviteButton(group: g),
             ],
           ),
         );

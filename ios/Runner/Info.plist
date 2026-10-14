@@ -33,15 +33,27 @@
 				<string>app-1-174626795612-ios-9e5b3c5ded0c7effd63699</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.gannhau.gan_nhau.invite</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>iping</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>GIDClientID</key>
 	<string>174626795612-ij2b5ulu4qsgv5jcvgp5sl0mev2bima0.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>IPing dùng camera để chụp ảnh đại diện và khoảnh khắc.</string>
+	<string>IPing dùng camera để chụp ảnh đại diện, khoảnh khắc và quét mã QR mời vào nhóm.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Cho phép luôn truy cập vị trí để nhóm nhận thông báo khi bạn đến hoặc rời địa điểm, kể cả khi ứng dụng đóng.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

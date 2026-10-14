@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/invite_screens.dart';
 import 'screens/sign_in_screen.dart';
 import 'services/auth_service.dart';
 import 'services/explore_service.dart';
@@ -103,5 +104,5 @@ class _SignedInShellState extends State<SignedInShell> {
   }
 
   @override
-  Widget build(BuildContext context) => HomeScreen(uid: widget.uid);
+  Widget build(BuildContext context) => InviteLinkListener(child: HomeScreen(uid: widget.uid));
 }
