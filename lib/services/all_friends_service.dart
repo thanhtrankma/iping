@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../models/models.dart';
 import 'group_service.dart';
 import 'settings_service.dart';
@@ -87,7 +89,11 @@ class AllFriendsService {
             // Chỉ giữ thành viên hiện tại của nhóm đó.
             latest[g.id] = locs.where((l) => g.memberIds.contains(l.uid)).toList();
             ctrl.add(merge(latest));
-          }, onError: ctrl.addError));
+          }, onError: (Object e) {
+            // Lỗi ở một nhóm (vd. vừa bị xoá khỏi nhóm): bỏ nhóm đó, giữ marker của các nhóm khác.
+            debugPrint('All friends ${g.id}: $e');
+            if (latest.remove(g.id) != null) ctrl.add(merge(latest));
+          }));
         }
       },
       onCancel: () async {
