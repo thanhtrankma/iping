@@ -9,6 +9,7 @@ const PREF_KEY = {
   join: 'join',
   meetup_arrive: 'meetup',
   message: 'message',
+  dm: 'message',
   moment: 'moment',
   meetup: 'meetup',
   ping: 'ping',

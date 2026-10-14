@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 import '../screens/chat_tab.dart';
+import '../screens/dm_screen.dart';
 import '../screens/group_actions.dart';
 import '../screens/meetup_screen.dart';
 import '../screens/member_screen.dart';
@@ -17,7 +18,7 @@ import 'settings_service.dart';
 final navigatorKey = GlobalKey<NavigatorState>();
 
 /// Màn hình cần mở khi bấm vào một push.
-enum PushDest { member, chat, moments, meetup, safeTrip, home }
+enum PushDest { member, chat, dm, moments, meetup, safeTrip, home }
 
 class PushTarget {
   const PushTarget(this.dest, this.groupId, {this.uid, this.meetupId});
@@ -38,6 +39,7 @@ PushTarget? pushTargetFor(Map<String, dynamic> data) {
 
   return switch (data['type']) {
     'message' => PushTarget(PushDest.chat, gid),
+    'dm' => s('uid') == null ? PushTarget(PushDest.home, gid) : PushTarget(PushDest.dm, gid, uid: s('uid')),
     'moment' => PushTarget(PushDest.moments, gid),
     'meetup' => s('meetupId') == null
         ? PushTarget(PushDest.home, gid)
@@ -98,6 +100,7 @@ class PushRouter {
     final group = g;
     final Widget page = switch (t.dest) {
       PushDest.chat => SubPage(title: group.name, child: ChatTab(group: group)),
+      PushDest.dm => DmScreen(groupId: group.id, otherUid: t.uid!, otherName: group.nameOf(t.uid!)),
       PushDest.moments => MomentsScreen(group: group),
       PushDest.meetup => MeetupDetailScreen(group: group, meetupId: t.meetupId!),
       PushDest.safeTrip => SafeTripScreen(group: group),

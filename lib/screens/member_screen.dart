@@ -19,6 +19,7 @@ import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
 import '../widgets/safe_trip_widgets.dart';
 import 'chat_tab.dart';
+import 'dm_screen.dart';
 import 'driving_screen.dart';
 import 'group_actions.dart';
 import 'history_screen.dart';
@@ -247,7 +248,7 @@ class _MemberScreenState extends State<MemberScreen> {
                               scrollDirection: Axis.horizontal,
                               clipBehavior: Clip.none,
                               padding: const EdgeInsets.fromLTRB(2, 2, 2, 12),
-                              itemCount: _pings.length + 1,
+                              itemCount: _pings.length + 2,
                               separatorBuilder: (_, __) => const SizedBox(width: 8),
                               itemBuilder: (context, i) {
                                 const pad = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
@@ -272,7 +273,23 @@ class _MemberScreenState extends State<MemberScreen> {
                                     ),
                                   );
                                 }
-                                final (type, emoji, label) = _pings[i - 1];
+                                if (i == 1) {
+                                  // Chat 1-1 với thành viên này.
+                                  return GlassPill(
+                                    padding: pad,
+                                    onTap: () => _push(DmScreen(groupId: widget.groupId, otherUid: widget.uid, otherName: name)),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.chat_bubble_rounded, size: 17, color: AppColors.brand),
+                                        SizedBox(width: 6),
+                                        Text('Nhắn tin',
+                                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.2)),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                final (type, emoji, label) = _pings[i - 2];
                                 return GlassPill(
                                   padding: pad,
                                   onTap: () => _ping(type, '$emoji $label'),

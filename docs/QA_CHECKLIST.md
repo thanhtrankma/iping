@@ -30,7 +30,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 12 | Nút SOS / panic (push khẩn kèm vị trí) | ✅ | `GroupActions.sos` |
 | 13 | SOS **hú còi** trên máy người nhận | ✅ | Android: kênh `sos` (MainActivity) với tiếng còi `res/raw/sos_siren`, usage ALARM. iOS: `sos_siren.caf` trong bundle. Push SOS / quá giờ Về an toàn dùng âm này; app đang mở thì `SosAlarmService` hú còi (tối đa 30 giây, nút "Tắt còi"). Còi tự tổng hợp, không dùng file có bản quyền |
 | 14 | Chat nhóm | ✅ | `chat_tab.dart` |
-| 15 | Chat 1-1 | ❌ | Chỉ có chat nhóm |
+| 15 | Chat 1-1 | ✅ | Màn thành viên → "Nhắn tin" → `DmScreen` (dùng lại giao diện chat). `dms/{uidA_uidB}` + `messages`; rules: chỉ 2 người trong cuộc, tạo được khi cùng nhóm. Push `onDmMessage` (khoá cảnh báo `message`), bấm push mở đúng cuộc trò chuyện. Chưa thử trên máy (cần 2 tài khoản) |
 | 16 | Tin nhắn nhanh / ping | ✅ | 6 loại ping, `onPing` |
 | 17 | **Yêu cầu cập nhật vị trí** (đánh thức máy người kia) | ✅ | Ping `locate` + `locate_background.dart` (BUG-01 đã sửa) |
 | 18 | Tạo nhóm, nhiều nhóm, chuyển nhóm | ✅ | `groups_screen.dart`, `pickGroup` |

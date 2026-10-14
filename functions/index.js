@@ -586,3 +586,17 @@ exports.checkStaleLocations = onSchedule({ schedule: 'every 15 minutes', timeZon
     });
   }));
 });
+
+// ---------- Chat 1-1 ----------
+
+exports.onDmMessage = onDocumentCreated('dms/{dmId}/messages/{messageId}', async (event) => {
+  const m = event.data?.data();
+  if (!m) return;
+  const dm = (await db.doc(`dms/${event.params.dmId}`).get()).data();
+  if (!dm || !(dm.members || []).includes(m.uid)) return;
+  const others = dm.members.filter((u) => u !== m.uid);
+  await notifyUsers(dm.groupId || '', others, {
+    title: `💬 ${await displayName(m.uid)}`,
+    body: String(m.text).slice(0, 200),
+  }, { type: 'dm', uid: String(m.uid), dmId: event.params.dmId }, m.uid);
+});

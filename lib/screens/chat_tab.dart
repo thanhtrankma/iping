@@ -12,15 +12,26 @@ import '../widgets/glass.dart';
 const double _composerHeight = 64;
 
 class ChatTab extends StatefulWidget {
-  const ChatTab({super.key, required this.group});
-  final Group group;
+  /// Chat nhóm.
+  const ChatTab({super.key, required Group this.group})
+      : messages = null,
+        onSend = null;
+
+  /// Chat với nguồn tin nhắn tuỳ chọn (vd. chat 1-1).
+  const ChatTab.custom({super.key, required Stream<List<ChatMessage>> this.messages, required this.onSend})
+      : group = null;
+
+  final Group? group;
+  final Stream<List<ChatMessage>>? messages;
+  final Future<void> Function(String text)? onSend;
 
   @override
   State<ChatTab> createState() => _ChatTabState();
 }
 
 class _ChatTabState extends State<ChatTab> {
-  late final Stream<List<ChatMessage>> _messages = GroupService.instance.messages(widget.group.id);
+  late final Stream<List<ChatMessage>> _messages =
+      widget.messages ?? GroupService.instance.messages(widget.group!.id);
   final _input = TextEditingController();
   final _uid = FirebaseAuth.instance.currentUser!.uid;
 
@@ -34,7 +45,12 @@ class _ChatTabState extends State<ChatTab> {
     final text = _input.text.trim();
     if (text.isEmpty) return;
     _input.clear();
-    await GroupService.instance.sendMessage(widget.group.id, text);
+    final send = widget.onSend;
+    if (send != null) {
+      await send(text);
+    } else {
+      await GroupService.instance.sendMessage(widget.group!.id, text);
+    }
   }
 
   @override

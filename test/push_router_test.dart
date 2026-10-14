@@ -24,4 +24,9 @@ void main() {
     expect((m.dest, m.meetupId), (PushDest.meetup, 'm1'));
     expect(pushTargetFor({'groupId': 'g', 'type': 'safe_self', 'uid': 'u'})!.dest, PushDest.safeTrip);
   });
+
+  test('tin nhắn 1-1 mở cuộc trò chuyện với người gửi', () {
+    final t = pushTargetFor({'groupId': 'g', 'type': 'dm', 'uid': 'u9', 'dmId': 'a_b'})!;
+    expect((t.dest, t.uid), (PushDest.dm, 'u9'));
+  });
 }
