@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/models.dart';
 import '../services/auth_service.dart';
@@ -246,6 +247,19 @@ class _MenuView extends StatelessWidget {
                   ],
                 ),
               ),
+            ),
+            GlassSection(
+              dividerIndent: _rowIndent,
+              children: [
+                ListTile(
+                  horizontalTitleGap: 14,
+                  leading: const GlassIconBadge(icon: Icons.privacy_tip_rounded, color: AppColors.gray),
+                  title: const Text('Chính sách quyền riêng tư'),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () => launchUrl(Uri.parse('https://iping-share.web.app/privacy'),
+                      mode: LaunchMode.externalApplication),
+                ),
+              ],
             ),
             GlassSection(
               children: [

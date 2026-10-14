@@ -1,1 +1,55 @@
-{"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"functions":[{"source":"functions","codebase":"default","ignore":["node_modules",".git"]}],"flutter":{"platforms":{"android":{"default":{"projectId":"iping-share","appId":"1:174626795612:android:c698d6bf460bcc15d63699","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"iping-share","appId":"1:174626795612:ios:d3b5e5ef29418ec3d63699","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"iping-share","configurations":{"android":"1:174626795612:android:c698d6bf460bcc15d63699","ios":"1:174626795612:ios:d3b5e5ef29418ec3d63699"}}}}},"storage":{"rules":"storage.rules"}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git"
+      ]
+    }
+  ],
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "iping-share",
+          "appId": "1:174626795612:android:c698d6bf460bcc15d63699",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "iping-share",
+          "appId": "1:174626795612:ios:d3b5e5ef29418ec3d63699",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "iping-share",
+          "configurations": {
+            "android": "1:174626795612:android:c698d6bf460bcc15d63699",
+            "ios": "1:174626795612:ios:d3b5e5ef29418ec3d63699"
+          }
+        }
+      }
+    }
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": "hosting/public",
+    "cleanUrls": true,
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ]
+  }
+}

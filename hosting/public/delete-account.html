@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Xoá tài khoản · IPing</title>
+  <link rel="icon" href="logo.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header><img src="logo.png" alt=""><a href="/">IPing</a></header>
+  <h1>Xoá tài khoản IPing</h1>
+  <p>Xoá tài khoản sẽ <strong>xoá vĩnh viễn</strong> hồ sơ, vị trí và lịch sử, tin nhắn 1-1, khoảnh khắc và ảnh của bạn, đồng thời đưa bạn ra khỏi mọi nhóm. Không thể hoàn tác.</p>
+
+  <div class="card">
+    <h2 style="margin-top:0">Cách 1: trong ứng dụng</h2>
+    <p>Mở IPing → Menu → bấm vào tên của bạn (Hồ sơ) → <strong>Xoá tài khoản</strong>.</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Cách 2: trên trang này</h2>
+
+    <div id="step-signin">
+      <p>Đăng nhập bằng đúng cách bạn dùng trong ứng dụng.</p>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email">
+      <label for="password">Mật khẩu</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <div class="row">
+        <button id="btn-email">Đăng nhập bằng email</button>
+        <button id="btn-google" class="secondary">Đăng nhập bằng Google</button>
+      </div>
+
+      <label for="phone" style="margin-top:20px">Hoặc số điện thoại</label>
+      <input id="phone" type="tel" placeholder="0912 345 678" autocomplete="tel">
+      <div class="row"><button id="btn-phone" class="secondary">Gửi mã xác minh</button></div>
+      <div id="otp-box" class="hidden">
+        <label for="otp">Mã 6 số</label>
+        <input id="otp" inputmode="numeric" maxlength="6">
+        <div class="row"><button id="btn-otp">Xác nhận</button></div>
+      </div>
+      <div id="recaptcha"></div>
+    </div>
+
+    <div id="step-confirm" class="hidden">
+      <p>Đang đăng nhập: <strong id="who"></strong></p>
+      <label for="confirm">Gõ <strong>XOÁ</strong> để xác nhận</label>
+      <input id="confirm" autocomplete="off">
+      <div class="row">
+        <button id="btn-delete" class="danger" disabled>Xoá vĩnh viễn tài khoản</button>
+        <button id="btn-signout" class="secondary">Đăng xuất</button>
+      </div>
+    </div>
+
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <footer><a href="/">IPing</a> · <a href="/privacy">Chính sách quyền riêng tư</a></footer>
+</main>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider,
+    RecaptchaVerifier, signInWithPhoneNumber, signOut,
+  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
+
+  const app = initializeApp({
+    apiKey: 'AIzaSyCsApk0wHDxXy2PA6EBKTKGGhEI_0jZhP0',
+    authDomain: 'iping-share.firebaseapp.com',
+    projectId: 'iping-share',
+    storageBucket: 'iping-share.firebasestorage.app',
+    messagingSenderId: '174626795612',
+    appId: '1:174626795612:web:5ef3ce52db0d5e0bd63699',
+  });
+  const auth = getAuth(app);
+  auth.languageCode = 'vi';
+  const deleteAccount = httpsCallable(getFunctions(app, 'asia-southeast1'), 'deleteAccount', { timeout: 300000 });
+
+  const $ = (id) => document.getElementById(id);
+  const say = (text, kind = '') => { $('msg').textContent = text; $('msg').className = 'msg ' + kind; };
+  const errText = (e) => ({
+    'auth/invalid-credential': 'Email hoặc mật khẩu không đúng.',
+    'auth/wrong-password': 'Email hoặc mật khẩu không đúng.',
+    'auth/user-not-found': 'Không tìm thấy tài khoản.',
+    'auth/invalid-phone-number': 'Số điện thoại không hợp lệ.',
+    'auth/invalid-verification-code': 'Mã xác minh không đúng.',
+    'auth/too-many-requests': 'Thử quá nhiều lần, hãy đợi một lúc.',
+    'auth/popup-closed-by-user': 'Bạn đã đóng cửa sổ đăng nhập.',
+  }[e.code] || e.message);
+
+  // 0912 345 678 → +84912345678
+  const normalizePhone = (raw) => {
+    const d = raw.replace(/[^\d+]/g, '');
+    if (d.startsWith('+')) return d;
+    if (d.startsWith('84')) return '+' + d;
+    if (d.startsWith('0')) return '+84' + d.slice(1);
+    return '+84' + d;
+  };
+
+  onAuthStateChanged(auth, (u) => {
+    $('step-signin').classList.toggle('hidden', !!u);
+    $('step-confirm').classList.toggle('hidden', !u);
+    if (u) $('who').textContent = u.email || u.phoneNumber || u.displayName || u.uid;
+  });
+
+  $('btn-email').onclick = async () => {
+    say('');
+    try { await signInWithEmailAndPassword(auth, $('email').value.trim(), $('password').value); }
+    catch (e) { say(errText(e), 'err'); }
+  };
+  $('btn-google').onclick = async () => {
+    say('');
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch (e) { say(errText(e), 'err'); }
+  };
+
+  let confirmation = null;
+  $('btn-phone').onclick = async () => {
+    say('');
+    try {
+      window.verifier ??= new RecaptchaVerifier(auth, 'recaptcha', { size: 'invisible' });
+      confirmation = await signInWithPhoneNumber(auth, normalizePhone($('phone').value), window.verifier);
+      $('otp-box').classList.remove('hidden');
+      say('Đã gửi mã xác minh.', 'ok');
+    } catch (e) { say(errText(e), 'err'); }
+  };
+  $('btn-otp').onclick = async () => {
+    say('');
+    try { await confirmation.confirm($('otp').value.trim()); }
+    catch (e) { say(errText(e), 'err'); }
+  };
+
+  // Chấp nhận XOÁ / XÓA / XOA, không phân biệt hoa thường.
+  $('confirm').oninput = () => {
+    const v = $('confirm').value.normalize('NFC').trim().toUpperCase();
+    $('btn-delete').disabled = !['XOÁ', 'XÓA', 'XOA'].includes(v);
+  };
+  $('btn-signout').onclick = () => signOut(auth);
+  $('btn-delete').onclick = async () => {
+    $('btn-delete').disabled = true;
+    say('Đang xoá tài khoản, vui lòng đợi…');
+    try {
+      await deleteAccount();
+      await signOut(auth).catch(() => {});
+      say('Đã xoá tài khoản và toàn bộ dữ liệu của bạn.', 'ok');
+    } catch (e) {
+      say('Không xoá được: ' + (e.message || e.code), 'err');
+      $('btn-delete').disabled = false;
+    }
+  };
+</script>
+</body>
+</html>
