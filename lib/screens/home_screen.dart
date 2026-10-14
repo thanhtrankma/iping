@@ -11,6 +11,7 @@ import '../services/group_service.dart';
 import '../services/location_service.dart';
 import '../services/safe_trip_service.dart';
 import '../services/settings_service.dart';
+import '../services/widget_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
@@ -249,6 +250,10 @@ class _GroupMapViewState extends State<_GroupMapView> {
                     .toList();
                 final me = LocationService.instance.lastPosition.value;
                 final myLoc = locs.where((l) => l.uid == widget.uid).firstOrNull;
+                if (g != null && locSnap.hasData) {
+                  final mine = me != null ? LatLng(me.latitude, me.longitude) : myLoc?.point;
+                  WidgetService.instance.update(group: g, locations: locs, places: places, myUid: widget.uid, me: mine);
+                }
                 // Chuyến "Về an toàn" đang mở của các thành viên đang xem.
                 final safeTrips = (safeSnap.data ?? const <GroupSafeTrip>[])
                     .where((t) => g?.memberIds.contains(t.trip.uid) ?? false)

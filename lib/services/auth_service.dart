@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'explore_service.dart';
 import 'location_service.dart';
 import 'notification_service.dart';
+import 'widget_service.dart';
 
 class AuthService {
   AuthService._();
@@ -167,6 +168,7 @@ class AuthService {
     await step('location.dispose', LocationService.instance.dispose);
     await step('explore', ExploreService.instance.dispose);
     await step('notifications', () => NotificationService.instance.unregister(uid));
+    await step('widget', WidgetService.instance.clear);
   }
 
   Future<void> signOut() async {

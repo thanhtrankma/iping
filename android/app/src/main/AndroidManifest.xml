@@ -41,6 +41,18 @@
                 <data android:scheme="iping" android:host="join"/>
             </intent-filter>
         </activity>
+        <!-- Widget màn hình chính: thành viên của nhóm đang chọn. -->
+        <receiver
+            android:name=".MembersWidgetProvider"
+            android:label="Thành viên IPing"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/iping_members_widget_info"/>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
