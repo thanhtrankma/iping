@@ -6,6 +6,7 @@ import '../services/profile_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
+import 'account_dialogs.dart';
 
 /// Hiện lựa chọn nguồn ảnh: chụp mới hoặc chọn từ thư viện.
 Future<ImageSource?> pickImageSource(BuildContext context, {bool allowRemove = false}) {
@@ -107,9 +108,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _changePhoto() async {
     final source = await pickImageSource(context);
-    if (source == null) return;
+    if (source == null || !mounted) return;
     final file = await ProfileService.instance.pickImage(source, maxSize: 512);
-    if (file == null) return;
+    if (file == null || !mounted) return;
     setState(() => _uploading = true);
     try {
       await ProfileService.instance.updateAvatar(file);
@@ -122,8 +123,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _removePhoto() async {
-    await ProfileService.instance.removeAvatar();
-    if (mounted) showMessage(context, 'Đã xoá ảnh đại diện');
+    try {
+      await ProfileService.instance.removeAvatar();
+      if (mounted) showMessage(context, 'Đã xoá ảnh đại diện');
+    } catch (e) {
+      if (mounted) showMessage(context, 'Không xoá được ảnh: $e');
+    }
   }
 
   Future<void> _saveName() async {
@@ -133,6 +138,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await ProfileService.instance.updateName(name);
       if (mounted) showMessage(context, 'Đã đổi tên');
+    } catch (e) {
+      if (mounted) showMessage(context, 'Không lưu được tên: $e');
     } finally {
       if (mounted) setState(() => _savingName = false);
     }
@@ -203,7 +210,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 2),
-            Text(_user.email ?? '', textAlign: TextAlign.center, style: TextStyle(color: secondary, fontSize: 15)),
+            Text(_user.email ?? _user.phoneNumber ?? '',
+                textAlign: TextAlign.center, style: TextStyle(color: secondary, fontSize: 15)),
             ValueListenableBuilder<Map<String, String>>(
               valueListenable: AvatarRegistry.instance,
               builder: (context, photos, _) => photos[_user.uid] == null
@@ -275,17 +283,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 ListTile(
                   horizontalTitleGap: 14,
-                  leading: const GlassIconBadge(icon: Icons.mail_rounded, color: AppColors.teal),
-                  title: const Text('Email'),
+                  leading: GlassIconBadge(
+                      icon: _user.email != null ? Icons.mail_rounded : Icons.phone_rounded, color: AppColors.teal),
+                  title: Text(_user.email != null ? 'Email' : 'Số điện thoại'),
                   trailing: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.5),
                     child: Text(
-                      _user.email ?? '',
+                      _user.email ?? _user.phoneNumber ?? '',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: secondary, fontSize: 15),
                     ),
                   ),
+                ),
+                ListTile(
+                  horizontalTitleGap: 14,
+                  leading: const GlassIconBadge(icon: Icons.delete_forever_rounded, color: AppColors.sos),
+                  title: const Text('Xoá tài khoản', style: TextStyle(color: AppColors.sos)),
+                  onTap: () => confirmDeleteAccount(context),
                 ),
               ],
             ),

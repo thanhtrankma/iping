@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../theme.dart';
+import '../utils/auth_errors.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
+import 'account_dialogs.dart';
+import 'phone_sign_in_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -47,21 +50,28 @@ class _SignInScreenState extends State<SignInScreen> {
         await AuthService.instance.signIn(_email.text.trim(), _password.text);
       }
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = _message(e.code));
+      if (mounted) setState(() => _error = authErrorMessage(e.code));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  String _message(String code) => switch (code) {
-        'invalid-email' => 'Email không hợp lệ.',
-        'email-already-in-use' => 'Email này đã được đăng ký.',
-        'weak-password' => 'Mật khẩu cần ít nhất 6 ký tự.',
-        'invalid-credential' || 'wrong-password' || 'user-not-found' =>
-          'Email hoặc mật khẩu không đúng.',
-        'network-request-failed' => 'Không có kết nối mạng.',
-        _ => 'Có lỗi xảy ra ($code).',
-      };
+  Future<void> _google() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AuthService.instance.signInWithGoogle();
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _error = authErrorMessage(e.code));
+    } catch (e) {
+      debugPrint('Google sign-in: $e');
+      if (mounted) setState(() => _error = 'Không đăng nhập được bằng Google. Hãy thử lại.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   /// Ô nhập dạng viên thuốc, nền mờ nhẹ bên trong thẻ kính (không lồng kính trong kính).
   InputDecoration _field(BuildContext context, String hint, IconData icon, {Widget? suffix}) {
@@ -208,6 +218,16 @@ class _SignInScreenState extends State<SignInScreen> {
                                       validator: (v) => (v == null || v.length < 6) ? 'Ít nhất 6 ký tự' : null,
                                       onFieldSubmitted: (_) => _submit(),
                                     ),
+                                    if (!_register)
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: _busy
+                                              ? null
+                                              : () => showForgotPasswordDialog(context, initialEmail: _email.text.trim()),
+                                          child: const Text('Quên mật khẩu?'),
+                                        ),
+                                      ),
                                     if (_error != null) ...[
                                       const SizedBox(height: 12),
                                       DecoratedBox(
@@ -240,6 +260,23 @@ class _SignInScreenState extends State<SignInScreen> {
                                       busy: _busy,
                                       label: _register ? 'Tạo tài khoản' : 'Đăng nhập',
                                       onPressed: _submit,
+                                    ),
+                                    const SizedBox(height: 14),
+                                    _OrDivider(color: secondary),
+                                    const SizedBox(height: 14),
+                                    OutlinedButton.icon(
+                                      onPressed: _busy ? null : _google,
+                                      icon: const _GoogleMark(),
+                                      label: const Text('Tiếp tục với Google'),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    OutlinedButton.icon(
+                                      onPressed: _busy
+                                          ? null
+                                          : () => Navigator.of(context)
+                                              .push(MaterialPageRoute(builder: (_) => const PhoneSignInScreen())),
+                                      icon: const Icon(Icons.phone_iphone_rounded),
+                                      label: const Text('Tiếp tục với số điện thoại'),
                                     ),
                                     const SizedBox(height: 6),
                                     TextButton(
@@ -418,6 +455,40 @@ class _Hero extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider({required this.color});
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Divider(color: color.withValues(alpha: 0.3))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text('hoặc', style: TextStyle(color: color)),
+        ),
+        Expanded(child: Divider(color: color.withValues(alpha: 0.3))),
+      ],
+    );
+  }
+}
+
+/// Chữ "G" nhiều màu đơn giản (không dùng logo ảnh).
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (r) => const SweepGradient(
+        colors: [Color(0xFF4285F4), Color(0xFF34A853), Color(0xFFFBBC05), Color(0xFFEA4335), Color(0xFF4285F4)],
+      ).createShader(r),
+      child: const Text('G', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
     );
   }
 }

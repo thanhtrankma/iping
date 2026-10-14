@@ -12,7 +12,20 @@
           "package_name": "com.gannhau.gan_nhau"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "174626795612-eslmc5soi3550vea9978qbk9dn85hp0f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gannhau.gan_nhau",
+            "certificate_hash": "f44d0f49657b52c61cccaf6f2393c5d4a56e7058"
+          }
+        },
+        {
+          "client_id": "174626795612-hkaniikupmhn2015hllhkct756eta8dq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBRLXZX0tpjfNcCTTLqs45WFEqoqiy2qOM"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "174626795612-hkaniikupmhn2015hllhkct756eta8dq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "174626795612-ij2b5ulu4qsgv5jcvgp5sl0mev2bima0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.gannhau.ganNhau"
+              }
+            }
+          ]
         }
       }
     }
