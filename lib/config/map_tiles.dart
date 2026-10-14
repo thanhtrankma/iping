@@ -6,8 +6,15 @@ import 'package:flutter_map/flutter_map.dart';
 /// Có thể ghi đè khi build: `--dart-define=MAPTILER_KEY=...`.
 const _mapTilerKey = String.fromEnvironment('MAPTILER_KEY', defaultValue: '');
 
+/// API key ArcGIS Location Platform (location.arcgis.com, quyền Basemaps) cho ảnh vệ tinh Esri:
+/// ảnh Maxar mới và nét hơn ảnh vệ tinh của MapTiler ở Việt Nam. `--dart-define=ARCGIS_KEY=...`.
+const _arcgisKey = String.fromEnvironment('ARCGIS_KEY', defaultValue: '');
+
 /// Đang dùng MapTiler (bản phát hành) hay nguồn tạm khi phát triển (Esri / OpenStreetMap).
 bool get usingMapTiler => _mapTilerKey.isNotEmpty;
+
+/// Ảnh vệ tinh lấy từ Esri có key (được phép dùng trong app phát hành).
+bool get usingArcgis => _arcgisKey.isNotEmpty;
 
 const _ua = 'com.iping.app';
 
@@ -20,22 +27,33 @@ TileLayer _mapTiler(BuildContext context, String map, String ext) => TileLayer(
     );
 
 /// Ảnh vệ tinh kèm tên đường / địa danh.
-List<Widget> satelliteTileLayers(BuildContext context) => usingMapTiler
-    ? [_mapTiler(context, 'hybrid', 'jpg')]
-    : [
-        // Chỉ dùng khi phát triển: Esri không cho phép dùng trong app phát hành.
-        TileLayer(
-          urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          userAgentPackageName: _ua,
-          maxNativeZoom: 19,
-        ),
-        TileLayer(
-          urlTemplate:
-              'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-          userAgentPackageName: _ua,
-          maxNativeZoom: 19,
-        ),
-      ];
+List<Widget> satelliteTileLayers(BuildContext context) => usingArcgis
+    ? [
+        for (final service in ['World_Imagery', 'Reference/World_Boundaries_and_Places'])
+          TileLayer(
+            urlTemplate:
+                'https://ibasemaps-api.arcgis.com/arcgis/rest/services/$service/MapServer/tile/{z}/{y}/{x}?token=$_arcgisKey',
+            userAgentPackageName: _ua,
+            maxNativeZoom: 19,
+          ),
+      ]
+    : usingMapTiler
+        ? [_mapTiler(context, 'hybrid', 'jpg')]
+        : [
+            // Chỉ dùng khi phát triển: Esri không cho phép dùng trong app phát hành.
+            TileLayer(
+              urlTemplate:
+                  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+              userAgentPackageName: _ua,
+              maxNativeZoom: 19,
+            ),
+            TileLayer(
+              urlTemplate:
+                  'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+              userAgentPackageName: _ua,
+              maxNativeZoom: 19,
+            ),
+          ];
 
 /// Bản đồ đường phố thường.
 TileLayer streetTileLayer(BuildContext context) => usingMapTiler
@@ -44,6 +62,11 @@ TileLayer streetTileLayer(BuildContext context) => usingMapTiler
     : TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: _ua);
 
 /// Dòng ghi nguồn bắt buộc hiển thị trên bản đồ.
-String mapAttribution({required bool satellite}) => usingMapTiler
-    ? '© MapTiler © OpenStreetMap contributors'
-    : (satellite ? '© Esri, Maxar' : '© OpenStreetMap contributors');
+String mapAttribution({required bool satellite}) {
+  if (satellite) {
+    return usingArcgis || !usingMapTiler
+        ? '© Esri, Maxar, Earthstar Geographics'
+        : '© MapTiler © OpenStreetMap contributors';
+  }
+  return usingMapTiler ? '© MapTiler © OpenStreetMap contributors' : '© OpenStreetMap contributors';
+}
