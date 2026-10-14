@@ -309,6 +309,15 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     case 'low_battery':
       notification = { title: groupName, body: `🔋 ${e.name} sắp hết pin (${e.battery}%)` };
       break;
+    case 'offline':
+      notification = {
+        title: groupName,
+        body: `📵 ${e.name} không cập nhật vị trí từ ${hhmm(e.lastAt)} (mất kết nối hoặc hết pin?)`,
+      };
+      break;
+    case 'location_off':
+      notification = { title: groupName, body: `📍 ${e.name} đã tắt định vị hoặc thu hồi quyền vị trí` };
+      break;
     case 'safe_start':
       notification = {
         title: groupName,
@@ -538,4 +547,35 @@ exports.deleteAccount = onCall({ timeoutSeconds: 300 }, async (req) => {
     if (e.code !== 'auth/user-not-found') throw e;
   }
   return { ok: true };
+});
+
+// ---------- Mất kết nối ----------
+
+const STALE_MS = 60 * 60 * 1000;
+
+/// Mỗi 15 phút: thành viên đang chia sẻ mà hơn 1 giờ không cập nhật vị trí → báo nhóm một lần cho mỗi đợt.
+exports.checkStaleLocations = onSchedule({ schedule: 'every 15 minutes', timeZone: 'Asia/Ho_Chi_Minh' }, async () => {
+  const cutoff = new Date(Date.now() - STALE_MS);
+  const snap = await db.collectionGroup('locations')
+    .where('sharing', '==', true)
+    .where('updatedAt', '<=', cutoff)
+    .get();
+
+  await Promise.all(snap.docs.map(async (doc) => {
+    const d = doc.data();
+    // Đã báo cho lần cập nhật cuối này rồi (client ghi đè cả doc khi có vị trí mới → tự reset).
+    if (d.offlineAlertedFor && d.updatedAt && d.offlineAlertedFor.isEqual(d.updatedAt)) return;
+    const groupRef = doc.ref.parent.parent;
+    const uid = doc.id;
+    const g = await groupRef.get();
+    if (!g.exists || !(g.get('memberIds') || []).includes(uid)) return;
+    await doc.ref.update({ offlineAlertedFor: d.updatedAt });
+    await groupRef.collection('events').add({
+      type: 'offline',
+      uid,
+      name: d.name || 'Thành viên',
+      lastAt: d.updatedAt,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  }));
 });

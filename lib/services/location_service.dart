@@ -71,7 +71,7 @@ class LocationService {
 
     await _posSub?.cancel();
     _posSub = Geolocator.getPositionStream(locationSettings: _settings())
-        .listen(_onPosition, onError: (Object e) => debugPrint('Location error: $e'));
+        .listen(_onPosition, onError: _onStreamError);
     sharing.value = true;
     (await SharedPreferences.getInstance()).setBool(_prefKey, true);
 
@@ -81,6 +81,24 @@ class LocationService {
       debugPrint('getCurrentPosition: $e');
     }
     return null;
+  }
+
+  bool _reportedOff = false;
+
+  /// GPS bị tắt hoặc quyền vị trí bị thu hồi khi đang chia sẻ: báo nhóm một lần mỗi phiên.
+  Future<void> _onStreamError(Object e) async {
+    debugPrint('Location error: $e');
+    if (_reportedOff || !sharing.value) return;
+    if (e is! LocationServiceDisabledException && e is! PermissionDeniedException) return;
+    _reportedOff = true;
+    for (final g in _groups) {
+      if (PrivacyService.instance.isPaused(g.id)) continue;
+      try {
+        await GroupService.instance.addEvent(g.id, type: 'location_off').timeout(const Duration(seconds: 10));
+      } catch (err) {
+        debugPrint('location_off ${g.id}: $err');
+      }
+    }
   }
 
   Future<void> stop() async {
@@ -134,6 +152,7 @@ class LocationService {
   }
 
   Future<void> _onPosition(Position p) async {
+    _reportedOff = false;
     lastPosition.value = p;
     // Mở sương ở màn Khám phá (chỉ lưu cho chính người dùng).
     ExploreService.instance.record(p.latitude, p.longitude, accuracy: p.accuracy, time: p.timestamp);

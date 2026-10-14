@@ -126,7 +126,7 @@ service cloud.firestore {
         allow read: if isMember(gid);
         allow create: if isMember(gid)
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'low_battery', 'checkin',
+          && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'low_battery', 'checkin', 'location_off',
                                          'safe_start', 'safe_arrive', 'safe_end', 'safe_ok', 'safe_extend']
           // Cảnh báo pin yếu phải kèm mức pin hợp lệ.
           && (request.resource.data.type != 'low_battery'
