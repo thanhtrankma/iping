@@ -90,7 +90,8 @@ class SafeTripService {
       if (p != null) 'startLng': p.longitude,
     });
     batch.set(_event(gid), _eventData('safe_start', destName, dueAt: dueAt));
-    await batch.commit();
+    // Mất mạng: lệnh đã nằm trong hàng đợi của Firestore; ném TimeoutException để màn hình báo "chờ mạng".
+    await batch.commit().timeout(const Duration(seconds: 10));
     return null;
   }
 

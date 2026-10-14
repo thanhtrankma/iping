@@ -235,6 +235,12 @@ class _SafeTripScreenState extends State<SafeTripScreen> {
         dueAt: due,
         radius: SafeTripService.defaultRadius,
       );
+    } on TimeoutException {
+      // Chuyến đã được lưu trên máy, Firestore sẽ tự gửi khi có mạng.
+      if (!mounted) return;
+      showMessage(context, 'Chưa có mạng: chuyến đã được lưu, ${widget.group.name} sẽ được báo khi có kết nối.');
+      Navigator.pop(context);
+      return;
     } catch (e) {
       err = 'Không bắt đầu được: $e';
     }
