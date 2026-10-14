@@ -95,7 +95,17 @@ class _MemberScreenState extends State<MemberScreen> {
   bool _locating = false;
   DateTime? _locateBase;
 
+  DateTime? _lastLocateAt;
+
   Future<void> _requestLocation(MemberLocation? loc) async {
+    // Server chỉ chấp nhận 1 yêu cầu vị trí / 60 giây cho mỗi người.
+    final last = _lastLocateAt;
+    if (last != null && DateTime.now().difference(last).inSeconds < 60) {
+      final wait = 60 - DateTime.now().difference(last).inSeconds;
+      showMessage(context, 'Vừa gửi yêu cầu. Thử lại sau $wait giây.');
+      return;
+    }
+    _lastLocateAt = DateTime.now();
     try {
       await GroupService.instance.sendPing(widget.groupId, widget.uid, 'locate');
       if (!mounted) return;

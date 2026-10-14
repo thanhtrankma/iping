@@ -4,7 +4,7 @@ const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
@@ -350,6 +350,22 @@ exports.onGroupMessage = onDocumentCreated('groups/{groupId}/messages/{messageId
   }, { type: 'message', uid: String(m.uid || '') });
 });
 
+// Giới hạn tần suất ping theo cặp người gửi → người nhận (chống spam push, hao pin máy bị yêu cầu vị trí).
+const PING_COOLDOWN_MS = { locate: 60 * 1000, default: 5 * 1000 };
+
+async function allowPing(groupId, p) {
+  const key = p.type === 'locate' ? 'locate' : 'ping';
+  const ref = db.doc(`groups/${groupId}/pingLimits/${p.from}_${p.to}_${key}`);
+  const cooldown = PING_COOLDOWN_MS[key] || PING_COOLDOWN_MS.default;
+  return db.runTransaction(async (tx) => {
+    const last = (await tx.get(ref)).get('at');
+    const now = Date.now();
+    if (last && now - last.toMillis() < cooldown) return false;
+    tx.set(ref, { at: Timestamp.fromMillis(now) });
+    return true;
+  });
+}
+
 const PING_TEXT = {
   love: '❤️ Yêu nhé!',
   boo: '👻 Ú òa!',
@@ -365,6 +381,7 @@ exports.onPing = onDocumentCreated('groups/{groupId}/pings/{pingId}', async (eve
   const groupId = event.params.groupId;
   const g = await db.doc(`groups/${groupId}`).get();
   if (!(g.get('memberIds') || []).includes(p.to)) return;
+  if (!(await allowPing(groupId, p))) return;
   const name = await displayName(p.from);
   if (p.type === 'locate') {
     // Data message ưu tiên cao: máy nhận tự lấy và ghi vị trí (nếu đang bật chia sẻ).

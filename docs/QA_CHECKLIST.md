@@ -216,7 +216,7 @@ Chạy bằng Emulator (`firebase emulators:start`) hoặc thử trực tiếp t
 | 14/10 | (đọc code) | — | **BUG-03** `safe_trip_service.dart:160` thiếu `onError`: bị xoá khỏi nhóm thì phát sinh lỗi permission-denied không được bắt | Thấp | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-04** `safe_arrive` vẫn gửi toạ độ cho nhóm đang ẩn vị trí. Cảnh báo pin yếu cũng vẫn gửi cho nhóm đang ẩn | Thấp | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-05** Rules không kiểm tra `fromName`/`name`, nên một thành viên có thể gửi push SOS hoặc ping mạo danh tên người khác | TB | Đã sửa |
-| 14/10 | (đọc code) | — | **BUG-06** Ping `locate` không giới hạn tần suất, có thể spam push và làm hao pin máy người bị yêu cầu | Thấp | Mở |
+| 14/10 | (đọc code) | — | **BUG-06** Ping `locate` không giới hạn tần suất, có thể spam push và làm hao pin máy người bị yêu cầu | Thấp | Đã sửa |
 | 14/10 | (đọc code) | AU-05 | **BUG-07** Đăng xuất khi mất mạng bị treo: `signOut` chờ ghi Firestore trước, không có thông báo lỗi | TB | Đã sửa |
 | 14/10 | (đọc code) | SO-02 | **BUG-08** `group_actions.dart` không bắt lỗi khi `leave`/`sos` thất bại, người dùng không thấy báo gì | TB | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-09** Thiếu kiểm tra `mounted` sau `await`: `member_screen._requestLocation`, `profile_screen._changePhoto`, `sign_in_screen` | TB | Đã sửa |
