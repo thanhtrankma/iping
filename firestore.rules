@@ -22,6 +22,12 @@ service cloud.firestore {
       return s is string && s.size() >= lo && s.size() <= hi;
     }
 
+    // Cấu hình công khai cho app (key bản đồ phía client). Chỉ sửa trong Firebase Console.
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Hồ sơ người dùng: chỉ chính chủ đọc/ghi (chứa token push).
     match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;

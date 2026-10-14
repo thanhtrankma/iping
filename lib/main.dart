@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app.dart';
+import 'config/map_tiles.dart';
 import 'firebase_options.dart';
 import 'services/invite_link_service.dart';
 
@@ -18,6 +19,8 @@ Future<void> main() async {
     systemNavigationBarContrastEnforced: false,
   ));
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Key bản đồ từ Firestore (đổi key không cần phát hành lại), không chờ.
+  MapKeys.instance.load();
   // Nghe link mời iping://join?code=… (kể cả link mở app lần đầu).
   InviteLinkService.instance.init();
   runApp(const IPingApp());

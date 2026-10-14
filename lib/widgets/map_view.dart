@@ -41,10 +41,11 @@ class IPingMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<MapStyle>(
-      valueListenable: SettingsService.instance.mapStyle,
-      builder: (context, setting, _) {
-        final satellite = (style ?? setting) == MapStyle.satellite;
+    // Đổi lại lớp bản đồ khi đổi kiểu bản đồ hoặc khi key bản đồ thay đổi / Esri bị lỗi.
+    return ListenableBuilder(
+      listenable: Listenable.merge([SettingsService.instance.mapStyle, MapKeys.instance]),
+      builder: (context, _) {
+        final satellite = (style ?? SettingsService.instance.mapStyle.value) == MapStyle.satellite;
         return FlutterMap(
           mapController: controller,
           options: MapOptions(
@@ -392,7 +393,10 @@ List<Widget> placeLayers(List<Place> places) => [
                       child: Text(p.name,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: AppColors.brandDeep)),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.1,
+                              color: AppColors.brandDeep)),
                     ),
                   ],
                 ),
