@@ -9,6 +9,7 @@ import 'services/explore_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_router.dart';
+import 'services/crash_service.dart';
 import 'services/settings_service.dart';
 import 'theme.dart';
 import 'widgets/common.dart';
@@ -101,6 +102,7 @@ class _SignedInShellState extends State<SignedInShell> {
     NotificationService.instance.init(widget.uid);
     // Bấm push (app ở nền / đã tắt) → mở đúng màn hình.
     PushRouter.instance.init();
+    CrashService.instance.init();
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 import '../services/auth_service.dart';
+import '../services/crash_service.dart';
 import '../services/group_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
@@ -201,6 +202,17 @@ class _MenuView extends StatelessWidget {
                     title: const Text('Bản đồ vệ tinh'),
                     value: style == MapStyle.satellite,
                     onChanged: (_) => SettingsService.instance.toggleMapStyle(),
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: CrashService.instance.enabled,
+                  builder: (context, on, _) => SwitchListTile(
+                    horizontalTitleGap: 14,
+                    secondary: const GlassIconBadge(icon: Icons.car_crash_rounded, color: AppColors.sos),
+                    title: const Text('Phát hiện va chạm (beta)'),
+                    subtitle: const Text('Khi đang chia sẻ và di chuyển nhanh. Có 30 giây để huỷ trước khi gửi SOS.'),
+                    value: on,
+                    onChanged: CrashService.instance.setEnabled,
                   ),
                 ),
               ],

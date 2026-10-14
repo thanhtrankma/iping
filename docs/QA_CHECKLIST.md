@@ -24,7 +24,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 6 | Lịch sử vị trí (bản trả phí lưu 30 ngày) | ✅ | `history_screen.dart`, TTL 30 ngày |
 | 7 | Dòng thời gian dừng / di chuyển | ✅ | `trip_analyzer.dart` |
 | 8 | Báo cáo lái xe, cảnh báo chạy quá tốc độ | ✅ | Có báo cáo + điểm an toàn, và push ngay khi chạy > 80 km/h: `SpeedingTracker` (2 lần đo liên tiếp, cooldown 10 phút) → event `speeding` (rules kiểm tra speed 81–400), khoá cảnh báo `speeding` |
-| 9 | Phát hiện va chạm (crash detection) | ❌ | |
+| 9 | Phát hiện va chạm (crash detection) | ⚠️ | **Beta**, mặc định tắt (Menu → "Phát hiện va chạm (beta)"). `CrashDetector`: gia tốc > 4g trong 30 giây sau khi đi > 25 km/h (sensors_plus) → màn đếm ngược 30 giây ("Tôi ổn, huỷ" / "Gửi SOS ngay") → SOS tới các nhóm không tạm ẩn. Chỉ chạy khi app còn hoạt động; chưa thử va chạm thật, cần hiệu chỉnh ngưỡng trên máy thật |
 | 10 | Đến/rời địa điểm (geofence) + push | ✅ | `geofence_service.dart`, `onGroupEvent` |
 | 11 | Lịch sử ra/vào địa điểm theo từng người | ✅ | `PlaceHistoryScreen` trong `driving_screen.dart` |
 | 12 | Nút SOS / panic (push khẩn kèm vị trí) | ✅ | `GroupActions.sos` |
