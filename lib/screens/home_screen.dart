@@ -296,7 +296,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                               ),
                             for (final m in moments.where((m) => m.hasLocation))
                               momentMarker(m, () => _push(MomentsScreen(group: g!))),
-                            for (final l in locs) memberMarker(l),
+                            for (final l in locs) memberMarker(l, onTap: () => _openMember(l.uid)),
                           ]),
                         ],
                       ),

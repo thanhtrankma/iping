@@ -294,13 +294,22 @@ class _TailPainter extends CustomPainter {
 }
 
 /// Marker cho một thành viên, đầu nhọn của ghim nằm đúng toạ độ.
-Marker memberMarker(MemberLocation l, {double size = 54, String? label}) => Marker(
-      point: l.point,
-      width: 140,
-      height: MemberPin.heightFor(size, withLabel: label != null),
-      alignment: Alignment.topCenter,
-      child: MemberPin(uid: l.uid, name: l.name, size: size, dimmed: !l.sharing, label: label, battery: l.battery),
-    );
+/// Ghim thành viên; [onTap] (nếu có) mở thông tin người đó. Vùng chạm chỉ gồm chính cái ghim.
+Marker memberMarker(MemberLocation l, {double size = 54, String? label, VoidCallback? onTap}) {
+  final pin = MemberPin(uid: l.uid, name: l.name, size: size, dimmed: !l.sharing, label: label, battery: l.battery);
+  return Marker(
+    point: l.point,
+    width: 140,
+    height: MemberPin.heightFor(size, withLabel: label != null),
+    alignment: Alignment.topCenter,
+    child: onTap == null
+        ? pin
+        : Align(
+            alignment: Alignment.topCenter,
+            child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: pin),
+          ),
+  );
+}
 
 /// Một nút trong [MapControlStack].
 class MapControl {
