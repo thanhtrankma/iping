@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Giữ âm thanh còi SOS khi bật rút gọn tài nguyên ở bản release. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@raw/sos_siren" />

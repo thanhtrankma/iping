@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'locate_background.dart';
 import 'location_service.dart';
+import 'sos_alarm_service.dart';
 
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
@@ -43,11 +44,16 @@ class NotificationService {
       if (m.data['type'] == 'locate') LocationService.instance.pushNow();
       final n = m.notification;
       if (n == null) return;
-      final isSos = m.data['type'] == 'sos';
+      final isSos = m.data['type'] == 'sos' || m.data['type'] == 'safe_overdue';
+      // App đang mở: hệ thống không phát âm thanh push, nên tự hú còi cho cảnh báo khẩn.
+      if (isSos) SosAlarmService.instance.play();
       scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
         backgroundColor: isSos ? Colors.red : null,
-        duration: Duration(seconds: isSos ? 10 : 4),
+        duration: Duration(seconds: isSos ? 30 : 4),
         content: Text([n.title, n.body].whereType<String>().join('\n')),
+        action: isSos
+            ? SnackBarAction(label: 'Tắt còi', textColor: Colors.white, onPressed: SosAlarmService.instance.stop)
+            : null,
       ));
     });
   }

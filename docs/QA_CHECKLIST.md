@@ -28,7 +28,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 10 | Đến/rời địa điểm (geofence) + push | ✅ | `geofence_service.dart`, `onGroupEvent` |
 | 11 | Lịch sử ra/vào địa điểm theo từng người | ✅ | `PlaceHistoryScreen` trong `driving_screen.dart` |
 | 12 | Nút SOS / panic (push khẩn kèm vị trí) | ✅ | `GroupActions.sos` |
-| 13 | SOS **hú còi** trên máy người nhận | ❌ | Chỉ có push thường |
+| 13 | SOS **hú còi** trên máy người nhận | ✅ | Android: kênh `sos` (MainActivity) với tiếng còi `res/raw/sos_siren`, usage ALARM. iOS: `sos_siren.caf` trong bundle. Push SOS / quá giờ Về an toàn dùng âm này; app đang mở thì `SosAlarmService` hú còi (tối đa 30 giây, nút "Tắt còi"). Còi tự tổng hợp, không dùng file có bản quyền |
 | 14 | Chat nhóm | ✅ | `chat_tab.dart` |
 | 15 | Chat 1-1 | ❌ | Chỉ có chat nhóm |
 | 16 | Tin nhắn nhanh / ping | ✅ | 6 loại ping, `onPing` |

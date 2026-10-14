@@ -253,12 +253,13 @@ async function notifyUsers(groupId, targets, notification, data, senderUid) {
     tokens,
     notification,
     data: { groupId, ...data },
-    android: { priority: 'high' },
+    // SOS: kênh "sos" có tiếng còi (Android), file sos_siren.caf trong bundle (iOS).
+    android: isSos ? { priority: 'high', notification: { channelId: 'sos', sound: 'sos_siren' } } : { priority: 'high' },
     apns: {
       headers: { 'apns-priority': '10' },
       payload: {
         aps: {
-          sound: 'default',
+          sound: isSos ? 'sos_siren.caf' : 'default',
           'interruption-level': isSos ? 'time-sensitive' : 'active',
           ...(wake ? { 'content-available': 1 } : {}),
         },
