@@ -44,7 +44,7 @@ List<double> _vibrancyMatrix(double s, double contrast, double lift) {
 }
 
 ui.ImageFilter glassFilter({required double blur, required bool dark}) => ui.ImageFilter.compose(
-      outer: ColorFilter.matrix(dark ? _vibrancyMatrix(1.4, 0.85, -14) : _vibrancyMatrix(1.35, 0.7, 34)),
+      outer: ColorFilter.matrix(dark ? _vibrancyMatrix(1.4, 0.85, -14) : _vibrancyMatrix(1.3, 0.64, 48)),
       inner: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur, tileMode: TileMode.mirror),
     );
 
@@ -106,7 +106,7 @@ class Glass extends StatelessWidget {
     final staticBackdrop = GlassStaticBackdrop.of(context);
     final alpha = (tint != null
             ? (0.35 + opacity * 0.45).clamp(0.0, 0.95)
-            : (dark ? 0.18 + opacity * 0.38 : 0.14 + opacity * 0.40).clamp(0.0, 0.9)) +
+            : (dark ? 0.18 + opacity * 0.38 : 0.06 + opacity * 0.34).clamp(0.0, 0.9)) +
         (staticBackdrop ? 0.08 : 0.0);
 
     final body = CustomPaint(

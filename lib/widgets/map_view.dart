@@ -235,6 +235,14 @@ class _BatteryGlyph extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        Text('$level%',
+            style: TextStyle(
+                fontSize: 10.5,
+                height: 1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+                color: level <= 20 ? AppColors.sos : Colors.black87)),
+        const SizedBox(width: 3),
         Container(
           width: 16,
           height: 8,

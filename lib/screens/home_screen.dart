@@ -97,6 +97,14 @@ class _GroupMapView extends StatefulWidget {
 
 class _GroupMapViewState extends State<_GroupMapView> {
   final _map = MapController();
+  final _sheet = DraggableScrollableController();
+
+  /// Chạm vào vùng trống trên bản đồ (ngoài bảng) → thu bảng thành viên xuống thấp nhất.
+  void _collapseSheet() {
+    if (!_sheet.isAttached || _sheet.size <= _MembersSheet.minSize + 0.01) return;
+    _sheet.animateTo(_MembersSheet.minSize, duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+  }
+
   Stream<List<MemberLocation>>? _locations;
   Stream<List<Place>>? _places;
   Stream<List<Moment>>? _moments;
@@ -135,6 +143,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
   @override
   void dispose() {
     _map.dispose();
+    _sheet.dispose();
     _safeTick?.cancel();
     super.dispose();
   }
@@ -260,6 +269,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                         controller: _map,
                         center: center,
                         zoom: 16,
+                        onTap: (_, __) => _collapseSheet(),
                         layers: [
                           ...placeLayers(places),
                           ...safeTripLayers(safeTrips, current: travellerPos, now: safeNow, onTap: _openSafeTrip),
@@ -409,6 +419,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                       const _Onboarding()
                     else
                       _MembersSheet(
+                        controller: _sheet,
                         group: g,
                         groups: widget.groups,
                         locations: locs,
@@ -546,6 +557,7 @@ class _SheetCircleButton extends StatelessWidget {
 
 class _MembersSheet extends StatelessWidget {
   const _MembersSheet({
+    required this.controller,
     required this.group,
     required this.groups,
     required this.locations,
@@ -559,6 +571,7 @@ class _MembersSheet extends StatelessWidget {
     this.onSafeTrip,
   });
 
+  final DraggableScrollableController controller;
   final Group group;
   final List<Group> groups;
   final List<MemberLocation> locations;
@@ -576,6 +589,7 @@ class _MembersSheet extends StatelessWidget {
   // Sheet nổi: bo 38, cách mép 10; nội dung bên trong lùi 12 nên bo trong = 38 − 12 = 26.
   static const _radius = 38.0;
   static const _inset = 12.0;
+  static const minSize = 0.2;
 
   @override
   Widget build(BuildContext context) {
@@ -583,8 +597,9 @@ class _MembersSheet extends StatelessWidget {
     final members = [...group.memberIds]..sort((a, b) => (a == myUid ? 0 : 1).compareTo(b == myUid ? 0 : 1));
     final scheme = Theme.of(context).colorScheme;
     return DraggableScrollableSheet(
+      controller: controller,
       initialChildSize: 0.42,
-      minChildSize: 0.2,
+      minChildSize: minSize,
       maxChildSize: 0.88,
       snap: true,
       snapSizes: const [0.42],
@@ -896,13 +911,26 @@ class BatteryPill extends StatelessWidget {
     );
     if (compact) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        padding: const EdgeInsets.fromLTRB(6, 3, 5, 3),
         decoration: ShapeDecoration(
           shape: const StadiumBorder(side: BorderSide(color: Colors.white, width: 0.8)),
           color: Colors.white.withValues(alpha: 0.95),
           shadows: [BoxShadow(blurRadius: 6, color: Colors.black.withValues(alpha: 0.18), offset: const Offset(0, 2))],
         ),
-        child: bar,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$level%',
+                style: TextStyle(
+                    fontSize: 10.5,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: low ? AppColors.sos : Colors.black87)),
+            const SizedBox(width: 3),
+            bar,
+          ],
+        ),
       );
     }
     return Container(

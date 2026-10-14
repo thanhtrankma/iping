@@ -47,6 +47,13 @@ class MemberScreen extends StatefulWidget {
 
 class _MemberScreenState extends State<MemberScreen> {
   final _map = MapController();
+  final _sheet = DraggableScrollableController();
+
+  /// Chạm vào bản đồ (ngoài bảng) → thu bảng thông tin xuống thấp nhất.
+  void _collapseSheet() {
+    if (!_sheet.isAttached || _sheet.size <= 0.31) return;
+    _sheet.animateTo(0.3, duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+  }
   final _myUid = FirebaseAuth.instance.currentUser?.uid;
   late final Stream<Group?> _group = GroupService.instance.group(widget.groupId);
   late final Stream<List<MemberLocation>> _locations = GroupService.instance.locations(widget.groupId);
@@ -77,6 +84,7 @@ class _MemberScreenState extends State<MemberScreen> {
   @override
   void dispose() {
     _map.dispose();
+    _sheet.dispose();
     _safeSub?.cancel();
     super.dispose();
   }
@@ -166,6 +174,7 @@ class _MemberScreenState extends State<MemberScreen> {
                 children: [
                   Positioned.fill(
                     child: IPingMap(
+                      onTap: (_, __) => _collapseSheet(),
                       controller: _map,
                       center: center,
                       zoom: 17,
@@ -231,6 +240,7 @@ class _MemberScreenState extends State<MemberScreen> {
                     ),
                   ),
                   DraggableScrollableSheet(
+                    controller: _sheet,
                     initialChildSize: 0.5,
                     minChildSize: 0.3,
                     maxChildSize: 0.92,
