@@ -44,6 +44,9 @@ class GroupService {
     return (res.data as Map)['groupId'] as String;
   }
 
+  /// Đổi tên nhóm (rules chỉ cho chủ nhóm, tên 1–50 ký tự).
+  Future<void> renameGroup(String gid, String name) => _db.doc('groups/$gid').update({'name': name});
+
   Future<void> leaveGroup(String gid) =>
       _fn.httpsCallable('leaveGroup').call({'groupId': gid});
 

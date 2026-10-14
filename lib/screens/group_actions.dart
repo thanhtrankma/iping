@@ -94,6 +94,46 @@ class GroupActions {
     );
   }
 
+  /// Chủ nhóm đổi tên nhóm.
+  static Future<void> rename(BuildContext context, Group g) async {
+    final controller = TextEditingController(text: g.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Đổi tên nhóm'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 50,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(hintText: 'Tên nhóm'),
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+          FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(88, 44)),
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name == g.name || !context.mounted) return;
+    if (name.isEmpty || name.length > 50) {
+      showMessage(context, 'Tên nhóm cần từ 1 đến 50 ký tự.');
+      return;
+    }
+    try {
+      await GroupService.instance.renameGroup(g.id, name).timeout(const Duration(seconds: 10));
+      if (context.mounted) showMessage(context, 'Đã đổi tên nhóm');
+    } on TimeoutException {
+      if (context.mounted) showMessage(context, 'Chưa có mạng: tên mới sẽ được lưu khi có kết nối.');
+    } catch (e) {
+      if (context.mounted) showMessage(context, 'Không đổi được tên: $e');
+    }
+  }
+
   static Future<bool> leave(BuildContext context, Group g) async {
     final ok = await showDialog<bool>(
       context: context,

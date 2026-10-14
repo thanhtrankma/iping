@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
@@ -211,23 +212,30 @@ class _GroupCard extends StatelessWidget {
                   ),
                   onSelected: (v) {
                     if (v == 'invite') GroupActions.invite(context, group);
+                    if (v == 'rename') GroupActions.rename(context, group);
                     if (v == 'members') {
                       Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => GroupMembersScreen(groupId: group.id)));
                     }
                     if (v == 'leave') GroupActions.leave(context, group);
                   },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
                       value: 'invite',
                       child: _MenuRow(icon: Icons.person_add_alt_1_rounded, label: 'Mời thành viên'),
                     ),
-                    PopupMenuItem(
+                    // Chỉ chủ nhóm được đổi tên (khớp với firestore.rules).
+                    if (group.isOwner(FirebaseAuth.instance.currentUser?.uid))
+                      const PopupMenuItem(
+                        value: 'rename',
+                        child: _MenuRow(icon: Icons.edit_rounded, label: 'Đổi tên nhóm'),
+                      ),
+                    const PopupMenuItem(
                       value: 'members',
                       child: _MenuRow(icon: Icons.group_rounded, label: 'Thành viên & chặn'),
                     ),
-                    PopupMenuDivider(height: 8),
-                    PopupMenuItem(
+                    const PopupMenuDivider(height: 8),
+                    const PopupMenuItem(
                       value: 'leave',
                       child: _MenuRow(icon: Icons.logout_rounded, label: 'Rời nhóm', color: AppColors.sos),
                     ),

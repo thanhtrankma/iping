@@ -37,7 +37,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 19 | Mời bằng mã | ✅ | Mã 6 ký tự |
 | 20 | Mời bằng link / SMS / share sheet | ⚠️ | Chỉ có nút sao chép mã, không có link mời hay share sheet |
 | 21 | Chủ nhóm xoá thành viên | ✅ | `removeMember` / `unblockMember`, `member_admin.dart`. Có thêm chặn thành viên |
-| 22 | Đổi tên nhóm | ⚠️ | Firestore rules cho phép, nhưng **chưa có giao diện** |
+| 22 | Đổi tên nhóm | ✅ | Chủ nhóm: Quản lý nhóm → ⋯ → "Đổi tên nhóm" (`GroupActions.rename`, 1–50 ký tự, khớp rules) |
 | 23 | Bật/tắt chia sẻ vị trí (ẩn vị trí) | ✅ | Nút "Bật chia sẻ"; mặc định tắt |
 | 24 | Tạm ẩn vị trí trong một khoảng thời gian | ✅ | `privacy_screen.dart`: ẩn theo từng nhóm 1h / 8h / tới sáng / vô hạn |
 | 25 | Chỉ đường tới thành viên / mở Google Maps | ❌ | Chỉ hiện khoảng cách |
