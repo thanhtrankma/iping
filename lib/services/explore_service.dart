@@ -64,6 +64,12 @@ class ExploreService {
   /// Tăng mỗi khi [cells] thay đổi để giao diện vẽ lại.
   final revision = ValueNotifier<int>(0);
 
+  final _revealed = StreamController<List<HexCell>>.broadcast(sync: true);
+
+  /// Các ô vừa được mở khi đi (không gồm dữ liệu tải lại / đồng bộ), để màn Khám phá
+  /// chạy hiệu ứng "nổ" ô lục giác.
+  Stream<List<HexCell>> get revealed => _revealed.stream;
+
   String? _uid;
   final Map<String, Set<String>> _pending = {};
   Timer? _flushTimer;
@@ -104,18 +110,19 @@ class ExploreService {
     final p = (LatLng(lat, lng), time ?? DateTime.now());
     final last = _last;
     _last = p;
-    _add(HexGrid.trackCells([if (last != null) last, p], radius: revealRadius));
+    _add(HexGrid.trackCells([if (last != null) last, p], radius: revealRadius), live: true);
   }
 
-  void _add(Iterable<HexCell> list) {
-    var changed = false;
+  void _add(Iterable<HexCell> list, {bool live = false}) {
+    final added = <HexCell>[];
     for (final c in list) {
       if (cells.add(c)) {
-        changed = true;
+        added.add(c);
         _pending.putIfAbsent(HexGrid.bucketOf(c), () => {}).add(c.id);
       }
     }
-    if (!changed) return;
+    if (added.isEmpty) return;
+    if (live) _revealed.add(added);
     revision.value++;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(seconds: 3), _saveLocal);

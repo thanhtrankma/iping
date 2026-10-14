@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -27,9 +30,11 @@ class ExploreScreen extends StatefulWidget {
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-class _ExploreScreenState extends State<ExploreScreen> {
+class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateMixin {
   final _map = MapController();
   final _explore = ExploreService.instance;
+  late final _reveal = HexRevealController(vsync: this);
+  StreamSubscription<List<HexCell>>? _revealSub;
 
   LatLng? _me;
   ExploreArea? _area;
@@ -50,12 +55,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (p != null) _me = LatLng(p.latitude, p.longitude);
     _explore.revision.addListener(_recount);
     LocationService.instance.lastPosition.addListener(_onMove);
+    // Ô mới mở khi đang đi: "nổ" lần lượt từ chỗ mình đứng ra ngoài.
+    _revealSub = _explore.revealed.listen((cells) {
+      final me = _me;
+      _reveal.pop(cells, origin: me == null ? null : HexGrid.cellAt(me.latitude, me.longitude));
+    });
     _start();
   }
 
   @override
   void dispose() {
     _map.dispose();
+    _revealSub?.cancel();
+    _reveal.dispose();
     _explore.revision.removeListener(_recount);
     LocationService.instance.lastPosition.removeListener(_onMove);
     super.dispose();
@@ -212,10 +224,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
               center: _me ?? defaultCenter,
               zoom: 15,
               style: MapStyle.standard,
+              // Bản debug: chạm bản đồ để xem thử hiệu ứng nổ ô (không lưu vào dữ liệu khám phá).
+              onTap: kDebugMode
+                  ? (_, p) => _reveal.pop(HexGrid.disk(HexGrid.cellAt(p.latitude, p.longitude), 2),
+                      origin: HexGrid.cellAt(p.latitude, p.longitude), demoOnly: true)
+                  : null,
               layers: [
                 ValueListenableBuilder<int>(
                   valueListenable: _explore.revision,
-                  builder: (context, rev, _) => ExploreFogLayer(cells: _explore.cells, revision: rev, area: a),
+                  builder: (context, rev, _) => ExploreFogLayer(
+                    cells: _explore.cells,
+                    revision: rev,
+                    area: a,
+                    reveal: _reveal,
+                    origin: _me == null ? null : HexGrid.cellAt(_me!.latitude, _me!.longitude),
+                  ),
                 ),
                 MarkerLayer(markers: [
                   if (_me != null)
