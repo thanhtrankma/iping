@@ -174,6 +174,7 @@ class _MemberScreenState extends State<MemberScreen> {
                 children: [
                   Positioned.fill(
                     child: IPingMap(
+                      showAttribution: false,
                       onTap: (_, __) => _collapseSheet(),
                       controller: _map,
                       center: center,
@@ -373,6 +374,8 @@ class _MemberScreenState extends State<MemberScreen> {
                       ],
                     ),
                   ),
+                  // Ghi nguồn bản đồ nằm ngay trên mép bảng kéo, đi theo bảng nên không bị che.
+                  SheetMapAttribution(controller: _sheet, initialSize: 0.5),
                 ],
               );
             },

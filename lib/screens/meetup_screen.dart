@@ -201,8 +201,8 @@ class _FloatingAction extends StatelessWidget {
           Icon(icon, color: Colors.white, size: 21),
           const SizedBox(width: 8),
           Text(label,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2)),
+              style:
+                  const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2)),
         ],
       ),
     );
@@ -334,7 +334,8 @@ class _CreateMeetupScreenState extends State<CreateMeetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BackdropGroup(child: Scaffold(
+    return BackdropGroup(
+        child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -342,6 +343,7 @@ class _CreateMeetupScreenState extends State<CreateMeetupScreen> {
               controller: _map,
               center: _point,
               zoom: 16,
+              showAttribution: false,
               onTap: (_, p) => setState(() => _point = p),
               layers: [
                 MarkerLayer(markers: [
@@ -393,84 +395,88 @@ class _CreateMeetupScreenState extends State<CreateMeetupScreen> {
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                child: Glass(
-                  radius: 34,
-                  opacity: 0.78,
-                  padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(left: 6, bottom: 12),
-                          child: Text('Điểm hẹn mới',
-                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-                        ),
-                        TextField(
-                          controller: _title,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
-                            hintText: 'Tên cuộc hẹn (vd: Cà phê cuối tuần)',
-                            prefixIcon: Icon(Icons.flag_outlined),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  // Ghi nguồn bản đồ ngay trên bảng, không bị bảng che.
+                  const Padding(padding: EdgeInsets.fromLTRB(10, 0, 10, 8), child: MapAttribution()),
+                  Glass(
+                    radius: 34,
+                    opacity: 0.78,
+                    padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 6, bottom: 12),
+                            child: Text('Điểm hẹn mới',
+                                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        _InsetGroup(
-                          dividerIndent: 52,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                              child: Row(
-                                children: [
-                                  const GlassIconBadge(icon: Icons.place_rounded, color: AppColors.sos, size: 28),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: AddressText(_point.latitude, _point.longitude, maxLines: 1)),
-                                ],
-                              ),
+                          TextField(
+                            controller: _title,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              hintText: 'Tên cuộc hẹn (vd: Cà phê cuối tuần)',
+                              prefixIcon: Icon(Icons.flag_outlined),
                             ),
-                            InkWell(
-                              onTap: _pickTime,
-                              child: Padding(
+                          ),
+                          const SizedBox(height: 10),
+                          _InsetGroup(
+                            dividerIndent: 52,
+                            children: [
+                              Padding(
                                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                                 child: Row(
                                   children: [
-                                    const GlassIconBadge(
-                                        icon: Icons.schedule_rounded, color: AppColors.brand, size: 28),
+                                    const GlassIconBadge(icon: Icons.place_rounded, color: AppColors.sos, size: 28),
                                     const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(_timeLabel(_time),
-                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5)),
-                                    ),
-                                    Text('Đổi giờ',
-                                        style: TextStyle(
-                                            color: Theme.of(context).colorScheme.primary,
-                                            fontWeight: FontWeight.w600)),
-                                    Icon(Icons.chevron_right_rounded,
-                                        size: 20,
-                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+                                    Expanded(child: AddressText(_point.latitude, _point.longitude, maxLines: 1)),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        FilledButton.icon(
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.send_rounded),
-                          label: const Text('Tạo & mời cả nhóm'),
-                          onPressed: _saving ? null : _save,
-                        ),
-                      ],
+                              InkWell(
+                                onTap: _pickTime,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                                  child: Row(
+                                    children: [
+                                      const GlassIconBadge(
+                                          icon: Icons.schedule_rounded, color: AppColors.brand, size: 28),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(_timeLabel(_time),
+                                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5)),
+                                      ),
+                                      Text('Đổi giờ',
+                                          style: TextStyle(
+                                              color: Theme.of(context).colorScheme.primary,
+                                              fontWeight: FontWeight.w600)),
+                                      Icon(Icons.chevron_right_rounded,
+                                          size: 20,
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          FilledButton.icon(
+                            icon: _saving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.send_rounded),
+                            label: const Text('Tạo & mời cả nhóm'),
+                            onPressed: _saving ? null : _save,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ]),
               ),
             ),
           ),
@@ -492,12 +498,15 @@ class MeetupDetailScreen extends StatefulWidget {
 
 class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
   final _map = MapController();
+  final _sheet = DraggableScrollableController();
 
   @override
   void dispose() {
     _map.dispose();
+    _sheet.dispose();
     super.dispose();
   }
+
   final _me = FirebaseAuth.instance.currentUser!.uid;
   late final Stream<Meetup?> _meetup = GroupService.instance.meetup(widget.group.id, widget.meetupId);
   late final Stream<List<MemberLocation>> _locations = GroupService.instance.locations(widget.group.id);
@@ -535,7 +544,8 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BackdropGroup(child: Scaffold(
+    return BackdropGroup(
+        child: Scaffold(
       body: StreamBuilder<Meetup?>(
         stream: _meetup,
         builder: (context, mSnap) => StreamBuilder<List<MemberLocation>>(
@@ -545,9 +555,8 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
             if (m == null) {
               return const Center(child: CircularProgressIndicator());
             }
-            final locs = (lSnap.data ?? const <MemberLocation>[])
-                .where((l) => widget.group.memberIds.contains(l.uid))
-                .toList();
+            final locs =
+                (lSnap.data ?? const <MemberLocation>[]).where((l) => widget.group.memberIds.contains(l.uid)).toList();
             if (lSnap.hasData) _fitOnce(m, locs);
             final byUid = {for (final l in locs) l.uid: l};
             final myStatus = m.statusOf(_me);
@@ -559,6 +568,7 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                     controller: _map,
                     center: m.point,
                     zoom: 15,
+                    showAttribution: false,
                     layers: [
                       CircleLayer(circles: [
                         CircleMarker(
@@ -583,8 +593,7 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                       MarkerLayer(markers: [
                         for (final l in locs)
                           memberMarker(l,
-                              size: 46,
-                              onTap: () => showMemberPopup(context, groupId: widget.group.id, location: l)),
+                              size: 46, onTap: () => showMemberPopup(context, groupId: widget.group.id, location: l)),
                         Marker(
                           point: m.point,
                           width: 56,
@@ -620,6 +629,7 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                   ),
                 ),
                 DraggableScrollableSheet(
+                  controller: _sheet,
                   initialChildSize: 0.45,
                   minChildSize: 0.25,
                   maxChildSize: 0.85,
@@ -703,9 +713,8 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                                       child: FilledButton(
                                         style: FilledButton.styleFrom(
                                           backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
-                                          foregroundColor: myStatus == MeetupStatus.declined
-                                              ? secondary
-                                              : scheme.onSurface,
+                                          foregroundColor:
+                                              myStatus == MeetupStatus.declined ? secondary : scheme.onSurface,
                                         ),
                                         onPressed: () => GroupService.instance
                                             .setMeetupStatus(widget.group.id, m.id, MeetupStatus.declined),
@@ -745,6 +754,8 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                     );
                   },
                 ),
+                // Ghi nguồn bản đồ nằm ngay trên mép bảng kéo, đi theo bảng nên không bị che.
+                SheetMapAttribution(controller: _sheet, initialSize: 0.45),
               ],
             );
           },

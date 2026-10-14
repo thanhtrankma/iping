@@ -261,7 +261,8 @@ class _SafeTripScreenState extends State<SafeTripScreen> {
   Widget build(BuildContext context) {
     final me = _me;
     final d = _dest;
-    return BackdropGroup(child: Scaffold(
+    return BackdropGroup(
+        child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -269,6 +270,7 @@ class _SafeTripScreenState extends State<SafeTripScreen> {
               controller: _map,
               center: me ?? defaultCenter,
               zoom: 15,
+              showAttribution: false,
               onTap: (_, p) => _tapMap(p),
               layers: [
                 if (d != null)
@@ -344,16 +346,20 @@ class _SafeTripScreenState extends State<SafeTripScreen> {
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                child: Glass(
-                  key: _panelKey,
-                  radius: 34,
-                  opacity: 0.8,
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: _panel(context),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  // Ghi nguồn bản đồ ngay trên bảng, không bị bảng che.
+                  const Padding(padding: EdgeInsets.fromLTRB(10, 0, 10, 8), child: MapAttribution()),
+                  Glass(
+                    key: _panelKey,
+                    radius: 34,
+                    opacity: 0.8,
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: _panel(context),
+                    ),
                   ),
-                ),
+                ]),
               ),
             ),
           ),
@@ -538,7 +544,8 @@ class _SafeTripScreenState extends State<SafeTripScreen> {
     final dueDay = DateTime(_due.year, _due.month, _due.day);
     final dayDiff = dueDay.difference(today).inDays;
     final hhmm = '${_due.hour.toString().padLeft(2, '0')}:${_due.minute.toString().padLeft(2, '0')}';
-    final canMinus = !_due.subtract(const Duration(minutes: 5)).isBefore(_minDue().subtract(const Duration(seconds: 59)));
+    final canMinus =
+        !_due.subtract(const Duration(minutes: 5)).isBefore(_minDue().subtract(const Duration(seconds: 59)));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -786,7 +793,9 @@ class _MeDot extends StatelessWidget {
           shape: BoxShape.circle,
           color: AppColors.brand,
           border: Border.all(color: Colors.white, width: 3),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2))
+          ],
         ),
       ),
     );

@@ -11,6 +11,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../firebase_options.dart';
+import 'group_consent.dart';
+import 'location_gates.dart';
 import 'location_service.dart';
 import 'pause_schedule.dart';
 import 'privacy_service.dart';
@@ -38,6 +40,9 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     final user = FirebaseAuth.instance.currentUser ??
         await FirebaseAuth.instance.authStateChanges().first.timeout(const Duration(seconds: 5), onTimeout: () => null);
     if (user == null) return;
+    // Chưa đồng ý chia sẻ với nhóm này (vd. vừa vào bằng mã mời): không gửi vị trí.
+    // Chưa có dữ liệu đồng ý (người dùng cũ chưa mở bản mới) thì coi như đã đồng ý, như quy tắc chuyển đổi.
+    if (!backgroundConsentAllows(prefs.getString(GroupConsent.prefKey(user.uid)), gid, GroupConsent.parse)) return;
 
     final perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;

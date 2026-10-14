@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../services/group_consent.dart';
 import '../services/group_service.dart';
 import '../services/pause_schedule.dart';
 import '../services/privacy_service.dart';
@@ -8,6 +9,8 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import '../widgets/privacy_widgets.dart';
+import 'group_actions.dart';
+import 'group_consent_screen.dart';
 import 'member_admin.dart';
 
 /// "Bảo mật & Bạn bè": công tắc chia sẻ chung và ẩn vị trí theo từng nhóm.
@@ -55,7 +58,8 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'Tạm ẩn vị trí với một nhóm mà không ảnh hưởng các nhóm khác.',
+                      'Mỗi nhóm chỉ nhận vị trí của bạn khi bạn bật "Chia sẻ với nhóm này". '
+                      'Bạn có thể tạm ẩn, thôi chia sẻ hoặc rời nhóm bất cứ lúc nào mà không ảnh hưởng các nhóm khác.',
                       style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), height: 1.35),
                     ),
                   ),
@@ -73,8 +77,20 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   else if (groups.isEmpty)
                     const EmptyState(icon: Icons.diversity_3_rounded, title: 'Chưa có nhóm nào')
                   else
-                    for (final g in groups)
-                      _GroupPrivacyCard(group: g, uid: widget.uid, paused: schedule.isPaused(g.id, DateTime.now())),
+                    ValueListenableBuilder<Set<String>>(
+                      valueListenable: GroupConsent.instance.consented,
+                      builder: (context, consented, _) => Column(
+                        children: [
+                          for (final g in groups)
+                            _GroupPrivacyCard(
+                              group: g,
+                              uid: widget.uid,
+                              consented: consented.contains(g.id),
+                              paused: schedule.isPaused(g.id, DateTime.now()),
+                            ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             );
@@ -86,42 +102,66 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
 }
 
 class _GroupPrivacyCard extends StatelessWidget {
-  const _GroupPrivacyCard({required this.group, required this.uid, required this.paused});
+  const _GroupPrivacyCard({required this.group, required this.uid, required this.consented, required this.paused});
   final Group group;
   final String uid;
+
+  /// Người dùng đã đồng ý chia sẻ vị trí với nhóm này ([GroupConsent]).
+  final bool consented;
   final bool paused;
+
+  Future<void> _setSharing(BuildContext context, bool on) async {
+    if (on) {
+      await shareWithGroup(context, group.id);
+      if (context.mounted) showMessage(context, 'Đã chọn chia sẻ vị trí với "${group.name}"');
+    } else {
+      await stopSharingWithGroup(group.id);
+      if (context.mounted) showMessage(context, 'Đã thôi chia sẻ vị trí với "${group.name}"');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final secondary = scheme.onSurface.withValues(alpha: 0.55);
     return GlassSection(
+      header: group.name,
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
       dividerIndent: 16 + 30 + 14,
       children: [
-        ListTile(
-          horizontalTitleGap: 14,
+        SwitchListTile.adaptive(
           contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
-          leading: GlassIconBadge(
-            icon: paused ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-            color: paused ? AppColors.warning : AppColors.online,
+          secondary: GlassIconBadge(
+            icon: consented ? Icons.location_on_rounded : Icons.location_off_rounded,
+            color: consented ? AppColors.brand : AppColors.gray,
           ),
-          title: Text(
-            group.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
+          title: const Text('Chia sẻ với nhóm này', style: TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text(
-            pauseStatus(group.id),
-            style: TextStyle(color: paused ? AppColors.warning : secondary),
+            consented ? 'Nhóm nhận vị trí, pin và lịch sử khi bạn bật chia sẻ' : 'Nhóm không nhận vị trí của bạn',
+            style: TextStyle(color: secondary),
           ),
-          trailing: Switch(
-            value: !paused,
-            onChanged: (on) => on ? resumeGroup(context, group) : showPauseSheet(context, group),
-          ),
-          onTap: () => showPauseSheet(context, group),
+          value: consented,
+          onChanged: (on) => _setSharing(context, on),
         ),
+        if (consented)
+          ListTile(
+            horizontalTitleGap: 14,
+            contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+            leading: GlassIconBadge(
+              icon: paused ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+              color: paused ? AppColors.warning : AppColors.online,
+            ),
+            title: const Text('Hiện vị trí', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(
+              pauseStatus(group.id),
+              style: TextStyle(color: paused ? AppColors.warning : secondary),
+            ),
+            trailing: Switch(
+              value: !paused,
+              onChanged: (on) => on ? resumeGroup(context, group) : showPauseSheet(context, group),
+            ),
+            onTap: () => showPauseSheet(context, group),
+          ),
         ListTile(
           horizontalTitleGap: 14,
           contentPadding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
@@ -137,6 +177,13 @@ class _GroupPrivacyCard extends StatelessWidget {
           ),
           onTap: () => Navigator.of(context)
               .push(MaterialPageRoute(builder: (_) => GroupMembersScreen(groupId: group.id))),
+        ),
+        ListTile(
+          horizontalTitleGap: 14,
+          contentPadding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
+          leading: const GlassIconBadge(icon: Icons.logout_rounded, color: AppColors.sos),
+          title: const Text('Rời nhóm', style: TextStyle(color: AppColors.sos)),
+          onTap: () => GroupActions.leave(context, group),
         ),
       ],
     );

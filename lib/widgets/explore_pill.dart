@@ -45,8 +45,9 @@ class _ExplorePillState extends State<ExplorePill> {
 
   Future<void> _onMove() async {
     if (_looking) return;
-    // Khi đang tắt chia sẻ thì chưa có luồng vị trí: lấy vị trí hiện tại một lần.
-    final p = LocationService.instance.lastPosition.value ?? await LocationService.instance.currentPosition();
+    // Khi đang tắt chia sẻ thì chưa có luồng vị trí: dùng vị trí hệ thống còn nhớ.
+    // Viên này nằm trên màn hình chính nên KHÔNG được hỏi quyền vị trí.
+    final p = LocationService.instance.lastPosition.value ?? await LocationService.instance.devicePosition();
     if (p == null || !mounted) return;
     final me = LatLng(p.latitude, p.longitude);
     if (_area?.contains(me) ?? false) return;

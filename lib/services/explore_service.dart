@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'group_consent.dart';
 import 'group_service.dart';
 import 'hex_grid.dart';
+import 'location_gates.dart';
 import 'location_service.dart';
 import 'privacy_service.dart';
 
@@ -104,9 +107,20 @@ class ExploreService {
     revision.value++;
   }
 
-  /// Ghi nhận một vị trí mới (gọi từ LocationService).
+  /// Màn Khám phá đang mở (do [ExploreScreen] bật / tắt).
+  bool screenVisible = false;
+
+  /// Khám phá không phải mục đích dùng vị trí nền riêng: chỉ nhận vị trí khi đang bật chia sẻ
+  /// (cùng phiên dịch vụ nền) hoặc khi màn Khám phá đang mở ở tiền cảnh. Không bao giờ tự xin quyền.
+  bool get mayRecord => exploreMayRecord(
+        sharing: LocationService.instance.sharing.value,
+        screenVisible: screenVisible,
+        appInForeground: WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
+      );
+
+  /// Ghi nhận một vị trí mới (từ luồng chia sẻ, hoặc từ màn Khám phá khi đang mở).
   void record(double lat, double lng, {double accuracy = 0, DateTime? time}) {
-    if (_uid == null || accuracy > 100) return;
+    if (_uid == null || accuracy > 100 || !mayRecord) return;
     final p = (LatLng(lat, lng), time ?? DateTime.now());
     final last = _last;
     _last = p;
@@ -172,8 +186,13 @@ class ExploreService {
   /// Ghi điểm vào mọi nhóm đang tham gia để thành viên khác thấy trên bảng xếp hạng.
   Future<void> publishScore() async {
     final uid = _uid;
-    // Không gửi điểm (kèm tên khu vực) cho nhóm đang tạm dừng chia sẻ.
-    final groups = LocationService.instance.groups.where((g) => !PrivacyService.instance.isPaused(g.id)).toList();
+    // Không gửi điểm (kèm tên khu vực) cho nhóm đang tạm dừng hoặc chưa đồng ý chia sẻ.
+    final groups = writableGroups(
+      LocationService.instance.groups,
+      id: (g) => g.id,
+      allowed: GroupConsent.instance.allows,
+      paused: PrivacyService.instance.isPaused,
+    );
     if (uid == null || groups.isEmpty) return;
     final data = {
       'name': FirebaseAuth.instance.currentUser?.displayName ?? 'Thành viên',
@@ -193,7 +212,9 @@ class ExploreService {
   }
 
   /// Ghi khu vực hiện tại và % đã khám phá (chỉ khi thay đổi đáng kể).
+  /// Tên khu vực tiết lộ nơi đang đứng: chỉ gửi khi đang bật chia sẻ vị trí.
   Future<void> publishArea(String name, double percent) async {
+    if (!LocationService.instance.sharing.value) return;
     if (name == _areaName && _percent != null && (percent - _percent!).abs() < 0.05) return;
     _areaName = name;
     _percent = percent;

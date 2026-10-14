@@ -2,7 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../models/models.dart';
+import '../services/group_consent.dart';
 import '../services/location_service.dart';
+import '../services/privacy_service.dart';
 import '../services/profile_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
@@ -231,9 +234,28 @@ class AvatarStack extends StatelessWidget {
   }
 }
 
+/// Số người khác (không trùng nhau) đang nhận vị trí của mình: thành viên các nhóm mình đã đồng ý
+/// chia sẻ ([GroupConsent]) và không đang tạm ẩn ([PrivacyService]). Không tính việc công tắc chung bật hay tắt.
+int sharingAudienceCount(Iterable<Group> groups, String myUid) {
+  final people = <String>{};
+  for (final g in groups) {
+    if (!GroupConsent.instance.allows(g.id) || PrivacyService.instance.isPaused(g.id)) continue;
+    people.addAll(g.memberIds.where((u) => u != myUid));
+  }
+  return people.length;
+}
+
+/// Lắng nghe mọi thứ ảnh hưởng tới việc đang chia sẻ với ai (công tắc chung, đồng ý theo nhóm, tạm ẩn).
+Listenable get sharingStateListenable => Listenable.merge(
+    [LocationService.instance.sharing, GroupConsent.instance.consented, PrivacyService.instance.paused]);
+
 /// Công tắc bật/tắt chia sẻ vị trí. Người dùng luôn chủ động quyết định.
+///
+/// Truyền [groups] và [uid] để hiện đúng số người đang nhận vị trí.
 class SharingSwitchCard extends StatelessWidget {
-  const SharingSwitchCard({super.key});
+  const SharingSwitchCard({super.key, this.groups, this.uid});
+  final List<Group>? groups;
+  final String? uid;
 
   Future<void> _toggle(BuildContext context, bool on) async {
     if (on) {
@@ -244,22 +266,30 @@ class SharingSwitchCard extends StatelessWidget {
     }
   }
 
+  String _onSubtitle() {
+    final g = groups, me = uid;
+    if (g == null || me == null) return 'Chỉ các nhóm bạn chọn mới thấy vị trí của bạn';
+    final n = sharingAudienceCount(g, me);
+    return n == 0 ? 'Chưa chọn nhóm nào để chia sẻ' : 'Với $n người trong các nhóm bạn chọn';
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ValueListenableBuilder<bool>(
-      valueListenable: LocationService.instance.sharing,
-      builder: (context, on, _) {
+    return ListenableBuilder(
+      listenable: sharingStateListenable,
+      builder: (context, _) {
+        final on = LocationService.instance.sharing.value;
         final fg = on ? Colors.white : scheme.onSurface;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
           decoration: BoxDecoration(
-            gradient: on ? AppColors.brandGradient : null,
-            color: on ? null : Theme.of(context).cardTheme.color,
+            // Xanh lá khi đang chia sẻ, cùng màu với viên "Đang chia sẻ" trên bản đồ.
+            color: on ? AppColors.online : Theme.of(context).cardTheme.color,
             borderRadius: BorderRadius.circular(26),
             boxShadow: on
-                ? [BoxShadow(color: AppColors.brand.withValues(alpha: 0.35), blurRadius: 18, offset: const Offset(0, 8))]
+                ? [BoxShadow(color: AppColors.online.withValues(alpha: 0.35), blurRadius: 18, offset: const Offset(0, 8))]
                 : null,
           ),
           child: Row(
@@ -283,7 +313,7 @@ class SharingSwitchCard extends StatelessWidget {
                         style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2)),
                     const SizedBox(height: 2),
                     Text(
-                      on ? 'Các nhóm của bạn đang thấy bạn trên bản đồ' : 'Không ai thấy vị trí của bạn',
+                      on ? _onSubtitle() : 'Không ai thấy vị trí của bạn',
                       style: TextStyle(color: fg.withValues(alpha: on ? 0.8 : 0.55), fontSize: 13),
                     ),
                   ],
@@ -292,7 +322,7 @@ class SharingSwitchCard extends StatelessWidget {
               Switch(
                 value: on,
                 onChanged: (v) => _toggle(context, v),
-                activeThumbColor: AppColors.brand,
+                activeThumbColor: AppColors.online,
                 activeTrackColor: Colors.white,
               ),
             ],

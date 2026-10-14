@@ -1,8 +1,10 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../config/map_tiles.dart';
 import '../models/models.dart';
@@ -28,6 +30,8 @@ class IPingMap extends StatelessWidget {
     this.onMapReady,
     this.fit,
     this.style,
+    this.showAttribution = true,
+    this.attributionPadding = const EdgeInsets.all(8),
   });
 
   final MapController controller;
@@ -42,6 +46,11 @@ class IPingMap extends StatelessWidget {
 
   /// Ép kiểu bản đồ, bỏ qua cài đặt của người dùng.
   final MapStyle? style;
+
+  /// Tự vẽ [MapAttribution] ở góc dưới trái bản đồ. Màn nào có bảng nổi che đáy bản đồ thì tắt
+  /// và tự đặt [MapAttribution] / [SheetMapAttribution] ở chỗ không bị che.
+  final bool showAttribution;
+  final EdgeInsets attributionPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -66,19 +75,11 @@ class IPingMap extends StatelessWidget {
           children: [
             if (satellite) ...satelliteTileLayers(context) else streetTileLayer(context),
             ...layers,
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Text(
-                  mapAttribution(satellite: satellite),
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: satellite ? Colors.white70 : Colors.black54,
-                  ),
-                ),
+            if (showAttribution)
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(padding: attributionPadding, child: MapAttribution(style: style)),
               ),
-            ),
           ],
         );
       },
@@ -411,3 +412,168 @@ List<Widget> placeLayers(List<Place> places) => [
           ),
       ]),
     ];
+
+// ---- Ghi nguồn bản đồ ----
+
+/// Kiểu bản đồ đang hiện: [style] ép kiểu, không thì theo cài đặt.
+bool _isSatellite(MapStyle? style) => (style ?? SettingsService.instance.mapStyle.value) == MapStyle.satellite;
+
+/// Một bên cung cấp dữ liệu / ảnh bản đồ cần ghi nguồn.
+typedef MapAttributionSource = ({String title, String detail, String url});
+
+/// Các nguồn của lớp bản đồ đang dùng (khớp với `config/map_tiles.dart`).
+List<MapAttributionSource> mapAttributionSources({required bool satellite}) {
+  final keys = MapKeys.instance;
+  final esri = satellite && (keys.usingArcgis || !keys.usingMapTiler);
+  final mapTiler = !esri && keys.usingMapTiler;
+  return [
+    if (esri)
+      (
+        title: 'Powered by Esri',
+        detail: 'Ảnh vệ tinh: Esri, Vantor, Earthstar Geographics và cộng đồng người dùng GIS',
+        url: 'https://www.esri.com/en-us/legal/copyright-trademarks',
+      ),
+    if (mapTiler)
+      (
+        title: '© MapTiler',
+        detail: satellite ? 'Ảnh vệ tinh và ô bản đồ' : 'Ô bản đồ',
+        url: 'https://www.maptiler.com/copyright/',
+      ),
+    (
+      title: '© OpenStreetMap contributors',
+      detail: 'Dữ liệu bản đồ, giấy phép ODbL',
+      url: 'https://www.openstreetmap.org/copyright',
+    ),
+  ];
+}
+
+/// Mở bảng liệt kê đầy đủ nguồn bản đồ kèm liên kết.
+Future<void> showMapAttributions(BuildContext context, {MapStyle? style}) {
+  final sources = mapAttributionSources(satellite: _isSatellite(style));
+  return showGlassSheet<void>(
+    context,
+    builder: (ctx) => SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SheetTitle('Nguồn bản đồ', subtitle: 'Dữ liệu và hình ảnh bản đồ do các bên sau cung cấp.'),
+            InsetGroup(
+              dividerIndent: 16,
+              children: [
+                for (final s in sources)
+                  ListTile(
+                    title: Text(s.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(s.detail),
+                    trailing: const Icon(Icons.open_in_new_rounded, size: 20),
+                    onTap: () => launchUrl(Uri.parse(s.url), mode: LaunchMode.externalApplication),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Viên ghi nguồn bản đồ ("© OpenStreetMap contributors"...) kèm nút ⓘ mở danh sách nguồn đầy đủ.
+///
+/// Bắt buộc hiển thị theo điều khoản của nhà cung cấp tile: mỗi màn có bản đồ phải đặt nó ở chỗ
+/// không bị bảng nổi che (xem [SheetMapAttribution] cho màn có bảng kéo).
+class MapAttribution extends StatelessWidget {
+  const MapAttribution({super.key, this.style});
+
+  /// Ép kiểu bản đồ (giống [IPingMap.style]); null thì theo cài đặt.
+  final MapStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = math.min(340.0, MediaQuery.sizeOf(context).width * 0.75);
+    return ListenableBuilder(
+      listenable: Listenable.merge([SettingsService.instance.mapStyle, MapKeys.instance]),
+      builder: (context, _) {
+        final text = mapAttribution(satellite: _isSatellite(style));
+        return Semantics(
+          button: true,
+          label: 'Nguồn bản đồ: $text. Xem chi tiết',
+          excludeSemantics: true,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => showMapAttributions(context, style: style),
+            child: Container(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              padding: const EdgeInsets.fromLTRB(9, 4, 6, 4),
+              decoration: ShapeDecoration(
+                shape: const StadiumBorder(side: BorderSide(color: Colors.white, width: 0.6)),
+                color: Colors.white.withValues(alpha: 0.88),
+                shadows: [BoxShadow(blurRadius: 6, color: Colors.black.withValues(alpha: 0.15), offset: const Offset(0, 1))],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      text,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10, height: 1.2, color: Colors.black87, letterSpacing: -0.1),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.info_outline_rounded, size: 14, color: Colors.black54),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// [MapAttribution] luôn nằm ngay trên mép trên của một [DraggableScrollableSheet] và di chuyển theo nó,
+/// để bảng kéo không bao giờ che dòng ghi nguồn.
+///
+/// Đặt làm con trực tiếp của cùng [Stack] chứa bảng kéo, SAU bảng kéo.
+class SheetMapAttribution extends StatelessWidget {
+  const SheetMapAttribution({
+    super.key,
+    required this.controller,
+    required this.initialSize,
+    this.style,
+    this.left = 14,
+    this.gap = 8,
+  });
+
+  /// Controller của bảng kéo (phải là controller truyền cho [DraggableScrollableSheet]).
+  final DraggableScrollableController controller;
+
+  /// `initialChildSize` của bảng, dùng khi bảng chưa gắn controller (khung hình đầu).
+  final double initialSize;
+  final MapStyle? style;
+  final double left;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, box) => ListenableBuilder(
+          listenable: controller,
+          builder: (context, child) {
+            final size = controller.isAttached ? controller.size : initialSize;
+            // Bảng kéo gần hết màn hình thì vẫn giữ viên ghi nguồn trong màn hình.
+            final bottom = math.min(box.maxHeight * size + gap, box.maxHeight - top - 30);
+            return Stack(children: [Positioned(left: left, bottom: bottom, child: child!)]);
+          },
+          child: MapAttribution(style: style),
+        ),
+      ),
+    );
+  }
+}

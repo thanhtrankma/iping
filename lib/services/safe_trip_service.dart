@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../models/models.dart';
 import 'location_service.dart';
+import 'group_consent.dart';
 import 'privacy_service.dart';
 
 /// "Về an toàn": người dùng báo cho nhóm mình đang đi tới đâu và dự kiến tới lúc nào.
@@ -74,6 +75,8 @@ class SafeTripService {
       if (err != null) return err;
     }
     final p = loc.lastPosition.value ?? await loc.currentPosition();
+    // Toạ độ chỉ gửi cho nhóm đã đồng ý chia sẻ vị trí và không đang tạm ẩn.
+    final showCoords = GroupConsent.instance.allows(gid) && !PrivacyService.instance.isPaused(gid);
 
     final batch = _db.batch();
     batch.set(_col(gid).doc(_uid), {
@@ -86,8 +89,8 @@ class SafeTripService {
       'startedAt': FieldValue.serverTimestamp(),
       'status': SafeTripStatus.active.name,
       'alerts': 0,
-      if (p != null) 'startLat': p.latitude,
-      if (p != null) 'startLng': p.longitude,
+      if (p != null && showCoords) 'startLat': p.latitude,
+      if (p != null && showCoords) 'startLng': p.longitude,
     });
     batch.set(_event(gid), _eventData('safe_start', destName, dueAt: dueAt));
     // Mất mạng: lệnh đã nằm trong hàng đợi của Firestore; ném TimeoutException để màn hình báo "chờ mạng".
@@ -121,7 +124,8 @@ class SafeTripService {
       if (!trip.isOpen) return;
       tx.update(ref, {'status': SafeTripStatus.arrived.name, 'endedAt': FieldValue.serverTimestamp()});
       // Nhóm đang tạm ẩn vị trí: vẫn báo "đã tới" nhưng không kèm toạ độ.
-      final hide = PrivacyService.instance.isPaused(gid);
+      // Nhóm chưa đồng ý chia sẻ vị trí: cũng không kèm toạ độ.
+      final hide = PrivacyService.instance.isPaused(gid) || !GroupConsent.instance.allows(gid);
       tx.set(_event(gid), _eventData('safe_arrive', trip.destName, lat: hide ? null : lat, lng: hide ? null : lng));
     });
   }

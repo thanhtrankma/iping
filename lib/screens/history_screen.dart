@@ -293,12 +293,15 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final _map = MapController();
+  final _sheet = DraggableScrollableController();
 
   @override
   void dispose() {
     _map.dispose();
+    _sheet.dispose();
     super.dispose();
   }
+
   late DateTime _day = _startOfDay(DateTime.now());
   Future<List<Segment>>? _timeline;
   int? _selected;
@@ -337,7 +340,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final today = _startOfDay(DateTime.now());
-    return BackdropGroup(child: Scaffold(
+    return BackdropGroup(
+        child: Scaffold(
       body: FutureBuilder<List<Segment>>(
         future: _timeline,
         builder: (context, snap) {
@@ -352,6 +356,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Positioned.fill(
                 child: IPingMap(
                   key: ValueKey('$_day-${segs.length}'),
+                  showAttribution: false,
                   controller: _map,
                   center: allPts.isEmpty ? (widget.fallbackCenter ?? defaultCenter) : allPts.first,
                   fit: allPts.isEmpty ? null : fitPoints(allPts, padding: 60),
@@ -409,6 +414,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               DraggableScrollableSheet(
+                controller: _sheet,
                 initialChildSize: 0.45,
                 minChildSize: 0.2,
                 maxChildSize: 0.88,
@@ -484,6 +490,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
               ),
+              // Ghi nguồn bản đồ nằm ngay trên mép bảng kéo, đi theo bảng nên không bị che.
+              SheetMapAttribution(controller: _sheet, initialSize: 0.45),
             ],
           );
         },
@@ -794,7 +802,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     final trip = widget.trip;
     final pts = tripLatLngs(trip);
     final color = trip.isDrive ? AppColors.brand : AppColors.teal;
-    return BackdropGroup(child: Scaffold(
+    return BackdropGroup(
+        child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -802,6 +811,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               controller: _map,
               center: pts.first,
               fit: fitPoints(pts, padding: 70),
+              showAttribution: false,
               layers: tripLayers(trip),
             ),
           ),
@@ -821,76 +831,80 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               minimum: const EdgeInsets.only(bottom: 8),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Glass(
-                  radius: 34,
-                  opacity: 0.72,
-                  blur: 20,
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(6, 6, 4, 0),
-                        child: Row(
-                          children: [
-                            GlassIconBadge(
-                              icon: trip.isDrive ? Icons.directions_car_rounded : Icons.directions_walk_rounded,
-                              color: color,
-                              size: 40,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(trip.isDrive ? 'Lái xe' : 'Di chuyển',
-                                      style: const TextStyle(
-                                          fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
-                                  Text('${clock(trip.start)} ~ ${clock(trip.end)} · ${durationText(trip.duration)}',
-                                      style: TextStyle(color: _secondary(context), fontWeight: FontWeight.w500)),
-                                ],
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  // Ghi nguồn bản đồ ngay trên bảng chi tiết, không bị bảng che.
+                  const Padding(padding: EdgeInsets.fromLTRB(10, 0, 10, 8), child: MapAttribution()),
+                  Glass(
+                    radius: 34,
+                    opacity: 0.72,
+                    blur: 20,
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(6, 6, 4, 0),
+                          child: Row(
+                            children: [
+                              GlassIconBadge(
+                                icon: trip.isDrive ? Icons.directions_car_rounded : Icons.directions_walk_rounded,
+                                color: color,
+                                size: 40,
                               ),
-                            ),
-                            if (trip.isDrive) ScoreBadge(score: trip.safetyScore, size: 52),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(trip.isDrive ? 'Lái xe' : 'Di chuyển',
+                                        style: const TextStyle(
+                                            fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
+                                    Text('${clock(trip.start)} ~ ${clock(trip.end)} · ${durationText(trip.duration)}',
+                                        style: TextStyle(color: _secondary(context), fontWeight: FontWeight.w500)),
+                                  ],
+                                ),
+                              ),
+                              if (trip.isDrive) ScoreBadge(score: trip.safetyScore, size: 52),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _StatPanel(
+                          rows: [
+                            [
+                              _Stat(value: distanceLabel(trip.distance), label: 'Quãng đường', color: color),
+                              _Stat(value: kmh(trip.avgSpeed), label: 'Trung bình'),
+                              _Stat(value: kmh(trip.maxSpeed), label: 'Tối đa'),
+                            ],
+                            if (trip.isDrive)
+                              [
+                                _Stat(
+                                  value: '${trip.speedingEvents}',
+                                  label: 'Quá tốc độ',
+                                  color: trip.speedingEvents > 0 ? AppColors.sos : null,
+                                ),
+                                _Stat(
+                                  value: '${trip.hardBrakes}',
+                                  label: 'Phanh gấp',
+                                  color: trip.hardBrakes > 0 ? AppColors.warning : null,
+                                ),
+                                _Stat(
+                                    value: '${trip.safetyScore}',
+                                    label: 'Điểm an toàn',
+                                    color: _scoreColor(trip.safetyScore)),
+                              ],
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      _StatPanel(
-                        rows: [
-                          [
-                            _Stat(value: distanceLabel(trip.distance), label: 'Quãng đường', color: color),
-                            _Stat(value: kmh(trip.avgSpeed), label: 'Trung bình'),
-                            _Stat(value: kmh(trip.maxSpeed), label: 'Tối đa'),
-                          ],
-                          if (trip.isDrive)
-                            [
-                              _Stat(
-                                value: '${trip.speedingEvents}',
-                                label: 'Quá tốc độ',
-                                color: trip.speedingEvents > 0 ? AppColors.sos : null,
-                              ),
-                              _Stat(
-                                value: '${trip.hardBrakes}',
-                                label: 'Phanh gấp',
-                                color: trip.hardBrakes > 0 ? AppColors.warning : null,
-                              ),
-                              _Stat(
-                                  value: '${trip.safetyScore}',
-                                  label: 'Điểm an toàn',
-                                  color: _scoreColor(trip.safetyScore)),
-                            ],
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
-                        child: _Route(from: trip.from, to: trip.to),
-                      ),
-                    ],
+                        const SizedBox(height: 14),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                          child: _Route(from: trip.from, to: trip.to),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ]),
               ),
             ),
           ),

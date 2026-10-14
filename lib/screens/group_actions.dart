@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/models.dart';
+import '../services/group_consent.dart';
 import '../services/group_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'group_consent_screen.dart';
 import 'invite_screens.dart';
 import '../widgets/glass.dart';
 
@@ -18,20 +20,42 @@ class GroupActions {
   static Future<void> create(BuildContext context) async {
     final name = await promptText(context, title: 'Tạo nhóm mới', label: 'Tên nhóm (vd: Gia đình)');
     if (name == null || name.isEmpty || !context.mounted) return;
-    await _run(context, () => GroupService.instance.createGroup(name));
+    await _run(context, () async {
+      final gid = await GroupService.instance.createGroup(name);
+      // Tự tạo nhóm = đồng ý chia sẻ với nhóm đó.
+      await GroupConsent.instance.grant(gid);
+      return gid;
+    });
   }
 
   static Future<void> join(BuildContext context) async {
     // Nhập mã, dán link mời hoặc quét QR.
     final code = await promptJoinCode(context);
     if (code == null || code.isEmpty || !context.mounted) return;
-    await _run(context, () => GroupService.instance.joinGroup(code));
+    await joinCode(context, code);
   }
 
-  /// Tham gia bằng mã có sẵn (link mời / QR). Trả về id nhóm nếu thành công.
+  /// Tham gia bằng mã (nhập tay / link mời / QR). Trả về id nhóm nếu thành công và người dùng không rời nhóm.
+  ///
+  /// Vào nhóm KHÔNG tự chia sẻ vị trí: sau khi vào, màn [GroupConsentScreen] cho người dùng xem nhóm
+  /// có ai, nhóm sẽ thấy gì, rồi tự chọn chia sẻ / chỉ tham gia / rời nhóm.
   static Future<String?> joinCode(BuildContext context, String code) async {
-    String? gid;
-    await _run(context, () async => gid = await GroupService.instance.joinGroup(code));
+    final String gid;
+    try {
+      gid = await GroupService.instance.joinGroup(code);
+    } on FirebaseFunctionsException catch (e) {
+      if (context.mounted) showMessage(context, e.message ?? 'Có lỗi xảy ra.');
+      return null;
+    } catch (e) {
+      if (context.mounted) showMessage(context, 'Có lỗi xảy ra: $e');
+      return null;
+    }
+    // Đã là thành viên và đã đồng ý từ trước thì không hỏi lại.
+    if (!GroupConsent.instance.allows(gid) && context.mounted) {
+      final choice = await GroupConsentScreen.open(context, gid);
+      if (choice == GroupConsentChoice.left) return null;
+    }
+    await SettingsService.instance.selectGroup(gid);
     return gid;
   }
 
@@ -152,7 +176,8 @@ class GroupActions {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Rời nhóm "${g.name}"?'),
-        content: const Text('Bạn sẽ không còn thấy vị trí của nhóm và nhóm cũng không thấy vị trí của bạn.'),
+        content: const Text('Nhóm sẽ không còn nhận vị trí của bạn và bạn cũng không còn thấy vị trí của nhóm. '
+            'Vị trí và lịch sử của bạn trong nhóm này sẽ bị xoá.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
           TextButton(

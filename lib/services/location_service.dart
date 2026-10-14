@@ -13,14 +13,23 @@ import '../screens/location_disclosure.dart';
 import 'battery_alert_service.dart';
 import 'explore_service.dart';
 import 'geofence_service.dart';
+import 'group_consent.dart';
+import 'location_gates.dart';
+import 'notification_service.dart' show scaffoldMessengerKey;
+import 'sharing_notification.dart';
 import 'safe_trip_service.dart';
 import 'group_service.dart';
 import 'privacy_service.dart';
 import 'speeding_tracker.dart';
 import 'profile_service.dart';
 
-/// Theo dõi vị trí của chính người dùng và ghi vào mọi nhóm họ tham gia.
+/// Theo dõi vị trí của chính người dùng và ghi vào các nhóm họ đã đồng ý chia sẻ ([GroupConsent]).
 /// Chỉ chạy khi người dùng tự bật "Chia sẻ vị trí".
+///
+/// Thứ tự xin quyền (chính sách Google Play), chỉ khi người dùng bấm "Bật chia sẻ" hoặc một thao tác cần vị trí:
+/// màn giải thích → quyền "khi dùng app" → (nếu cần) "Luôn cho phép" → mới bắt đầu lấy vị trí
+/// (hộp thoại "Độ chính xác vị trí" của Android chỉ có thể hiện ở bước cuối này).
+/// Mở app / màn chào / đổi nhóm KHÔNG bao giờ hỏi quyền ([devicePosition]).
 class LocationService {
   LocationService._();
   static final instance = LocationService._();
@@ -41,9 +50,29 @@ class LocationService {
   /// Các nhóm người dùng đang tham gia.
   List<Group> get groups => _groups;
 
+  /// Nhóm được nhận vị trí lúc này: đã đồng ý chia sẻ và không đang tạm ẩn.
+  List<Group> get _writable => writableGroups(
+        _groups,
+        id: (g) => g.id,
+        allowed: GroupConsent.instance.allows,
+        paused: PrivacyService.instance.isPaused,
+      );
+
+  Set<String> _consentSeen = const {};
+
   Future<void> init(String uid) async {
+    // Phải nạp trước mọi lệnh ghi: chưa nạp thì [GroupConsent.allows] luôn false (không gửi gì).
+    await GroupConsent.instance.load(uid);
+    _consentSeen = GroupConsent.instance.consented.value;
+    GroupConsent.instance.consented.removeListener(_onConsentChanged);
+    GroupConsent.instance.consented.addListener(_onConsentChanged);
     await _groupSub?.cancel();
-    _groupSub = GroupService.instance.myGroups(uid).listen((groups) {
+    // Chuyển đổi người dùng cũ / dọn nhóm đã rời TRƯỚC khi dùng danh sách để ghi vị trí
+    // (asyncMap giữ đúng thứ tự các lần cập nhật).
+    _groupSub = GroupService.instance.myGroups(uid).asyncMap((groups) async {
+      await GroupConsent.instance.onGroups(groups);
+      return groups;
+    }).listen((groups) {
       _groups = groups;
       GeofenceService.instance.watch(groups);
       SafeTripService.instance.watch(groups);
@@ -51,11 +80,63 @@ class LocationService {
     });
     BatteryAlertService.instance.start();
     await PrivacyService.instance.load();
+    // Bấm "Dừng chia sẻ" trên thông báo khi app chưa chạy: dừng hẳn, không tự bật lại.
+    final stopRequested = await SharingNotification.instance.init(_stopFromNotification);
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_prefKey) ?? false) await start();
+    if (!(prefs.getBool(_prefKey) ?? false)) return;
+    if (stopRequested) {
+      await _stopFromNotification();
+    } else {
+      await _resume();
+    }
+  }
+
+  /// Bật lại chia sẻ khi mở app (người dùng đã bật từ trước). Không hỏi quyền, không hiện màn nào:
+  /// quyền đã bị thu hồi thì coi như tắt chia sẻ, người dùng tự bật lại khi muốn.
+  Future<void> _resume() async {
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm != LocationPermission.whileInUse && perm != LocationPermission.always) {
+        await stop();
+        return;
+      }
+      // GPS đang tắt: chờ lần mở app sau (không mở hộp thoại bật GPS khi vừa mở app).
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+    } catch (e) {
+      debugPrint('Resume sharing: $e');
+      return;
+    }
+    await _startStream();
+  }
+
+  Future<void> _stopFromNotification() async {
+    await stop();
+    showGlobalMessage(scaffoldMessengerKey, 'Đã dừng chia sẻ vị trí.');
+  }
+
+  /// Đồng ý theo nhóm thay đổi: nhóm vừa rút đồng ý → ẩn vị trí đã ghi; nhóm vừa đồng ý → ghi ngay.
+  void _onConsentChanged() {
+    final now = GroupConsent.instance.consented.value;
+    final removed = _consentSeen.difference(now);
+    final added = now.difference(_consentSeen);
+    _consentSeen = now;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    for (final gid in removed) {
+      if (!_groups.any((g) => g.id == gid)) continue;
+      // `update`: không tạo doc mới nếu chưa từng chia sẻ với nhóm này.
+      _db
+          .doc('groups/$gid/locations/$uid')
+          .update({'sharing': false, 'updatedAt': FieldValue.serverTimestamp()})
+          .catchError((Object e) => debugPrint('Consent revoke $gid: $e'));
+    }
+    if (added.isNotEmpty) unawaited(refresh());
   }
 
   Future<void> dispose() async {
+    GroupConsent.instance.consented.removeListener(_onConsentChanged);
+    GroupConsent.instance.reset();
+    _consentSeen = const {};
     _heartbeat?.cancel();
     _heartbeat = null;
     await _posSub?.cancel();
@@ -69,23 +150,33 @@ class LocationService {
   }
 
   /// Trả về thông báo lỗi nếu không bắt đầu được, `null` nếu thành công.
+  ///
+  /// Chỉ gọi khi người dùng bấm "Bật chia sẻ" (hoặc thao tác cần chia sẻ như "Về an toàn").
+  /// Thứ tự: màn giải thích → quyền khi dùng app → "Luôn cho phép" → luồng vị trí.
   Future<String?> start() async {
     final err = await _ensurePermission(background: true);
     if (err != null) return err;
+    await _startStream();
+    return null;
+  }
 
+  /// Bắt đầu luồng vị trí (đã có quyền). Trên Android, đây là lúc duy nhất hộp thoại
+  /// "Độ chính xác vị trí" của Google có thể hiện.
+  Future<void> _startStream() async {
     await _posSub?.cancel();
     _posSub = Geolocator.getPositionStream(locationSettings: _settings())
         .listen(_onPosition, onError: _onStreamError);
     sharing.value = true;
     (await SharedPreferences.getInstance()).setBool(_prefKey, true);
     _startHeartbeat();
+    // Thông báo dịch vụ nền đã hiện: gắn nút "Dừng chia sẻ".
+    unawaited(SharingNotification.instance.attachStopAction());
 
     try {
       _onPosition(await Geolocator.getCurrentPosition());
     } catch (e) {
       debugPrint('getCurrentPosition: $e');
     }
-    return null;
   }
 
   /// Ghi `lastSeenAt` định kỳ khi đang chia sẻ, kể cả khi đứng yên (distanceFilter không phát vị trí mới).
@@ -101,8 +192,7 @@ class LocationService {
   Future<void> _beat() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || !sharing.value) return;
-    for (final g in _groups) {
-      if (PrivacyService.instance.isPaused(g.id)) continue;
+    for (final g in _writable) {
       _db
           .doc('groups/${g.id}/locations/$uid')
           .set({'lastSeenAt': FieldValue.serverTimestamp()}, SetOptions(merge: true))
@@ -118,8 +208,7 @@ class LocationService {
     if (_reportedOff || !sharing.value) return;
     if (e is! LocationServiceDisabledException && e is! PermissionDeniedException) return;
     _reportedOff = true;
-    for (final g in _groups) {
-      if (PrivacyService.instance.isPaused(g.id)) continue;
+    for (final g in _writable) {
       try {
         await GroupService.instance.addEvent(g.id, type: 'location_off').timeout(const Duration(seconds: 10));
       } catch (err) {
@@ -137,9 +226,11 @@ class LocationService {
     (await SharedPreferences.getInstance()).setBool(_prefKey, false);
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || _groups.isEmpty) return;
+    // Chỉ nhóm đã đồng ý mới từng nhận vị trí; nhóm khác không cần (và không nên tạo doc vị trí).
+    final targets = _groups.where((g) => GroupConsent.instance.allows(g.id)).toList();
+    if (uid == null || targets.isEmpty) return;
     final batch = _db.batch();
-    for (final g in _groups) {
+    for (final g in targets) {
       batch.set(_db.doc('groups/${g.id}/locations/$uid'), {
         'sharing': false,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -148,6 +239,9 @@ class LocationService {
     await batch.commit();
   }
 
+  /// Vị trí hiện tại cho thao tác do người dùng tự bấm (SOS, check-in, "Vị trí của tôi", "Về an toàn",
+  /// đăng khoảnh khắc kèm vị trí). Chưa có quyền thì hỏi theo đúng thứ tự (màn giải thích trước).
+  /// KHÔNG gọi từ luồng mở app / màn chào / đổi nhóm: dùng [devicePosition].
   Future<Position?> currentPosition() async {
     if (lastPosition.value != null) return lastPosition.value;
     if (await _ensurePermission() != null) return null;
@@ -159,29 +253,37 @@ class LocationService {
     }
   }
 
-  bool _askedOnOpen = false;
-
-  /// Vị trí của máy để căn bản đồ khi mở app, không cần bật chia sẻ.
-  /// Chưa có quyền thì hỏi như thường lệ (màn giải thích → hộp thoại hệ thống); cho phép xong mới lấy vị trí.
-  /// Trả về vị trí cũ hệ thống còn nhớ trước (tức thì), rồi vị trí mới qua [onFresh].
-  Future<Position?> devicePosition({void Function(Position)? onFresh}) async {
-    if (lastPosition.value != null) return lastPosition.value;
+  /// Quyền vị trí đã được cấp chưa (chỉ kiểm tra, không bao giờ hỏi).
+  Future<bool> hasPermission() async {
     try {
       final perm = await Geolocator.checkPermission();
-      final granted = perm == LocationPermission.whileInUse || perm == LocationPermission.always;
-      // Mỗi lần mở app chỉ hỏi một lần, không hỏi lại mỗi khi đổi nhóm.
-      if (!granted && _askedOnOpen) return null;
-      _askedOnOpen = true;
-      if (await _ensurePermission() != null) return null;
-      final cached = await Geolocator.getLastKnownPosition();
-      final fresh = Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
-      ).timeout(const Duration(seconds: 12));
-      if (cached != null) {
-        fresh.then((p) => onFresh?.call(p), onError: (_) {});
-        return cached;
+      return perm == LocationPermission.whileInUse || perm == LocationPermission.always;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Vị trí của máy để căn bản đồ khi mở app / đổi nhóm, không cần bật chia sẻ.
+  ///
+  /// KHÔNG BAO GIỜ hỏi quyền hay mở hộp thoại hệ thống (kể cả "Độ chính xác vị trí"):
+  /// - chưa có quyền → `null` (bản đồ dùng vị trí mặc định);
+  /// - đã có quyền → vị trí hệ thống còn nhớ (không bật GPS);
+  /// - đang chia sẻ → vị trí mới từ luồng chia sẻ được báo qua [onFresh].
+  Future<Position?> devicePosition({void Function(Position)? onFresh}) async {
+    if (lastPosition.value != null) return lastPosition.value;
+    if (!await hasPermission()) return null;
+    if (sharing.value && onFresh != null) {
+      void once() {
+        final p = lastPosition.value;
+        if (p == null) return;
+        lastPosition.removeListener(once);
+        onFresh(p);
       }
-      return await fresh;
+
+      lastPosition.addListener(once);
+    }
+    try {
+      return await Geolocator.getLastKnownPosition();
     } catch (_) {
       return null;
     }
@@ -215,8 +317,7 @@ class LocationService {
     if (p.speed < 0 || p.accuracy > 50) return;
     final kmh = p.speed * 3.6;
     if (!_speeding.update(kmh, p.timestamp)) return;
-    for (final g in _groups) {
-      if (PrivacyService.instance.isPaused(g.id)) continue;
+    for (final g in _writable) {
       GroupService.instance
           .addEvent(g.id, type: 'speeding', speed: kmh.round())
           .catchError((Object e) => debugPrint('speeding ${g.id}: $e'));
@@ -261,10 +362,11 @@ class LocationService {
       'expireAt': Timestamp.fromDate(p.timestamp.add(const Duration(days: 30))),
     };
     // Nhóm đang tạm dừng: chỉ đánh dấu "đã tắt chia sẻ" một lần, không ghi vị trí.
+    // Nhóm chưa đồng ý chia sẻ (vd. vừa vào bằng mã mời): không ghi gì.
     final privacy = PrivacyService.instance;
-    final active = _groups.where((g) => !privacy.isPaused(g.id)).toList();
+    final active = _writable;
     for (final g in _groups) {
-      if (privacy.isPaused(g.id)) unawaited(privacy.markPaused(g.id));
+      if (privacy.isPaused(g.id) && GroupConsent.instance.allows(g.id)) unawaited(privacy.markPaused(g.id));
     }
     // Ghi riêng từng nhóm: một nhóm vừa rời (bị rules từ chối) không chặn các nhóm khác.
     await Future.wait(active.map((g) async {
@@ -305,8 +407,9 @@ class LocationService {
         intervalDuration: const Duration(seconds: 10),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'IPing đang chia sẻ vị trí',
-          notificationText: 'Nhóm của bạn có thể thấy vị trí của bạn. Tắt trong ứng dụng bất cứ lúc nào.',
+          notificationText: 'Nhóm của bạn đang thấy vị trí của bạn. Bấm "Dừng chia sẻ" để tắt.',
           enableWakeLock: true,
+          setOngoing: true,
         ),
       );
     }

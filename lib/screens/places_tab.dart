@@ -6,9 +6,11 @@ import '../config/map_tiles.dart';
 import '../models/models.dart';
 import '../services/group_service.dart';
 import '../services/location_service.dart';
+import '../services/settings_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
+import '../widgets/map_view.dart';
 
 class PlacesTab extends StatefulWidget {
   const PlacesTab({super.key, required this.group});
@@ -131,8 +133,8 @@ class _FloatingAction extends StatelessWidget {
           Icon(icon, color: Colors.white, size: 21),
           const SizedBox(width: 8),
           Text(label,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2)),
+              style:
+                  const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: -0.2)),
         ],
       ),
     );
@@ -193,15 +195,16 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
       return;
     }
     setState(() => _saving = true);
-    await GroupService.instance.addPlace(widget.groupId,
-        name: name, lat: _point.latitude, lng: _point.longitude, radius: _radius);
+    await GroupService.instance
+        .addPlace(widget.groupId, name: name, lat: _point.latitude, lng: _point.longitude, radius: _radius);
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return BackdropGroup(child: Scaffold(
+    return BackdropGroup(
+        child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -233,15 +236,6 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                     child: const Icon(Icons.location_pin, size: 44, color: AppColors.brand),
                   ),
                 ]),
-                // Ghi nguồn bản đồ, đặt dưới thanh trên vì phía dưới bị bảng chỉnh bán kính che.
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(6, MediaQuery.paddingOf(context).top + 64, 10, 0),
-                    child: Text(mapAttribution(satellite: false),
-                        style: const TextStyle(fontSize: 9, color: Colors.black54)),
-                  ),
-                ),
               ],
             ),
           ),
@@ -284,71 +278,76 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                child: Glass(
-                  radius: 34,
-                  opacity: 0.78,
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4, bottom: 12),
-                          child: Text('Thêm địa điểm',
-                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-                        ),
-                        TextField(
-                          controller: _name,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
-                            hintText: 'Tên địa điểm (vd: Nhà, Trường học)',
-                            prefixIcon: Icon(Icons.label_outline_rounded),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  // Ghi nguồn bản đồ ngay trên bảng, không bị bảng che.
+                  const Padding(
+                      padding: EdgeInsets.fromLTRB(10, 0, 10, 8), child: MapAttribution(style: MapStyle.standard)),
+                  Glass(
+                    radius: 34,
+                    opacity: 0.78,
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4, bottom: 12),
+                            child: Text('Thêm địa điểm',
+                                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Row(
-                            children: [
-                              const Text('Bán kính', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: ShapeDecoration(
-                                  shape: const StadiumBorder(),
-                                  color: AppColors.brand.withValues(alpha: 0.12),
+                          TextField(
+                            controller: _name,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              hintText: 'Tên địa điểm (vd: Nhà, Trường học)',
+                              prefixIcon: Icon(Icons.label_outline_rounded),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Row(
+                              children: [
+                                const Text('Bán kính', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: ShapeDecoration(
+                                    shape: const StadiumBorder(),
+                                    color: AppColors.brand.withValues(alpha: 0.12),
+                                  ),
+                                  child: Text('${_radius.round()} m',
+                                      style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
                                 ),
-                                child: Text('${_radius.round()} m',
-                                    style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        Slider(
-                          value: _radius,
-                          min: 100,
-                          max: 1000,
-                          divisions: 18,
-                          label: '${_radius.round()} m',
-                          onChanged: (v) => setState(() => _radius = v),
-                        ),
-                        const SizedBox(height: 4),
-                        FilledButton.icon(
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.check_rounded),
-                          label: const Text('Lưu'),
-                          onPressed: _saving ? null : _save,
-                        ),
-                      ],
+                          Slider(
+                            value: _radius,
+                            min: 100,
+                            max: 1000,
+                            divisions: 18,
+                            label: '${_radius.round()} m',
+                            onChanged: (v) => setState(() => _radius = v),
+                          ),
+                          const SizedBox(height: 4),
+                          FilledButton.icon(
+                            icon: _saving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.check_rounded),
+                            label: const Text('Lưu'),
+                            onPressed: _saving ? null : _save,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ]),
               ),
             ),
           ),

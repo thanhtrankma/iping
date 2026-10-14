@@ -8,7 +8,9 @@ import '../models/models.dart';
 import '../services/all_friends_service.dart';
 import '../services/geocode_service.dart';
 import '../services/group_service.dart';
+import '../services/group_consent.dart';
 import '../services/location_service.dart';
+import '../services/privacy_service.dart';
 import '../services/safe_trip_service.dart';
 import '../services/settings_service.dart';
 import '../services/widget_service.dart';
@@ -28,11 +30,13 @@ import 'moments_screen.dart';
 import 'chat_tab.dart';
 import 'explore_leaderboard_screen.dart';
 import 'explore_screen.dart';
+import 'group_consent_screen.dart';
 import 'group_actions.dart';
 import 'member_popup.dart';
 import 'member_screen.dart';
 import 'menu_screen.dart';
 import 'places_tab.dart';
+import 'privacy_screen.dart';
 import 'safe_trip_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -339,6 +343,8 @@ class _GroupMapViewState extends State<_GroupMapView> {
                         controller: _map,
                         center: center,
                         zoom: 16,
+                        // Ghi nguồn bản đồ do màn này tự đặt ngay trên bảng thành viên (xem cuối Stack).
+                        showAttribution: false,
                         onTap: (_, __) => _collapseSheet(),
                         onPositionChanged: (_, hasGesture) {
                           if (hasGesture) _userMoved = true;
@@ -434,7 +440,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                                           : AllFriendsActions.open(context, g, widget.groups,
                                               (x) => ExploreLeaderboardScreen(groupId: x.id, myUid: widget.uid)),
                                     ),
-                                    const _SharingBadge(),
+                                    _SharingControl(uid: widget.uid, groups: widget.groups, group: _all ? null : g),
                                     if (g != null) PausedGroupChip(group: g),
                                     if (safeTrips.isNotEmpty)
                                       _SafeTripBanner(
@@ -485,17 +491,22 @@ class _GroupMapViewState extends State<_GroupMapView> {
                         ),
                       ),
                     ),
-                    if (widget.loading)
+                    if (widget.loading) ...[
                       const Center(
                         child: SizedBox(
                           width: 64,
                           height: 64,
                           child: Glass(circle: true, child: Center(child: CircularProgressIndicator.adaptive())),
                         ),
-                      )
-                    else if (g == null)
+                      ),
+                      Positioned(
+                        left: 14,
+                        bottom: floatingBottomGap(context, min: 10) + 4,
+                        child: const MapAttribution(),
+                      ),
+                    ] else if (g == null)
                       const _Onboarding()
-                    else
+                    else ...[
                       _MembersSheet(
                         controller: _sheet,
                         group: g,
@@ -510,6 +521,13 @@ class _GroupMapViewState extends State<_GroupMapView> {
                         hasSafeTrip: mySafeTrips.isNotEmpty,
                         onSafeTrip: () => _startOrOpenSafeTrip(mySafeTrips),
                       ),
+                      // Ghi nguồn bản đồ luôn nằm ngay trên mép bảng thành viên, kéo bảng thì đi theo.
+                      SheetMapAttribution(
+                        controller: _sheet,
+                        initialSize: _MembersSheet.initialSize,
+                        left: 24,
+                      ),
+                    ],
                   ],
                 );
               },
@@ -521,35 +539,168 @@ class _GroupMapViewState extends State<_GroupMapView> {
   }
 }
 
-/// Nhãn nhỏ phía trên cho biết đang tắt chia sẻ.
-class _SharingBadge extends StatelessWidget {
-  const _SharingBadge();
+/// Trạng thái chia sẻ vị trí ngay trên bản đồ, luôn hiện rõ:
+/// - Đang bật: viên xanh "Đang chia sẻ với N người", chạm để dừng hoặc quản lý theo nhóm.
+/// - Đang tắt: nút "Bật chia sẻ" (giải thích → xin quyền, do [LocationService.start] lo).
+class _SharingControl extends StatelessWidget {
+  const _SharingControl({required this.uid, required this.groups, this.group});
+  final String uid;
+  final List<Group> groups;
+
+  /// Nhóm đang xem (null ở chế độ tất cả bạn bè: khi đó chỉ hiện số người).
+  final Group? group;
+
+  Future<void> _start(BuildContext context) async {
+    final err = await LocationService.instance.start();
+    if (err != null && context.mounted) showMessage(context, err);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: LocationService.instance.sharing,
-      builder: (context, on, _) => on
-          ? const SizedBox.shrink()
-          : Padding(
-              padding: const EdgeInsets.only(top: 8),
+    return ListenableBuilder(
+      listenable: sharingStateListenable,
+      builder: (context, _) {
+        final on = LocationService.instance.sharing.value;
+        final count = sharingAudienceCount(groups, uid);
+        final g = group;
+        // Đã vào nhóm nhưng chưa đồng ý chia sẻ với nhóm này: mời chia sẻ riêng nhóm này.
+        if (g != null && !GroupConsent.instance.allows(g.id)) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Semantics(
+              button: true,
               child: GlassPill(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                onTap: () async {
-                  final err = await LocationService.instance.start();
-                  if (err != null && context.mounted) showMessage(context, err);
-                },
-                child: const Row(
+                padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+                onTap: () => shareWithGroup(context, g.id),
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.location_off_rounded, size: 18, color: AppColors.warning),
-                    SizedBox(width: 6),
-                    Text('Bật chia sẻ', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Icon(Icons.location_off_rounded, size: 18, color: AppColors.warning),
+                    const SizedBox(width: 6),
+                    const Flexible(
+                      child: Text('Chưa chia sẻ với nhóm này',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.2)),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: const ShapeDecoration(shape: StadiumBorder(), color: AppColors.brand),
+                      child: const Text('Chia sẻ',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                    ),
                   ],
                 ),
               ),
             ),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Semantics(
+            button: true,
+            child: GlassPill(
+              tint: on ? AppColors.online : AppColors.brand,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              onTap: () => on ? _showSharingSheet(context, count) : _start(context),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(on ? Icons.location_on_rounded : Icons.location_off_rounded, size: 18, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      !on
+                          ? 'Bật chia sẻ'
+                          : count == 0
+                              ? 'Đang bật · chưa chia sẻ với ai'
+                              : 'Đang chia sẻ với $count người',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: -0.2),
+                    ),
+                  ),
+                  if (on) ...[
+                    const SizedBox(width: 2),
+                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Colors.white),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  Future<void> _showSharingSheet(BuildContext context, int count) async {
+    final shared = [
+      for (final g in groups)
+        if (GroupConsent.instance.allows(g.id) && !PrivacyService.instance.isPaused(g.id)) g.name,
+    ];
+    final choice = await showGlassSheet<String>(
+      context,
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Center(child: GlassIconBadge(icon: Icons.location_on_rounded, color: AppColors.online, size: 52)),
+                const SizedBox(height: 12),
+                Text(
+                  count == 0 ? 'Chưa chia sẻ với ai' : 'Đang chia sẻ với $count người',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                ),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    shared.isEmpty
+                        ? 'Chia sẻ vị trí đang bật nhưng chưa có nhóm nào được bạn đồng ý chia sẻ, nên chưa ai thấy vị trí của bạn.'
+                        : 'Thành viên các nhóm sau đang thấy vị trí của bạn: ${shared.join(', ')}.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), height: 1.35),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                InsetGroup(
+                  children: [
+                    ListTile(
+                      horizontalTitleGap: 14,
+                      leading: const GlassIconBadge(icon: Icons.shield_rounded, color: AppColors.brand),
+                      title: const Text('Chọn nhóm được thấy vị trí'),
+                      subtitle: const Text('Bảo mật & Bạn bè'),
+                      trailing: Icon(Icons.chevron_right_rounded, color: scheme.onSurface.withValues(alpha: 0.3)),
+                      onTap: () => Navigator.pop(ctx, 'manage'),
+                    ),
+                    ListTile(
+                      horizontalTitleGap: 14,
+                      leading: const GlassIconBadge(icon: Icons.location_off_rounded, color: AppColors.sos),
+                      title: const Text('Dừng chia sẻ',
+                          style: TextStyle(color: AppColors.sos, fontWeight: FontWeight.w700)),
+                      subtitle: const Text('Không ai thấy vị trí của bạn cho tới khi bạn bật lại'),
+                      onTap: () => Navigator.pop(ctx, 'stop'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (!context.mounted) return;
+    if (choice == 'stop') {
+      await LocationService.instance.stop();
+      if (context.mounted) showMessage(context, 'Đã dừng chia sẻ vị trí');
+    } else if (choice == 'manage') {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrivacyScreen(uid: uid)));
+    }
   }
 }
 
@@ -565,39 +716,47 @@ class _Onboarding extends StatelessWidget {
         minimum: const EdgeInsets.only(bottom: 10),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Glass(
-            radius: 38,
-            opacity: 0.75,
-            blur: 20,
-            padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const AppLogo(size: 64),
-                const SizedBox(height: 16),
-                const Text('Bắt đầu với IPing',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
-                const SizedBox(height: 6),
-                Text(
-                  'Tạo nhóm cho gia đình, bạn bè hoặc nhập mã mời để xem mọi người đang ở đâu.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, height: 1.35, color: scheme.onSurface.withValues(alpha: 0.6)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Ghi nguồn bản đồ ngay trên thẻ, không bị thẻ che.
+              const Padding(padding: EdgeInsets.fromLTRB(12, 0, 12, 8), child: MapAttribution()),
+              Glass(
+                radius: 38,
+                opacity: 0.75,
+                blur: 20,
+                padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const AppLogo(size: 64),
+                    const SizedBox(height: 16),
+                    const Text('Bắt đầu với IPing',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tạo nhóm và cùng chia sẻ vị trí với gia đình, bạn bè. Mỗi người tự quyết định khi nào chia sẻ.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 15, height: 1.35, color: scheme.onSurface.withValues(alpha: 0.6)),
+                    ),
+                    const SizedBox(height: 22),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.group_add_rounded),
+                      label: const Text('Tạo nhóm mới'),
+                      onPressed: () => GroupActions.create(context),
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                      icon: const Icon(Icons.vpn_key_rounded),
+                      label: const Text('Tham gia bằng mã mời'),
+                      onPressed: () => GroupActions.join(context),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 22),
-                FilledButton.icon(
-                  icon: const Icon(Icons.group_add_rounded),
-                  label: const Text('Tạo nhóm mới'),
-                  onPressed: () => GroupActions.create(context),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                  icon: const Icon(Icons.vpn_key_rounded),
-                  label: const Text('Tham gia bằng mã mời'),
-                  onPressed: () => GroupActions.join(context),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -668,6 +827,7 @@ class _MembersSheet extends StatelessWidget {
   static const _radius = 38.0;
   static const _inset = 12.0;
   static const minSize = 0.2;
+  static const initialSize = 0.42;
 
   @override
   Widget build(BuildContext context) {
@@ -676,11 +836,11 @@ class _MembersSheet extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return DraggableScrollableSheet(
       controller: controller,
-      initialChildSize: 0.42,
+      initialChildSize: initialSize,
       minChildSize: minSize,
       maxChildSize: 0.88,
       snap: true,
-      snapSizes: const [0.42],
+      snapSizes: const [initialSize],
       builder: (context, scroll) => Padding(
         padding: EdgeInsets.fromLTRB(10, 0, 10, floatingBottomGap(context, min: 10)),
         child: Glass(

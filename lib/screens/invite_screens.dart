@@ -4,7 +4,6 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/models.dart';
-import '../services/group_service.dart';
 import '../services/invite_link_service.dart';
 import '../theme.dart';
 import '../utils/invite_link.dart';
@@ -270,14 +269,16 @@ class _InviteLinkListenerState extends State<InviteLinkListener> {
     _busy = true;
     try {
       final code = _links.take()!;
-      // Hỏi lại trước khi tham gia: vào nhóm nghĩa là chia sẻ vị trí với người lạ.
+      // Hỏi lại trước khi tham gia (link có thể bị mở nhầm). Vào nhóm chưa chia sẻ vị trí:
+      // bước sau (GroupConsentScreen) mới để người dùng tự chọn.
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.group_add_rounded, color: AppColors.brand, size: 40),
           title: const Text('Tham gia nhóm?'),
           content: Text(
-            'Bạn được mời vào một nhóm với mã $code. Các thành viên trong nhóm sẽ thấy vị trí của bạn.',
+            'Bạn được mời vào một nhóm với mã $code. Sau khi vào, bạn sẽ thấy nhóm có những ai '
+            'và tự chọn có chia sẻ vị trí với nhóm hay không.',
             textAlign: TextAlign.center,
           ),
           actionsAlignment: MainAxisAlignment.center,
@@ -292,10 +293,8 @@ class _InviteLinkListenerState extends State<InviteLinkListener> {
         ),
       );
       if (ok != true || !mounted) return;
-      final gid = await GroupActions.joinCode(context, code);
-      if (gid == null || !mounted) return;
-      final group = await GroupService.instance.group(gid).first.timeout(const Duration(seconds: 5), onTimeout: () => null);
-      if (mounted) showMessage(context, group == null ? 'Đã tham gia nhóm' : 'Đã tham gia nhóm "${group.name}"');
+      // Tham gia rồi mở màn đồng ý chia sẻ (màn đó tự báo kết quả).
+      await GroupActions.joinCode(context, code);
     } catch (_) {
       // Lỗi tham gia đã được GroupActions báo cho người dùng.
     } finally {

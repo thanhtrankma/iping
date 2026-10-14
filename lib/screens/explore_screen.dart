@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../services/area_service.dart';
@@ -42,6 +43,15 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
   bool _areaFailed = false;
   int _explored = 0;
 
+  /// Đã có quyền vị trí chưa (`null` = đang kiểm tra). Màn này KHÔNG tự xin quyền.
+  bool? _permitted;
+  bool _starting = false;
+
+  /// Đang tắt chia sẻ nhưng đã có quyền: lấy vị trí định kỳ CHỈ khi màn này đang mở ở tiền cảnh.
+  Timer? _poll;
+  bool _polling = false;
+  static const _pollEvery = Duration(seconds: 15);
+
   double get _percent {
     final a = _area;
     if (a == null || a.totalCells == 0) return 0;
@@ -53,6 +63,7 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
     super.initState();
     final p = LocationService.instance.lastPosition.value;
     if (p != null) _me = LatLng(p.latitude, p.longitude);
+    _explore.screenVisible = true;
     _explore.revision.addListener(_recount);
     LocationService.instance.lastPosition.addListener(_onMove);
     // Ô mới mở khi đang đi: "nổ" lần lượt từ chỗ mình đứng ra ngoài.
@@ -65,6 +76,8 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
 
   @override
   void dispose() {
+    _explore.screenVisible = false;
+    _poll?.cancel();
     _map.dispose();
     _revealSub?.cancel();
     _reveal.dispose();
@@ -74,15 +87,64 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
   }
 
   Future<void> _start() async {
-    final pos = await LocationService.instance.currentPosition();
+    final loc = LocationService.instance;
+    final permitted = await loc.hasPermission();
     if (!mounted) return;
-    if (pos != null) {
+    setState(() => _permitted = permitted);
+    if (!permitted) return; // Hiện nút "Bật chia sẻ vị trí…" thay vì hỏi quyền.
+    // Căn bản đồ bằng vị trí đã có (không bật GPS, không hỏi gì).
+    final pos = await loc.devicePosition();
+    if (!mounted) return;
+    if (pos != null && _me == null) {
       _me = LatLng(pos.latitude, pos.longitude);
-      // Mở luôn ô hiện tại kể cả khi đang tắt chia sẻ.
-      _explore.record(pos.latitude, pos.longitude, accuracy: pos.accuracy, time: pos.timestamp);
       _map.move(_me!, 15);
       setState(() {});
     }
+    _startPolling();
+    await _loadArea();
+  }
+
+  /// Mở sương ở chỗ đang đứng khi màn Khám phá đang mở mà chưa bật chia sẻ.
+  /// Không dùng luồng vị trí (geolocator dùng chung một luồng với chia sẻ nền) và dừng khi rời màn hình.
+  void _startPolling() {
+    _poll?.cancel();
+    _pollOnce();
+    _poll = Timer.periodic(_pollEvery, (_) => _pollOnce());
+  }
+
+  Future<void> _pollOnce() async {
+    // Đang chia sẻ thì vị trí đến từ luồng chia sẻ ([_onMove]); app ở nền thì không lấy.
+    if (_polling || !mounted || LocationService.instance.sharing.value || !_explore.mayRecord) return;
+    _polling = true;
+    try {
+      final p = await Geolocator.getCurrentPosition().timeout(const Duration(seconds: 12));
+      if (!mounted || !_explore.mayRecord) return;
+      final first = _me == null;
+      setState(() => _me = LatLng(p.latitude, p.longitude));
+      _explore.record(p.latitude, p.longitude, accuracy: p.accuracy, time: p.timestamp);
+      if (first) _map.move(_me!, 15);
+      final a = _area;
+      if (a == null || !a.contains(_me!)) _loadArea();
+    } catch (e) {
+      debugPrint('Explore position: $e');
+    } finally {
+      _polling = false;
+    }
+  }
+
+  /// Chưa có quyền vị trí: đi theo đúng luồng bật chia sẻ (màn giải thích → quyền hệ thống).
+  Future<void> _enableSharing() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+    final err = await LocationService.instance.start();
+    if (!mounted) return;
+    setState(() => _starting = false);
+    if (err != null) {
+      showMessage(context, err);
+      return;
+    }
+    setState(() => _permitted = true);
+    _onMove();
     await _loadArea();
   }
 
@@ -224,6 +286,7 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
               center: _me ?? defaultCenter,
               zoom: 15,
               style: MapStyle.standard,
+              showAttribution: false,
               // Bản debug: chạm bản đồ để xem thử hiệu ứng nổ ô (không lưu vào dữ liệu khám phá).
               onTap: kDebugMode
                   ? (_, p) => _reveal.pop(HexGrid.disk(HexGrid.cellAt(p.latitude, p.longitude), 2),
@@ -290,6 +353,12 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
             top: 0,
             bottom: 0,
             child: Center(child: _Gauge(percent: _percent, uid: uid, name: name)),
+          ),
+          // Ghi nguồn bản đồ ngay trên thanh dưới, không bị che.
+          Positioned(
+            left: 16,
+            bottom: pad.bottom + 16 + 50 + 10,
+            child: const MapAttribution(style: MapStyle.standard),
           ),
           // Thanh dưới cùng.
           Positioned(
@@ -374,9 +443,53 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
               ],
             ),
           ),
+          if (_permitted == false)
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: pad.bottom + 90,
+              child: _EnableSharingCard(busy: _starting, onTap: _enableSharing),
+            ),
         ],
       ),
     ));
+  }
+}
+
+/// Chưa có quyền vị trí: giải thích và mời bật chia sẻ (không tự hỏi quyền).
+class _EnableSharingCard extends StatelessWidget {
+  const _EnableSharingCard({required this.busy, required this.onTap});
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final secondary = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65);
+    return Glass(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Bật chia sẻ vị trí để mở bản đồ khám phá',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(
+            'Sương chỉ tan ở nơi bạn đi qua khi đang chia sẻ vị trí với nhóm hoặc khi màn này đang mở.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13.5, height: 1.35, color: secondary),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: busy ? null : onTap,
+            icon: busy
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.location_on_rounded),
+            label: const Text('Bật chia sẻ vị trí'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

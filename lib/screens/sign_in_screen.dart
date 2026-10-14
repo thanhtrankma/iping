@@ -479,7 +479,8 @@ class _Hero extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Luôn biết người thân đang ở đâu',
+          'Cùng chia sẻ vị trí, mỗi người tự quyết định',
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.85),
             fontSize: 16,

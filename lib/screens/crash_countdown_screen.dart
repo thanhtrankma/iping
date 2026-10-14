@@ -46,7 +46,8 @@ class _CrashCountdownScreenState extends State<CrashCountdownScreen> {
     _timer?.cancel();
     if (_sending) return;
     setState(() => _sending = true);
-    final pos = await LocationService.instance.currentPosition();
+    // Đang khẩn cấp: không bật hộp thoại xin quyền, chỉ dùng vị trí nếu đã có quyền.
+    final pos = await LocationService.instance.devicePosition();
     var sent = 0;
     for (final g in LocationService.instance.groups) {
       if (PrivacyService.instance.isPaused(g.id)) continue;
