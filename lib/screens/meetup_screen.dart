@@ -14,7 +14,7 @@ import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
 import 'history_screen.dart' show durationText, fitPoints;
-import 'member_screen.dart';
+import 'member_popup.dart';
 
 /// Ước tính thời gian tới điểm hẹn: dùng tốc độ hiện tại nếu đang di chuyển,
 /// nếu không thì giả định đi xe máy trong phố (~25 km/h). Quãng đường thực tế
@@ -584,8 +584,7 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                         for (final l in locs)
                           memberMarker(l,
                               size: 46,
-                              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => MemberScreen(groupId: widget.group.id, uid: l.uid)))),
+                              onTap: () => showMemberPopup(context, groupId: widget.group.id, location: l)),
                         Marker(
                           point: m.point,
                           width: 56,

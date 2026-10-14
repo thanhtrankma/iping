@@ -832,7 +832,18 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 )
               : null),
-      title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
+      // Tiêu đề nằm trong viên kính (kiểu thanh tiêu đề iOS 26).
+      title: Glass(
+        capsule: true,
+        opacity: 0.6,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+        ),
+      ),
       actions: actions == null ? null : [...actions!, const SizedBox(width: 10)],
     );
   }

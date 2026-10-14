@@ -27,6 +27,7 @@ import 'chat_tab.dart';
 import 'explore_leaderboard_screen.dart';
 import 'explore_screen.dart';
 import 'group_actions.dart';
+import 'member_popup.dart';
 import 'member_screen.dart';
 import 'menu_screen.dart';
 import 'places_tab.dart';
@@ -181,6 +182,13 @@ class _GroupMapViewState extends State<_GroupMapView> {
     return controller.stream;
   }
 
+  /// Chạm ghim: thẻ thông tin ngay trên bản đồ.
+  void _showMember(MemberLocation l) {
+    final g = widget.group!;
+    showMemberPopup(context,
+        groupId: _all ? AllFriendsService.groupFor(l.uid, widget.groups, _groupOf) ?? g.id : g.id, location: l);
+  }
+
   void _openMember(String uid, {String? groupId}) {
     final g = widget.group!;
     _push(MemberScreen(
@@ -296,7 +304,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                               ),
                             for (final m in moments.where((m) => m.hasLocation))
                               momentMarker(m, () => _push(MomentsScreen(group: g!))),
-                            for (final l in locs) memberMarker(l, onTap: () => _openMember(l.uid)),
+                            for (final l in locs) memberMarker(l, onTap: () => _showMember(l)),
                           ]),
                         ],
                       ),

@@ -69,7 +69,7 @@ class _MomentsScreenState extends State<MomentsScreen> {
             }
             final mq = MediaQuery.of(context);
             return ListView.separated(
-              padding: EdgeInsets.fromLTRB(16, mq.padding.top + 12, 16, mq.padding.bottom + 110),
+              padding: EdgeInsets.fromLTRB(16, mq.padding.top + 60 + 12, 16, mq.padding.bottom + 110),
               itemCount: moments.length,
               separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (context, i) => MomentCard(groupId: widget.group.id, moment: moments[i]),
@@ -94,7 +94,8 @@ class MomentCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final secondary = scheme.onSurface.withValues(alpha: 0.55);
     // Ảnh lồng trong thẻ: lề 8 px, góc bo đồng tâm (30 - 8 = 22).
-    final photoShape = glassShape(radius: 22);
+    // Ảnh vuông bo góc lớn kiểu Locket.
+    final photoShape = glassShape(radius: 34);
     return Glass(
       radius: 30,
       opacity: 0.6,
@@ -155,17 +156,29 @@ class MomentCard extends StatelessWidget {
                   child: ClipPath(
                     clipper: ShapeBorderClipper(shape: photoShape),
                     child: AspectRatio(
-                      aspectRatio: 4 / 5,
-                      child: CachedNetworkImage(
-                        imageUrl: m.photoUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => ColoredBox(color: scheme.onSurface.withValues(alpha: 0.08)),
+                      aspectRatio: 1,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: m.photoUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => ColoredBox(color: scheme.onSurface.withValues(alpha: 0.08)),
+                          ),
+                          if (m.text.isNotEmpty)
+                            Positioned(
+                              left: 16,
+                              right: 16,
+                              bottom: 14,
+                              child: Center(child: LocketCaption(m.text)),
+                            ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
-            if (m.text.isNotEmpty)
+            if (m.text.isNotEmpty && m.photoUrl == null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Text(m.text,
@@ -329,7 +342,7 @@ class _ComposeMomentScreenState extends State<ComposeMomentScreen> {
     final scheme = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     const none = OutlineInputBorder(borderSide: BorderSide.none);
-    final photoShape = glassShape(radius: 28);
+    final photoShape = glassShape(radius: 40);
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
@@ -363,7 +376,7 @@ class _ComposeMomentScreenState extends State<ComposeMomentScreen> {
       ),
       body: GlassBackground(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, mq.padding.top + 12, 16, mq.padding.bottom + 24),
+          padding: EdgeInsets.fromLTRB(16, mq.padding.top + 60 + 12, 16, mq.padding.bottom + 24),
           children: [
             Glass(
               radius: 28,
@@ -405,7 +418,7 @@ class _ComposeMomentScreenState extends State<ComposeMomentScreen> {
                   ClipPath(
                     clipper: ShapeBorderClipper(shape: photoShape),
                     child: AspectRatio(
-                      aspectRatio: 4 / 5,
+                      aspectRatio: 1,
                       child: Image(image: FileImage(File(_photo!.path)), fit: BoxFit.cover),
                     ),
                   ),
@@ -422,10 +435,10 @@ class _ComposeMomentScreenState extends State<ComposeMomentScreen> {
                 scale: 0.97,
                 onTap: _pick,
                 child: Glass(
-                  radius: 28,
+                  radius: 40,
                   opacity: 0.5,
-                  child: SizedBox(
-                    height: 140,
+                  child: AspectRatio(
+                    aspectRatio: 1,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -494,3 +507,27 @@ Marker momentMarker(Moment m, VoidCallback onTap) => Marker(
         ),
       ),
     );
+
+/// Chú thích kiểu Locket: viên kính tối nằm trên đáy ảnh vuông.
+class LocketCaption extends StatelessWidget {
+  const LocketCaption(this.text, {super.key});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Glass(
+      capsule: true,
+      tint: Colors.black,
+      opacity: 0.2,
+      shadow: false,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      child: Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2),
+      ),
+    );
+  }
+}

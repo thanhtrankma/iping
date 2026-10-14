@@ -7,7 +7,8 @@ class GeocodeService {
   GeocodeService._();
   static final instance = GeocodeService._();
 
-  final _geocoder = Geocoding(locale: const Locale('vi', 'VN'));
+  // Tạo khi dùng lần đầu: nếu plugin chưa sẵn sàng thì trả về toạ độ thay vì làm hỏng widget.
+  Geocoding? _geocoder;
   final Map<String, Future<Placemark?>> _cache = {};
 
   String _key(double lat, double lng) => '${lat.toStringAsFixed(3)},${lng.toStringAsFixed(3)}';
@@ -15,7 +16,8 @@ class GeocodeService {
   Future<Placemark?> _lookup(double lat, double lng) =>
       _cache.putIfAbsent(_key(lat, lng), () async {
         try {
-          final res = await _geocoder.placemarkFromCoordinates(lat, lng);
+          final geocoder = _geocoder ??= Geocoding(locale: const Locale('vi', 'VN'));
+          final res = await geocoder.placemarkFromCoordinates(lat, lng);
           return res.isEmpty ? null : res.first;
         } catch (_) {
           return null;
