@@ -46,7 +46,7 @@ Cột *IPing* được điền bằng cách đọc code (commit `c6f1e18`), chư
 | 28 | Quên mật khẩu | ✅ | Link "Quên mật khẩu?" → `sendPasswordResetEmail` (`account_dialogs.dart`) |
 | 29 | Xoá tài khoản | ✅ | Hồ sơ → Xoá tài khoản (gõ XOÁ để xác nhận) → callable `deleteAccount`: rời mọi nhóm, xoá users/{uid}, ảnh Storage, tài khoản Auth |
 | 30 | Ảnh đại diện, tên hiển thị | ✅ | `profile_screen.dart` |
-| 31 | Bấm vào push thì mở đúng màn hình | ❌ | Không xử lý `onMessageOpenedApp` / `getInitialMessage` |
+| 31 | Bấm vào push thì mở đúng màn hình | ✅ | `push_router.dart`: `onMessageOpenedApp` + `getInitialMessage`, điều hướng theo `groupId`/`type` (thành viên, chat, khoảnh khắc, meetup, Về an toàn) |
 | 32 | Cài đặt bật/tắt từng loại thông báo | ✅ | `alert_settings_screen.dart` + lọc phía server `alert_prefs.js`. Chưa tắt được `checkin` và `locate` |
 | 33 | Báo khi thành viên mất kết nối hoặc tắt định vị | ⚠️ | Hiện chữ "Đã tắt chia sẻ", không có push |
 | 34 | Vệ tinh / bản đồ thường | ✅ | `toggleMapStyle` |

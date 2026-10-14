@@ -333,7 +333,7 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     default:
       return;
   }
-  await notifyGroup(groupId, e.uid, notification, { type: e.type });
+  await notifyGroup(groupId, e.uid, notification, { type: e.type, uid: String(e.uid || '') });
 });
 
 exports.onGroupMessage = onDocumentCreated('groups/{groupId}/messages/{messageId}', async (event) => {
@@ -344,7 +344,7 @@ exports.onGroupMessage = onDocumentCreated('groups/{groupId}/messages/{messageId
   await notifyGroup(groupId, m.uid, {
     title: `${m.name} · ${groupName}`,
     body: String(m.text).slice(0, 200),
-  }, { type: 'message' });
+  }, { type: 'message', uid: String(m.uid || '') });
 });
 
 const PING_TEXT = {
@@ -369,7 +369,8 @@ exports.onPing = onDocumentCreated('groups/{groupId}/pings/{pingId}', async (eve
       { type: 'locate', from: String(p.from || '') }, p.from);
     return;
   }
-  await notifyUsers(groupId, [p.to], { title: p.fromName || 'IPing', body: PING_TEXT[p.type] }, { type: 'ping' },
+  await notifyUsers(groupId, [p.to], { title: p.fromName || 'IPing', body: PING_TEXT[p.type] },
+    { type: 'ping', from: String(p.from || '') },
     p.from);
 });
 
@@ -438,7 +439,7 @@ exports.checkSafeTrips = onSchedule({ schedule: 'every 1 minutes', timeZone: 'As
     await notifyUsers(groupRef.id, [uid], {
       title: `Bạn đã tới ${trip.destName || 'nơi'} chưa?`,
       body: 'Đã quá giờ dự kiến nên nhóm vừa được báo. Mở ứng dụng để báo "Tôi ổn" hoặc gia hạn.',
-    }, { type: 'safe_self' }, null);
+    }, { type: 'safe_self', uid }, null);
   }));
 });
 
@@ -467,7 +468,8 @@ exports.onMoment = onDocumentCreated('groups/{groupId}/moments/{momentId}', asyn
   const groupId = event.params.groupId;
   const groupName = (await db.doc(`groups/${groupId}`).get()).get('name') || 'Nhóm';
   const body = m.text ? String(m.text).slice(0, 120) : (m.photoUrl ? '📷 Đã đăng một ảnh' : 'Có khoảnh khắc mới');
-  await notifyGroup(groupId, m.uid, { title: `✨ ${m.name} · ${groupName}`, body }, { type: 'moment' });
+  await notifyGroup(groupId, m.uid, { title: `✨ ${m.name} · ${groupName}`, body },
+    { type: 'moment', uid: String(m.uid || '') });
 });
 
 // ---------- Meetup ----------
@@ -483,7 +485,7 @@ exports.onMeetup = onDocumentCreated('groups/{groupId}/meetups/{meetupId}', asyn
   await notifyGroup(groupId, m.createdBy, {
     title: `📍 Meetup: ${m.title}`,
     body: `${m.createdByName || 'Ai đó'} hẹn mọi người lúc ${time}. Mở IPing để tham gia.`,
-  }, { type: 'meetup' });
+  }, { type: 'meetup', meetupId: event.params.meetupId });
 });
 
 // ---------- Tài khoản ----------

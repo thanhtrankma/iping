@@ -7,6 +7,7 @@ import 'services/auth_service.dart';
 import 'services/explore_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
+import 'services/push_router.dart';
 import 'services/settings_service.dart';
 import 'theme.dart';
 import 'widgets/common.dart';
@@ -21,6 +22,7 @@ class IPingApp extends StatelessWidget {
       title: 'IPing',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: scaffoldMessengerKey,
+      navigatorKey: navigatorKey,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       home: const AuthGate(),
@@ -96,6 +98,8 @@ class _SignedInShellState extends State<SignedInShell> {
     LocationService.instance.init(widget.uid);
     ExploreService.instance.init(widget.uid);
     NotificationService.instance.init(widget.uid);
+    // Bấm push (app ở nền / đã tắt) → mở đúng màn hình.
+    PushRouter.instance.init();
   }
 
   @override
