@@ -18,6 +18,7 @@ import '../widgets/explore_pill.dart';
 import '../widgets/glass.dart';
 import '../widgets/map_view.dart';
 import '../widgets/privacy_widgets.dart';
+import '../widgets/routes.dart';
 import '../widgets/safe_trip_widgets.dart';
 import 'activity_tab.dart';
 import 'all_friends_actions.dart';
@@ -228,7 +229,8 @@ class _GroupMapViewState extends State<_GroupMapView> {
   @override
   Widget build(BuildContext context) {
     final g = widget.group;
-    return BackdropGroup(child: StreamBuilder<List<GroupSafeTrip>>(
+    return BackdropGroup(
+        child: StreamBuilder<List<GroupSafeTrip>>(
       stream: _safeTrips,
       builder: (context, safeSnap) => StreamBuilder<List<Moment>>(
         stream: _moments,
@@ -321,7 +323,8 @@ class _GroupMapViewState extends State<_GroupMapView> {
                                 GlassButton(
                                   icon: Icons.menu_rounded,
                                   tooltip: 'Menu',
-                                  onTap: () => _push(MenuScreen(uid: widget.uid, group: _all ? null : g)),
+                                  onTap: () => Navigator.of(context).push(LeftDrawerRoute(
+                                      builder: (_) => MenuScreen(uid: widget.uid, group: _all ? null : g))),
                                 ),
                                 if (g != null) ...[
                                   const SizedBox(height: 12),
@@ -372,7 +375,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                                         myUid: widget.uid,
                                         positions: travellerPos,
                                         nameOf: (uid) =>
-                                            locs.where((l) => l.uid == uid).firstOrNull?.name ?? g?.nameOf(uid),
+                                            g?.memberNames[uid] ?? locs.where((l) => l.uid == uid).firstOrNull?.name,
                                         onOpen: _openSafeTrip,
                                       ),
                                   ],
@@ -743,7 +746,8 @@ class _MembersSheet extends StatelessWidget {
                   for (final uid in members)
                     _MemberRow(
                       uid: uid,
-                      name: byUid[uid]?.name ?? group.nameOf(uid),
+                      // Tên trong nhóm do server đồng bộ khi đổi hồ sơ, mới hơn tên lưu kèm vị trí.
+                      name: group.memberNames[uid] ?? byUid[uid]?.name ?? group.nameOf(uid),
                       isMe: uid == myUid,
                       location: byUid[uid],
                       place: _placeOf(byUid[uid]),

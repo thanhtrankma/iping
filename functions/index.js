@@ -32,7 +32,13 @@ function requireAuth(req) {
 async function displayName(uid) {
   if (!uid) return 'Thành viên';
   const snap = await db.doc(`users/${uid}`).get();
-  return snap.get('name') || 'Thành viên';
+  const name = snap.get('name');
+  if (name) return name;
+  // Hồ sơ thiếu tên (tài khoản cũ / đăng nhập Google): lấy tên từ Firebase Auth và lưu bổ sung.
+  const authName = await getAuth().getUser(uid).then((u) => (u.displayName || '').trim(), () => '');
+  if (!authName) return 'Thành viên';
+  await db.doc(`users/${uid}`).set({ name: authName }, { merge: true });
+  return authName;
 }
 
 async function photoUrl(uid) {
@@ -482,14 +488,21 @@ exports.onUserProfile = onDocumentWritten('users/{uid}', async (event) => {
   const before = event.data?.before?.data() || {};
   const after = event.data?.after?.data();
   if (!after) return;
-  if (before.name === after.name && before.photoUrl === after.photoUrl) return;
+  // `profileSyncAt` đổi mỗi lần người dùng bấm lưu hồ sơ, để lưu lại cùng tên vẫn đồng bộ lại các nhóm.
+  if (before.name === after.name && before.photoUrl === after.photoUrl
+      && String(before.profileSyncAt?.toMillis?.()) === String(after.profileSyncAt?.toMillis?.())) return;
   const uid = event.params.uid;
   const groups = await db.collection('groups').where('memberIds', 'array-contains', uid).get();
+  const name = after.name || 'Thành viên';
+  const photoUrl = after.photoUrl || null;
   const batch = db.batch();
-  groups.forEach((g) => batch.update(g.ref, {
-    [`memberNames.${uid}`]: after.name || 'Thành viên',
-    [`memberPhotos.${uid}`]: after.photoUrl || null,
-  }));
+  for (const g of groups.docs) {
+    batch.update(g.ref, { [`memberNames.${uid}`]: name, [`memberPhotos.${uid}`]: photoUrl });
+    // Bản ghi vị trí cũng mang tên/ảnh (ghim bản đồ, danh sách thành viên) nên cập nhật luôn,
+    // không phải đợi lần gửi vị trí tiếp theo.
+    const loc = g.ref.collection('locations').doc(uid);
+    if ((await loc.get()).exists) batch.update(loc, { name, photoUrl });
+  }
   await batch.commit();
 });
 

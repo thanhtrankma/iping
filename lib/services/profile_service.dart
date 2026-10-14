@@ -76,6 +76,9 @@ class ProfileService {
   Future<void> updateName(String name) async {
     final user = FirebaseAuth.instance.currentUser!;
     await user.updateDisplayName(name);
-    await _db.doc('users/${user.uid}').set({'name': name}, SetOptions(merge: true));
+    await _db.doc('users/${user.uid}').set(
+      {'name': name, 'profileSyncAt': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
   }
 }
