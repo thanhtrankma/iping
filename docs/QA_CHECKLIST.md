@@ -212,7 +212,7 @@ Chạy bằng Emulator (`firebase emulators:start`) hoặc thử trực tiếp t
 | Ngày | Máy / OS | Mã test | Mô tả lỗi | Mức độ (Cao/TB/Thấp) | Trạng thái |
 |---|---|---|---|---|---|
 | 14/10 | (đọc code) | LO-15 | **BUG-01** `locate_background.dart`: khi app chạy nền, yêu cầu vị trí bỏ qua việc ẩn vị trí theo nhóm. Code vẫn ghi toạ độ thật kèm `sharing: true` và xoá `pausedUntil` | Cao | Đã sửa |
-| 14/10 | (đọc code) | GR-07 | **BUG-02** `functions/index.js` `removeMemberData` không xoá `safeTrips/{uid}`. Người đã rời hoặc bị xoá khỏi nhóm vẫn làm cả nhóm nhận cảnh báo "quá giờ" | TB | Mở |
+| 14/10 | (đọc code) | GR-07 | **BUG-02** `functions/index.js` `removeMemberData` không xoá `safeTrips/{uid}`. Người đã rời hoặc bị xoá khỏi nhóm vẫn làm cả nhóm nhận cảnh báo "quá giờ" | TB | Đã sửa |
 | 14/10 | (đọc code) | — | **BUG-03** `safe_trip_service.dart:160` thiếu `onError`: bị xoá khỏi nhóm thì phát sinh lỗi permission-denied không được bắt | Thấp | Mở |
 | 14/10 | (đọc code) | — | **BUG-04** `safe_arrive` vẫn gửi toạ độ cho nhóm đang ẩn vị trí. Cảnh báo pin yếu cũng vẫn gửi cho nhóm đang ẩn | Thấp | Mở |
 | 14/10 | (đọc code) | — | **BUG-05** Rules không kiểm tra `fromName`/`name`, nên một thành viên có thể gửi push SOS hoặc ping mạo danh tên người khác | TB | Mở |

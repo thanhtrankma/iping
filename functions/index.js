@@ -146,10 +146,11 @@ exports.leaveGroup = onCall(async (req) => {
   return { ok: true };
 });
 
-// Xoá vị trí (kèm lịch sử points) và điểm khám phá của một thành viên trong nhóm.
+// Xoá vị trí (kèm lịch sử points), điểm khám phá và chuyến "Về an toàn" của một thành viên trong nhóm.
 async function removeMemberData(groupRef, uid) {
   await db.recursiveDelete(groupRef.collection('locations').doc(uid));
   await groupRef.collection('explore').doc(uid).delete();
+  await groupRef.collection('safeTrips').doc(uid).delete();
 }
 
 // Đọc nhóm và chắc chắn người gọi là chủ nhóm.
@@ -392,6 +393,12 @@ exports.checkSafeTrips = onSchedule({ schedule: 'every 1 minutes', timeZone: 'As
     const fire = await db.runTransaction(async (tx) => {
       const t = (await tx.get(doc.ref)).data();
       if (!t || !['active', 'overdue'].includes(t.status)) return null;
+      // Người đã rời / bị xoá khỏi nhóm (hoặc nhóm đã bị xoá): kết thúc, không báo cả nhóm.
+      const g = await tx.get(groupRef);
+      if (!g.exists || !(g.get('memberIds') || []).includes(uid)) {
+        tx.update(doc.ref, { status: 'ended', endedAt: FieldValue.serverTimestamp() });
+        return null;
+      }
       const alerts = t.alerts || 0;
       const dueMs = t.dueAt.toMillis();
       if (now > dueMs + SAFE_EXPIRE_MS) {
