@@ -74,6 +74,7 @@ class _MemberScreenState extends State<MemberScreen> {
 
   @override
   void dispose() {
+    _map.dispose();
     _safeSub?.cancel();
     super.dispose();
   }

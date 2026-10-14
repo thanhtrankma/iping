@@ -293,6 +293,7 @@ class _CreateMeetupScreenState extends State<CreateMeetupScreen> {
 
   @override
   void dispose() {
+    _map.dispose();
     _title.dispose();
     super.dispose();
   }
@@ -490,6 +491,12 @@ class MeetupDetailScreen extends StatefulWidget {
 
 class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
   final _map = MapController();
+
+  @override
+  void dispose() {
+    _map.dispose();
+    super.dispose();
+  }
   final _me = FirebaseAuth.instance.currentUser!.uid;
   late final Stream<Meetup?> _meetup = GroupService.instance.meetup(widget.group.id, widget.meetupId);
   late final Stream<List<MemberLocation>> _locations = GroupService.instance.locations(widget.group.id);

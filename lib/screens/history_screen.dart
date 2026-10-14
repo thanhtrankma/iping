@@ -60,19 +60,33 @@ Color _innerFill(BuildContext context, {Color? tint, double strength = 1}) {
 }
 
 /// Bản đồ nhỏ không tương tác hiển thị một chuyến đi.
-class TripMiniMap extends StatelessWidget {
+class TripMiniMap extends StatefulWidget {
   const TripMiniMap({super.key, required this.trip, this.height = 200});
   final Trip trip;
   final double height;
 
   @override
+  State<TripMiniMap> createState() => _TripMiniMapState();
+}
+
+class _TripMiniMapState extends State<TripMiniMap> {
+  final _map = MapController();
+
+  @override
+  void dispose() {
+    _map.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final trip = widget.trip;
     final pts = tripLatLngs(trip);
     return SizedBox(
-      height: height,
+      height: widget.height,
       child: IgnorePointer(
         child: IPingMap(
-          controller: MapController(),
+          controller: _map,
           center: pts.first,
           fit: fitPoints(pts, padding: 30),
           interactive: false,
@@ -279,6 +293,12 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final _map = MapController();
+
+  @override
+  void dispose() {
+    _map.dispose();
+    super.dispose();
+  }
   late DateTime _day = _startOfDay(DateTime.now());
   Future<List<Segment>>? _timeline;
   int? _selected;
@@ -753,12 +773,26 @@ class _TimelineItem extends StatelessWidget {
 }
 
 /// Chi tiết một chuyến đi: bản đồ + chỉ số lái xe.
-class TripDetailScreen extends StatelessWidget {
+class TripDetailScreen extends StatefulWidget {
   const TripDetailScreen({super.key, required this.trip});
   final Trip trip;
 
   @override
+  State<TripDetailScreen> createState() => _TripDetailScreenState();
+}
+
+class _TripDetailScreenState extends State<TripDetailScreen> {
+  final _map = MapController();
+
+  @override
+  void dispose() {
+    _map.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final trip = widget.trip;
     final pts = tripLatLngs(trip);
     final color = trip.isDrive ? AppColors.brand : AppColors.teal;
     return Scaffold(
@@ -766,7 +800,7 @@ class TripDetailScreen extends StatelessWidget {
         children: [
           Positioned.fill(
             child: IPingMap(
-              controller: MapController(),
+              controller: _map,
               center: pts.first,
               fit: fitPoints(pts, padding: 70),
               layers: tripLayers(trip),

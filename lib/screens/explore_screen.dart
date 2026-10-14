@@ -55,6 +55,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   void dispose() {
+    _map.dispose();
     _explore.revision.removeListener(_recount);
     LocationService.instance.lastPosition.removeListener(_onMove);
     super.dispose();

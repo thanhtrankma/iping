@@ -134,6 +134,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
 
   @override
   void dispose() {
+    _map.dispose();
     _safeTick?.cancel();
     super.dispose();
   }

@@ -104,6 +104,7 @@ class _SafeTripScreenState extends State<SafeTripScreen> {
 
   @override
   void dispose() {
+    _map.dispose();
     LocationService.instance.lastPosition.removeListener(_onPosition);
     _ticker?.cancel();
     super.dispose();

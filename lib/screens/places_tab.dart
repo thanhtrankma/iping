@@ -180,6 +180,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
 
   @override
   void dispose() {
+    _map.dispose();
     _name.dispose();
     super.dispose();
   }
