@@ -75,6 +75,20 @@ class MemberLocation {
 
   LatLng get point => LatLng(lat, lng);
 
+  /// Bản sao ở toạ độ khác (vị trí thật của chính máy này, khi bản ghi trên server đã cũ).
+  MemberLocation at(LatLng p) => MemberLocation(
+        uid: uid,
+        name: name,
+        lat: p.latitude,
+        lng: p.longitude,
+        accuracy: accuracy,
+        speed: speed,
+        battery: battery,
+        sharing: sharing,
+        updatedAt: updatedAt,
+        photoUrl: photoUrl,
+      );
+
   factory MemberLocation.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? const {};
     return MemberLocation(

@@ -227,42 +227,60 @@ class _GroupMapViewState extends State<_GroupMapView> {
   bool _centered = false;
 
   // Căn bản đồ theo vị trí THẬT của máy khi mở app (chưa có quyền thì hỏi, cho phép xong thì chuyển về).
-  // Bản ghi vị trí trên server có thể cũ (đang tắt chia sẻ, tài khoản từng đăng nhập trên máy khác)
-  // nên chỉ dùng tạm trong lúc chờ.
+  // Bản ghi vị trí của chính mình trên server có thể cũ (đang tắt chia sẻ, tài khoản từng đăng nhập
+  // trên máy khác) nên chỉ dùng khi không lấy được vị trí máy.
   LatLng? _device;
-  bool _deviceCentered = false;
+  bool _deviceResolved = false;
   bool _userMoved = false;
+  bool _mapReady = false;
+  LatLng? _pendingMove;
 
-  void _centerOnDevice(LatLng p) {
-    _device = p;
+  /// Di chuyển bản đồ; nếu bản đồ chưa sẵn sàng thì để dành tới khi sẵn sàng.
+  void _moveTo(LatLng p) {
     if (!mounted || _userMoved) return;
-    _deviceCentered = true;
+    if (_mapReady) {
+      _map.move(p, 16);
+    } else {
+      _pendingMove = p;
+    }
+  }
+
+  void _onMapReady() {
+    _mapReady = true;
+    final p = _pendingMove;
+    _pendingMove = null;
+    if (p != null) _moveTo(p);
+  }
+
+  void _setDevice(LatLng p) {
+    if (!mounted) return;
     _centered = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_userMoved) _map.move(p, 16);
-    });
+    setState(() => _device = p); // vẽ lại ghim của mình ở đúng chỗ
+    _moveTo(p);
   }
 
   void _onLastPosition() {
     final p = LocationService.instance.lastPosition.value;
-    if (p != null && !_deviceCentered) _centerOnDevice(LatLng(p.latitude, p.longitude));
+    if (p != null && _device == null) _setDevice(LatLng(p.latitude, p.longitude));
   }
 
   Future<void> _locateDevice() async {
     final p = await LocationService.instance.devicePosition(
-      onFresh: (p) {
-        // Vị trí hệ thống nhớ có thể đã cũ: có vị trí mới thì cập nhật nếu người dùng chưa kéo bản đồ.
-        if (!_userMoved) _centerOnDevice(LatLng(p.latitude, p.longitude));
-      },
+      // Vị trí hệ thống nhớ có thể đã cũ: có vị trí mới thì cập nhật.
+      onFresh: (p) => _setDevice(LatLng(p.latitude, p.longitude)),
     );
-    if (p != null && !_deviceCentered) _centerOnDevice(LatLng(p.latitude, p.longitude));
+    if (p != null && _device == null) _setDevice(LatLng(p.latitude, p.longitude));
+    if (mounted) setState(() => _deviceResolved = true);
   }
 
   void _push(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
   Future<void> _focusMe() async {
     final pos = await LocationService.instance.currentPosition();
-    if (pos != null) _map.move(LatLng(pos.latitude, pos.longitude), 16);
+    if (pos == null || !mounted) return;
+    final p = LatLng(pos.latitude, pos.longitude);
+    setState(() => _device = p);
+    _map.move(p, 16);
   }
 
   @override
@@ -304,15 +322,14 @@ class _GroupMapViewState extends State<_GroupMapView> {
                     if (l.sharing) l.uid: l.point,
                   if (me != null) widget.uid: LatLng(me.latitude, me.longitude),
                 };
-                final center = me != null
-                    ? LatLng(me.latitude, me.longitude)
-                    : _device ?? myLoc?.point ?? (locs.isNotEmpty ? locs.first.point : defaultCenter);
-                // Bản đồ tạo trước khi dữ liệu về: đưa về đúng chỗ ở lần đầu có vị trí.
-                if (!_centered && (me != null || locs.isNotEmpty)) {
+                final myPoint = me != null ? LatLng(me.latitude, me.longitude) : _device;
+                // Chờ vị trí máy trước; không lấy được (chưa cho phép) mới dùng vị trí lưu trên server.
+                final center = myPoint ??
+                    (_deviceResolved ? myLoc?.point ?? (locs.isNotEmpty ? locs.first.point : null) : null) ??
+                    defaultCenter;
+                if (!_centered && myPoint == null && _deviceResolved && locs.isNotEmpty) {
                   _centered = true;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) _map.move(center, 16);
-                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) => _moveTo(center));
                 }
 
                 return Stack(
@@ -326,6 +343,7 @@ class _GroupMapViewState extends State<_GroupMapView> {
                         onPositionChanged: (_, hasGesture) {
                           if (hasGesture) _userMoved = true;
                         },
+                        onMapReady: _onMapReady,
                         layers: [
                           ...placeLayers(places),
                           ...safeTripLayers(safeTrips, current: travellerPos, now: safeNow, onTap: _openSafeTrip),
@@ -352,7 +370,10 @@ class _GroupMapViewState extends State<_GroupMapView> {
                               ),
                             for (final m in moments.where((m) => m.hasLocation))
                               momentMarker(m, () => _push(MomentsScreen(group: g!))),
-                            for (final l in locs) memberMarker(l, onTap: () => _showMember(l)),
+                            for (final l in locs)
+                              // Ghim của chính mình đặt ở vị trí thật của máy, không theo bản ghi cũ trên server.
+                              memberMarker(l.uid == widget.uid && myPoint != null ? l.at(myPoint) : l,
+                                  onTap: () => _showMember(l)),
                           ]),
                         ],
                       ),
