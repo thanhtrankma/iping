@@ -30,6 +30,7 @@ function requireAuth(req) {
 }
 
 async function displayName(uid) {
+  if (!uid) return 'Thành viên';
   const snap = await db.doc(`users/${uid}`).get();
   return snap.get('name') || 'Thành viên';
 }
@@ -280,6 +281,8 @@ async function notifyUsers(groupId, targets, notification, data, senderUid) {
 exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', async (event) => {
   const e = event.data?.data();
   if (!e) return;
+  // Tên lấy từ hồ sơ (chỉ chủ tài khoản ghi được), không tin `name` do client gửi.
+  e.name = await displayName(e.uid);
   const groupId = event.params.groupId;
   const groupName = (await db.doc(`groups/${groupId}`).get()).get('name') || 'Nhóm';
 
@@ -342,7 +345,7 @@ exports.onGroupMessage = onDocumentCreated('groups/{groupId}/messages/{messageId
   const groupId = event.params.groupId;
   const groupName = (await db.doc(`groups/${groupId}`).get()).get('name') || 'Nhóm';
   await notifyGroup(groupId, m.uid, {
-    title: `${m.name} · ${groupName}`,
+    title: `${await displayName(m.uid)} · ${groupName}`,
     body: String(m.text).slice(0, 200),
   }, { type: 'message', uid: String(m.uid || '') });
 });
@@ -362,14 +365,14 @@ exports.onPing = onDocumentCreated('groups/{groupId}/pings/{pingId}', async (eve
   const groupId = event.params.groupId;
   const g = await db.doc(`groups/${groupId}`).get();
   if (!(g.get('memberIds') || []).includes(p.to)) return;
+  const name = await displayName(p.from);
   if (p.type === 'locate') {
     // Data message ưu tiên cao: máy nhận tự lấy và ghi vị trí (nếu đang bật chia sẻ).
-    const name = p.fromName || 'Ai đó';
     await notifyUsers(groupId, [p.to], { title: 'IPing', body: `📍 ${name} muốn biết bạn đang ở đâu` },
       { type: 'locate', from: String(p.from || '') }, p.from);
     return;
   }
-  await notifyUsers(groupId, [p.to], { title: p.fromName || 'IPing', body: PING_TEXT[p.type] },
+  await notifyUsers(groupId, [p.to], { title: name, body: PING_TEXT[p.type] },
     { type: 'ping', from: String(p.from || '') },
     p.from);
 });
@@ -468,7 +471,7 @@ exports.onMoment = onDocumentCreated('groups/{groupId}/moments/{momentId}', asyn
   const groupId = event.params.groupId;
   const groupName = (await db.doc(`groups/${groupId}`).get()).get('name') || 'Nhóm';
   const body = m.text ? String(m.text).slice(0, 120) : (m.photoUrl ? '📷 Đã đăng một ảnh' : 'Có khoảnh khắc mới');
-  await notifyGroup(groupId, m.uid, { title: `✨ ${m.name} · ${groupName}`, body },
+  await notifyGroup(groupId, m.uid, { title: `✨ ${await displayName(m.uid)} · ${groupName}`, body },
     { type: 'moment', uid: String(m.uid || '') });
 });
 
@@ -484,7 +487,7 @@ exports.onMeetup = onDocumentCreated('groups/{groupId}/meetups/{meetupId}', asyn
     : '';
   await notifyGroup(groupId, m.createdBy, {
     title: `📍 Meetup: ${m.title}`,
-    body: `${m.createdByName || 'Ai đó'} hẹn mọi người lúc ${time}. Mở IPing để tham gia.`,
+    body: `${await displayName(m.createdBy)} hẹn mọi người lúc ${time}. Mở IPing để tham gia.`,
   }, { type: 'meetup', meetupId: event.params.meetupId });
 });
 
