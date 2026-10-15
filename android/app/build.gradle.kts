@@ -11,12 +11,20 @@ plugins {
 }
 
 // Khoá ký bản phát hành (upload key): android/key.properties, không đưa lên git.
-// Mẫu: android/key.properties.example. Chưa có file này thì bản release ký tạm bằng khoá debug.
+// Mẫu: android/key.properties.example.
+// Chưa có file này thì bản release BÁO LỖI (tránh lỡ tải lên Play bản ký bằng khoá debug), trừ khi
+// cố ý cho phép ký tạm bằng khoá debug để thử trên máy:
+//   flutter build apk --release -P allowDebugSigning=true
+//   hoặc IPING_ALLOW_DEBUG_SIGNING=1 flutter build apk --release
+// Bản debug / profile (flutter run) không bị ảnh hưởng.
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+val allowDebugSigning =
+    project.findProperty("allowDebugSigning")?.toString() == "true" ||
+        System.getenv("IPING_ALLOW_DEBUG_SIGNING") == "1"
 
 android {
     namespace = "com.iping.app"
@@ -72,4 +80,18 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// Chặn build release thiếu khoá ký thật (chỉ kiểm tra khi thực sự chạy task release).
+gradle.taskGraph.whenReady {
+    val releaseTask = Regex("^(assemble|bundle|package|sign)Release.*|^sign.*Release.*")
+    val buildsRelease = allTasks.any { it.project == project && releaseTask.matches(it.name) }
+    if (buildsRelease && !keystorePropertiesFile.exists() && !allowDebugSigning) {
+        throw GradleException(
+            "Thiếu android/key.properties (khoá upload) nên không build bản release để phát hành. " +
+                "Tạo file theo android/key.properties.example, hoặc nếu chỉ thử trên máy thì chạy " +
+                "`flutter build apk --release -P allowDebugSigning=true` " +
+                "(hoặc đặt biến môi trường IPING_ALLOW_DEBUG_SIGNING=1)."
+        )
+    }
 }

@@ -39,6 +39,7 @@ void main() {
     expect(find.text('Chỉ đường'), findsOneWidget);
     expect(find.text('Nhắn tin'), findsOneWidget);
     expect(find.textContaining('km/h'), findsOneWidget);
+    expect(find.text('Báo cáo / Chặn'), findsOneWidget);
   });
 
   testWidgets('popup của chính mình: chỉ có nút Chi tiết, có nhãn Bạn', (tester) async {
@@ -47,5 +48,6 @@ void main() {
     expect(find.text('Bạn'), findsOneWidget);
     expect(find.text('Chỉ đường'), findsNothing);
     expect(find.text('Nhắn tin'), findsNothing);
+    expect(find.text('Báo cáo / Chặn'), findsNothing);
   });
 }

@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../utils/auth_errors.dart';
 import '../utils/phone.dart';
 import '../widgets/glass.dart';
+import '../widgets/legal_links.dart';
 
 /// Sau khi đăng nhập bằng số điện thoại / Apple: hỏi tên nếu chưa có, rồi về màn chính.
 void finishSignIn(NavigatorState nav) {
@@ -194,6 +195,8 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
         _ErrorText(_error),
         const SizedBox(height: 16),
         FilledButton(onPressed: _busy ? null : _send, child: _busyOr(_busy, 'Gửi mã')),
+        const SizedBox(height: 14),
+        const LegalConsentText(),
       ],
     );
   }

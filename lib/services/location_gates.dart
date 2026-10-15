@@ -21,7 +21,7 @@ bool exploreMayRecord({required bool sharing, required bool screenVisible, requi
     sharing || (screenVisible && appInForeground);
 
 /// Đọc trạng thái đồng ý theo nhóm trong isolate nền (push "locate").
-/// [raw] là chuỗi lưu tại `GroupConsent.prefKey(uid)`; chưa có (người dùng cũ, chưa chuyển đổi) thì coi
-/// như đã đồng ý với mọi nhóm, giống quy tắc chuyển đổi của `GroupConsent`.
+/// [raw] là chuỗi lưu tại `GroupConsent.prefKey(uid)`; chưa có dữ liệu đồng ý thì KHÔNG gửi
+/// (app chưa từng phát hành nên không có người dùng cũ cần chuyển đổi).
 bool backgroundConsentAllows(String? raw, String gid, Set<String> Function(String raw) parse) =>
-    raw == null || parse(raw).contains(gid);
+    raw != null && parse(raw).contains(gid);

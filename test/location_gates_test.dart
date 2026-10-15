@@ -50,8 +50,8 @@ void main() {
   });
 
   group('backgroundConsentAllows', () {
-    test('chưa có dữ liệu đồng ý: người dùng cũ, coi như đồng ý', () {
-      expect(backgroundConsentAllows(null, 'a', GroupConsent.parse), isTrue);
+    test('chưa có dữ liệu đồng ý: không gửi', () {
+      expect(backgroundConsentAllows(null, 'a', GroupConsent.parse), isFalse);
     });
 
     test('có dữ liệu: chỉ nhóm trong danh sách', () {

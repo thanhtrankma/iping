@@ -11,7 +11,17 @@
 <main>
   <header><img src="logo.png" alt=""><a href="/">IPing</a></header>
   <h1>Xoá tài khoản IPing</h1>
-  <p>Xoá tài khoản sẽ <strong>xoá vĩnh viễn</strong> hồ sơ, vị trí và lịch sử, tin nhắn 1-1, khoảnh khắc và ảnh của bạn, đồng thời đưa bạn ra khỏi mọi nhóm. Không thể hoàn tác.</p>
+  <p>Xoá tài khoản <strong>xoá vĩnh viễn ngay lập tức</strong> và không thể hoàn tác:</p>
+  <ul>
+    <li>hồ sơ (tên, ảnh đại diện), mã thông báo đẩy, cài đặt cảnh báo, danh sách chặn và tài khoản đăng nhập;</li>
+    <li>vị trí hiện tại và lịch sử vị trí trong mọi nhóm;</li>
+    <li>cảnh báo/hoạt động của bạn (đến/rời, SOS, check-in, pin yếu, quá tốc độ, "Về an toàn"...);</li>
+    <li>tin nhắn nhóm, toàn bộ cuộc trò chuyện 1-1 của bạn, ping;</li>
+    <li>khoảnh khắc và ảnh, cuộc hẹn bạn tạo, trạng thái tham gia hẹn và lượt thích;</li>
+    <li>dữ liệu Khám phá (các ô bản đồ đã đi qua, điểm khám phá trong nhóm);</li>
+    <li>báo cáo vi phạm do bạn gửi.</li>
+  </ul>
+  <p>Bạn được đưa ra khỏi mọi nhóm (nhóm chỉ còn mình bạn sẽ bị xoá cùng toàn bộ nội dung). Địa điểm (Nhà, Trường...) bạn đã thêm là của chung nhóm nên được giữ lại cho các thành viên khác, nhưng không còn ghi bạn là người tạo.</p>
 
   <div class="card">
     <h2 style="margin-top:0">Cách 1: trong ứng dụng</h2>
@@ -22,7 +32,7 @@
     <h2 style="margin-top:0">Cách 2: trên trang này</h2>
 
     <div id="step-signin">
-      <p>Đăng nhập bằng đúng cách bạn dùng trong ứng dụng.</p>
+      <p>Đăng nhập bằng đúng cách bạn dùng trong ứng dụng (email, Google, Apple hoặc số điện thoại).</p>
       <label for="email">Email</label>
       <input id="email" type="email" autocomplete="email">
       <label for="password">Mật khẩu</label>
@@ -30,6 +40,7 @@
       <div class="row">
         <button id="btn-email">Đăng nhập bằng email</button>
         <button id="btn-google" class="secondary">Đăng nhập bằng Google</button>
+        <button id="btn-apple" class="secondary">Đăng nhập bằng Apple</button>
       </div>
 
       <label for="phone" style="margin-top:20px">Hoặc số điện thoại</label>
@@ -62,7 +73,7 @@
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
   import {
-    getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider,
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, OAuthProvider,
     RecaptchaVerifier, signInWithPhoneNumber, signOut,
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
   import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
@@ -115,6 +126,17 @@
     say('');
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }
     catch (e) { say(errText(e), 'err'); }
+  };
+
+  $('btn-apple').onclick = async () => {
+    say('');
+    try {
+      const provider = new OAuthProvider('apple.com');
+      provider.addScope('email');
+      provider.addScope('name');
+      provider.setCustomParameters({ locale: 'vi_VN' });
+      await signInWithPopup(auth, provider);
+    } catch (e) { say(errText(e), 'err'); }
   };
 
   let confirmation = null;

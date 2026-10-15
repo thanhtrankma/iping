@@ -46,4 +46,12 @@ function wantsAlert(userData, type, senderUid) {
   return true;
 }
 
-module.exports = { PREF_KEY, CRITICAL, prefKeyFor, wantsAlert };
+/// Người nhận đã chặn `senderUid` (`users/{uid}.blockedUids`): không gửi push từ người đó
+/// (tin nhắn, khoảnh khắc, ping...). Cảnh báo khẩn (SOS, quá giờ "Về an toàn") vẫn đến.
+function blockedSender(userData, type, senderUid) {
+  if (!senderUid || CRITICAL.has(type)) return false;
+  const blocked = userData?.blockedUids;
+  return Array.isArray(blocked) && blocked.includes(senderUid);
+}
+
+module.exports = { PREF_KEY, CRITICAL, prefKeyFor, wantsAlert, blockedSender };

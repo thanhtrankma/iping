@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/group_consent.dart';
 import '../services/group_service.dart';
+import '../services/moderation_service.dart';
 import '../services/pause_schedule.dart';
 import '../services/privacy_service.dart';
 import '../theme.dart';
@@ -12,6 +13,7 @@ import '../widgets/privacy_widgets.dart';
 import 'group_actions.dart';
 import 'group_consent_screen.dart';
 import 'member_admin.dart';
+import 'moderation_sheets.dart';
 
 /// "Bảo mật & Bạn bè": công tắc chia sẻ chung và ẩn vị trí theo từng nhóm.
 class PrivacyScreen extends StatefulWidget {
@@ -24,6 +26,12 @@ class PrivacyScreen extends StatefulWidget {
 
 class _PrivacyScreenState extends State<PrivacyScreen> {
   late final Stream<List<Group>> _groups = GroupService.instance.myGroups(widget.uid);
+
+  @override
+  void initState() {
+    super.initState();
+    ModerationService.instance.watch();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +99,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                         ],
                       ),
                     ),
+                  _BlockedUsersSection(groups: groups ?? const []),
                 ],
               ),
             );
@@ -186,6 +195,54 @@ class _GroupPrivacyCard extends StatelessWidget {
           onTap: () => GroupActions.leave(context, group),
         ),
       ],
+    );
+  }
+}
+
+/// "Đã chặn": người dùng mình đã chặn (ẩn tin nhắn, tin nhắn riêng, khoảnh khắc) · Bỏ chặn.
+class _BlockedUsersSection extends StatelessWidget {
+  const _BlockedUsersSection({required this.groups});
+  final List<Group> groups;
+
+  String _nameOf(String uid) {
+    for (final g in groups) {
+      final n = g.memberNames[uid] ?? g.blockedNames[uid];
+      if (n != null && n.isNotEmpty) return n;
+    }
+    return 'Người dùng';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Set<String>>(
+      valueListenable: ModerationService.instance.blocked,
+      builder: (context, blocked, _) {
+        if (blocked.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: GlassSection(
+            header: 'Đã chặn',
+            footer: 'Bạn không thấy tin nhắn, tin nhắn riêng và khoảnh khắc của người đã chặn, '
+                'và họ không thể nhắn tin riêng cho bạn.',
+            children: [
+              for (final uid in blocked)
+                Builder(builder: (context) {
+                  final name = _nameOf(uid);
+                  return ListTile(
+                    horizontalTitleGap: 14,
+                    contentPadding: const EdgeInsets.fromLTRB(16, 2, 8, 2),
+                    leading: MemberAvatar(uid: uid, name: name, radius: 15),
+                    title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: TextButton(
+                      onPressed: () => unblockUser(context, uid: uid, name: name),
+                      child: const Text('Bỏ chặn', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
     );
   }
 }

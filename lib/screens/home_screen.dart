@@ -27,6 +27,7 @@ import 'activity_tab.dart';
 import 'all_friends_actions.dart';
 import 'meetup_screen.dart';
 import 'moments_screen.dart';
+import '../services/moderation_service.dart';
 import 'chat_tab.dart';
 import 'explore_leaderboard_screen.dart';
 import 'explore_screen.dart';
@@ -303,7 +304,12 @@ class _GroupMapViewState extends State<_GroupMapView> {
               stream: _locations,
               builder: (context, locSnap) {
                 final places = placeSnap.data ?? const <Place>[];
-                final moments = momentSnap.data ?? const <Moment>[];
+                // Ẩn khoảnh khắc của người mình đã chặn.
+                final blocked = ModerationService.instance.blocked.value;
+                final moments = [
+                  for (final m in momentSnap.data ?? const <Moment>[])
+                    if (!blocked.contains(m.uid)) m,
+                ];
                 final meetups = meetupSnap.data ?? const <Meetup>[];
                 final locs = (locSnap.data ?? const <MemberLocation>[])
                     .where((l) => g?.memberIds.contains(l.uid) ?? false)

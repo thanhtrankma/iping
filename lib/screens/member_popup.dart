@@ -13,6 +13,7 @@ import '../widgets/glass.dart';
 import 'dm_screen.dart';
 import 'home_screen.dart' show BatteryPill;
 import 'member_screen.dart';
+import 'moderation_sheets.dart';
 
 /// Chạm vào ghim trên bản đồ: hiện thẻ thông tin ngay tại chỗ (không chuyển trang).
 Future<void> showMemberPopup(BuildContext context, {required String groupId, required MemberLocation location}) {
@@ -152,6 +153,22 @@ class MemberPopup extends StatelessWidget {
               ],
             ],
           ),
+          if (!isMe)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Center(
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: secondary, visualDensity: VisualDensity.compact),
+                  icon: const Icon(Icons.flag_outlined, size: 16),
+                  label: const Text('Báo cáo / Chặn', style: TextStyle(fontSize: 13.5)),
+                  onPressed: () {
+                    final outer = nav.context;
+                    nav.pop();
+                    showUserModerationSheet(outer, uid: l.uid, name: l.name, groupId: groupId);
+                  },
+                ),
+              ),
+            ),
         ],
       ),
     );

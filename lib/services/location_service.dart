@@ -114,6 +114,30 @@ class LocationService {
     showGlobalMessage(scaffoldMessengerKey, 'Đã dừng chia sẻ vị trí.');
   }
 
+  /// Các trường ghi vào `groups/{gid}/locations/{uid}` khi thôi / dừng / tạm dừng chia sẻ: nhóm không còn
+  /// thấy mình "đang chia sẻ" và không đọc được toạ độ, tốc độ, pin cuối cùng nữa.
+  static Map<String, Object> get hiddenLocationFields => {
+        'sharing': false,
+        'lat': FieldValue.delete(),
+        'lng': FieldValue.delete(),
+        'accuracy': FieldValue.delete(),
+        'speed': FieldValue.delete(),
+        'battery': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+  /// Ẩn vị trí của mình trong nhóm [gid] ([hiddenLocationFields]). Dùng `update` để không tạo doc
+  /// khi chưa từng chia sẻ với nhóm này (lỗi not-found được bỏ qua).
+  Future<void> hideFrom(String gid) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await _db.doc('groups/$gid/locations/$uid').update(hiddenLocationFields);
+    } catch (e) {
+      debugPrint('Hide location $gid: $e');
+    }
+  }
+
   /// Đồng ý theo nhóm thay đổi: nhóm vừa rút đồng ý → ẩn vị trí đã ghi; nhóm vừa đồng ý → ghi ngay.
   void _onConsentChanged() {
     final now = GroupConsent.instance.consented.value;
@@ -124,11 +148,7 @@ class LocationService {
     if (uid == null) return;
     for (final gid in removed) {
       if (!_groups.any((g) => g.id == gid)) continue;
-      // `update`: không tạo doc mới nếu chưa từng chia sẻ với nhóm này.
-      _db
-          .doc('groups/$gid/locations/$uid')
-          .update({'sharing': false, 'updatedAt': FieldValue.serverTimestamp()})
-          .catchError((Object e) => debugPrint('Consent revoke $gid: $e'));
+      unawaited(hideFrom(gid));
     }
     if (added.isNotEmpty) unawaited(refresh());
   }
@@ -229,14 +249,8 @@ class LocationService {
     // Chỉ nhóm đã đồng ý mới từng nhận vị trí; nhóm khác không cần (và không nên tạo doc vị trí).
     final targets = _groups.where((g) => GroupConsent.instance.allows(g.id)).toList();
     if (uid == null || targets.isEmpty) return;
-    final batch = _db.batch();
-    for (final g in targets) {
-      batch.set(_db.doc('groups/${g.id}/locations/$uid'), {
-        'sharing': false,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    }
-    await batch.commit();
+    // Ghi riêng từng nhóm: doc chưa tồn tại (chưa từng gửi vị trí) không làm hỏng các nhóm khác.
+    await Future.wait(targets.map((g) => hideFrom(g.id)));
   }
 
   /// Vị trí hiện tại cho thao tác do người dùng tự bấm (SOS, check-in, "Vị trí của tôi", "Về an toàn",
@@ -445,8 +459,14 @@ class LocationService {
     }
     if (background && perm == LocationPermission.whileInUse) {
       if (await LocationDisclosure.askBackground()) {
-        // Android 11+ mở trang Cài đặt để chọn "Luôn cho phép"; từ chối thì vẫn chạy khi mở app.
-        await Geolocator.requestPermission();
+        if (Platform.isIOS) {
+          // geolocator chỉ hỏi "Khi dùng ứng dụng"; đã có quyền đó thì không hỏi lại được "Luôn luôn"
+          // → mở trang Cài đặt của IPing để người dùng tự chọn. Không chọn thì vẫn chia sẻ khi app chạy.
+          await Geolocator.openAppSettings();
+        } else {
+          // Android 11+ mở trang Cài đặt để chọn "Luôn cho phép"; từ chối thì vẫn chạy khi mở app.
+          await Geolocator.requestPermission();
+        }
       }
     }
     return null;

@@ -9,9 +9,10 @@ import 'crash_detector.dart';
 import 'location_service.dart';
 import 'push_router.dart';
 
-/// Phát hiện va chạm (BETA): chỉ chạy khi người dùng bật và đang chia sẻ vị trí, lúc app còn hoạt động.
-/// Nghi va chạm → mở màn đếm ngược để người dùng huỷ trước khi gửi SOS.
-class CrashService {
+/// Phát hiện va chạm (BETA): chỉ chạy khi người dùng bật, đang chia sẻ vị trí VÀ IPing đang mở
+/// trên màn hình ([AppLifecycleState.resumed]). App vào nền thì tắt cảm biến, để màn đếm ngược
+/// (người dùng huỷ được trước khi gửi SOS) luôn hiện ra được. Không chạy nền, không thay thế 113/114/115.
+class CrashService with WidgetsBindingObserver {
   CrashService._();
   static final instance = CrashService._();
 
@@ -21,6 +22,8 @@ class CrashService {
   final _detector = CrashDetector();
   StreamSubscription<UserAccelerometerEvent>? _accelSub;
   bool _showing = false;
+  bool _foreground = true;
+  bool _observing = false;
 
   Future<void> init() async {
     enabled.value = (await SharedPreferences.getInstance()).getBool(_prefKey) ?? false;
@@ -28,6 +31,16 @@ class CrashService {
     dispose();
     LocationService.instance.sharing.addListener(_sync);
     LocationService.instance.lastPosition.addListener(_onPosition);
+    final state = WidgetsBinding.instance.lifecycleState;
+    _foreground = state == null || state == AppLifecycleState.resumed;
+    WidgetsBinding.instance.addObserver(this);
+    _observing = true;
+    _sync();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
     _sync();
   }
 
@@ -40,6 +53,10 @@ class CrashService {
   void dispose() {
     LocationService.instance.sharing.removeListener(_sync);
     LocationService.instance.lastPosition.removeListener(_onPosition);
+    if (_observing) {
+      WidgetsBinding.instance.removeObserver(this);
+      _observing = false;
+    }
     _accelSub?.cancel();
     _accelSub = null;
   }
@@ -50,7 +67,7 @@ class CrashService {
   }
 
   void _sync() {
-    final run = enabled.value && LocationService.instance.sharing.value;
+    final run = enabled.value && _foreground && LocationService.instance.sharing.value;
     if (run && _accelSub == null) {
       _accelSub = userAccelerometerEventStream(samplingPeriod: SensorInterval.gameInterval).listen(
         (e) {
@@ -66,7 +83,7 @@ class CrashService {
 
   void _trigger() {
     final nav = navigatorKey.currentState;
-    if (_showing || nav == null) return;
+    if (_showing || nav == null || !_foreground) return;
     _showing = true;
     nav
         .push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => const CrashCountdownScreen()))

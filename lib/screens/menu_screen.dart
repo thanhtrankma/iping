@@ -211,14 +211,15 @@ class _MenuView extends StatelessWidget {
                     horizontalTitleGap: 14,
                     secondary: const GlassIconBadge(icon: Icons.car_crash_rounded, color: AppColors.sos),
                     title: const Text('Phát hiện va chạm (beta)'),
-                    subtitle: const Text('Khi đang chia sẻ và di chuyển nhanh. Có 30 giây để huỷ trước khi gửi SOS.'),
+                    subtitle: const Text('Chỉ hoạt động khi IPing đang mở, đang chia sẻ và di chuyển nhanh; có 30 giây để huỷ trước khi '
+                        'gửi SOS. Có thể không phát hiện hoặc báo nhầm. Không thay thế cuộc gọi 113/114/115.'),
                     value: on,
                     onChanged: CrashService.instance.setEnabled,
                   ),
                 ),
               ],
             ),
-            // Thẻ Premium: kính có tint thương hiệu.
+            // Thẻ "miễn phí": kính có tint thương hiệu.
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
               child: Glass(
@@ -235,12 +236,12 @@ class _MenuView extends StatelessWidget {
                         shape: glassShape(radius: 14),
                         color: Colors.white.withValues(alpha: 0.2),
                       ),
-                      child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 28),
+                      child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 28),
                     ),
                     const SizedBox(width: 14),
                     const Expanded(
                       child: Text(
-                        'Tất cả tính năng Premium đều miễn phí: lịch sử 30 ngày, báo cáo lái xe, địa điểm không giới hạn, không quảng cáo.',
+                        'Mọi tính năng đều miễn phí, không quảng cáo.',
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.35, fontSize: 14),
                       ),
                     ),
@@ -257,6 +258,14 @@ class _MenuView extends StatelessWidget {
                   title: const Text('Chính sách quyền riêng tư'),
                   trailing: const Icon(Icons.open_in_new_rounded, size: 18),
                   onTap: () => launchUrl(Uri.parse('https://iping-share.web.app/privacy'),
+                      mode: LaunchMode.externalApplication),
+                ),
+                ListTile(
+                  horizontalTitleGap: 14,
+                  leading: const GlassIconBadge(icon: Icons.gavel_rounded, color: AppColors.gray),
+                  title: const Text('Điều khoản sử dụng'),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () => launchUrl(Uri.parse('https://iping-share.web.app/terms'),
                       mode: LaunchMode.externalApplication),
                 ),
               ],

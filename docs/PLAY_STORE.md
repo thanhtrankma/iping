@@ -103,12 +103,30 @@ Lưu ý: IPing chỉ dùng vị trí trong nền khi bạn bật "Chia sẻ vị
 
 Chọn **"Toàn bộ hoặc một số chức năng bị hạn chế"**.
 
-Sau đó tạo một **tài khoản email thử nghiệm** riêng cho người duyệt của Google:
+Chuẩn bị **hai tài khoản email thử nghiệm** (email + mật khẩu riêng, không dùng mật khẩu thật):
 
-- dùng một email và mật khẩu riêng, không dùng mật khẩu thật của bạn;
-- tạo sẵn một nhóm có vài thành viên trong tài khoản đó, và ghi lại **mã mời** của một nhóm khác để người duyệt thử luồng tham gia bằng mã (màn đồng ý chia sẻ).
+- **Tài khoản A (đưa cho người duyệt):** đã có sẵn một nhóm thử nghiệm.
+- **Tài khoản B (giữ trên một máy thật của bạn):** là thành viên của nhóm đó, **đang bật chia sẻ vị trí** suốt thời gian duyệt (để người duyệt thấy vị trí, pin, lịch sử của một thành viên khác trên bản đồ).
+- Tạo thêm một nhóm khác (do tài khoản B làm chủ) và ghi lại **mã mời** của nhóm đó để người duyệt thử luồng tham gia bằng mã (màn đồng ý chia sẻ).
+- **Không xoá** hai tài khoản này và không đổi mật khẩu cho tới khi duyệt xong (kể cả các lần cập nhật sau).
+- Ghi chú: hãy dùng đăng nhập email, **không dùng đăng nhập bằng số điện thoại** (người duyệt không nhận được mã OTP).
 
-Phần hướng dẫn cho người duyệt: "Đăng nhập bằng email và mật khẩu ở trên. Tài khoản đã có sẵn nhóm thử nghiệm. Để thử tham gia nhóm: Menu → Tham gia bằng mã mời → nhập mã <MÃ>; ứng dụng sẽ hỏi bạn có chia sẻ vị trí với nhóm đó hay không."
+Phần hướng dẫn cho người duyệt (dán vào ô hướng dẫn, thay `<EMAIL>`, `<MẬT KHẨU>`, `<MÃ>`):
+
+```
+Đăng nhập: trên màn đăng nhập chọn "Email", nhập <EMAIL> / <MẬT KHẨU>. Vui lòng không dùng đăng nhập bằng số điện thoại (cần mã OTP gửi về SIM).
+
+Tài khoản đã có sẵn nhóm thử nghiệm. Một thành viên khác trong nhóm đang bật chia sẻ vị trí nên bạn sẽ thấy vị trí, pin và lịch sử của họ trên bản đồ.
+
+Thử tham gia nhóm bằng mã: Menu → Quản lý nhóm → Tham gia bằng mã mời → nhập <MÃ>. Ứng dụng hiện màn đồng ý: chọn "Chia sẻ vị trí với nhóm này", "Tham gia nhưng chưa chia sẻ" hoặc "Rời nhóm". Vào nhóm không tự động chia sẻ vị trí.
+
+Bật chia sẻ vị trí: bấm "Bật chia sẻ" → màn giải thích → hộp thoại quyền vị trí của hệ thống. Khi đang chia sẻ có thông báo cố định với nút "Dừng chia sẻ".
+
+Báo cáo / chặn: nhấn giữ một tin nhắn (chat nhóm hoặc tin nhắn riêng) → "Báo cáo" hoặc "Chặn người này"; khoảnh khắc: nút "⋯" trên thẻ; tin nhắn riêng: nút "⋯" trên thanh tiêu đề; danh sách người đã chặn: Menu → Bảo mật & Bạn bè → Đã chặn.
+
+Xin đừng xoá tài khoản thử nghiệm (Menu → Hồ sơ → Xoá tài khoản xoá vĩnh viễn dữ liệu).
+```
+
 
 ### Quảng cáo
 
@@ -119,7 +137,7 @@ Chọn **Không**, ứng dụng không chứa quảng cáo.
 - **Email:** beatgone2503@gmail.com
 - **Danh mục:** "Mạng xã hội, giao tiếp..." (All Other App Types / Social / Communication). Nếu có lựa chọn riêng thì chọn nhóm "Communication"/"Social".
 - **Bạo lực, tình dục, ngôn từ thô tục, ma tuý, cờ bạc:** Không.
-- **Người dùng có thể tương tác / trao đổi nội dung với nhau:** **Có** (nhắn tin, chia sẻ ảnh).
+- **Người dùng có thể tương tác / trao đổi nội dung với nhau:** **Có** (nhắn tin, chia sẻ ảnh). Có báo cáo vi phạm và chặn người dùng (xem mục "Nội dung do người dùng tạo" bên dưới).
 - **Chia sẻ vị trí thực của người dùng với người khác:** **Có**.
 - **Mua hàng kỹ thuật số:** Không.
 
@@ -143,56 +161,91 @@ Không với tất cả các mục.
 | Mọi dữ liệu đều được mã hoá khi truyền? | **Có** |
 | Người dùng có thể yêu cầu xoá dữ liệu? | **Có**, URL: https://iping-share.web.app/delete-account |
 
-Về **chia sẻ** (Shared): chọn **Không** cho mọi loại dữ liệu bên dưới.
+Về **chia sẻ** (Shared):
 
 - Theo định nghĩa của Google, những trường hợp sau không tính là "chia sẻ":
   - hiển thị cho thành viên cùng nhóm, vì người dùng chủ động tham gia nhóm **và tự chọn chia sẻ với từng nhóm** (vào nhóm bằng mã mời không tự động chia sẻ: có màn đồng ý riêng; tạo nhóm = đồng ý với nhóm đó);
-  - gửi cho nhà cung cấp dịch vụ xử lý thay bạn, như Firebase.
-- MapTiler chỉ nhận vùng bản đồ đang xem, không nhận dữ liệu cá nhân.
+  - gửi cho nhà cung cấp dịch vụ xử lý thay mình (service provider), như Firebase, Google ML Kit.
+- **Vị trí gần đúng → Có chia sẻ**: tính năng Khám phá gửi toạ độ **đã làm tròn** cho OpenStreetMap Nominatim (bên thứ ba độc lập, không phải nhà cung cấp dịch vụ của mình) để lấy tên phường/quận/tỉnh. Mục đích: Chức năng ứng dụng. Vị trí chính xác **không** gửi cho bên thứ ba nào.
+- MapTiler / Esri chỉ nhận vùng bản đồ đang xem và địa chỉ IP khi tải ô bản đồ (không có dữ liệu tài khoản), không khai là chia sẻ.
 
 **Các loại dữ liệu được thu thập:**
 
-| Loại dữ liệu | Thu thập | Bắt buộc / tuỳ chọn | Mục đích |
-|---|---|---|---|
-| Vị trí → **Vị trí chính xác** | Có | Tuỳ chọn (chia sẻ vị trí tắt mặc định, người dùng tự bật và chọn nhóm) | Chức năng ứng dụng |
-| Thông tin cá nhân → **Tên** | Có | Bắt buộc | Chức năng ứng dụng, Quản lý tài khoản |
-| Thông tin cá nhân → **Địa chỉ email** | Có | Tuỳ chọn (nếu đăng nhập bằng email/Google) | Quản lý tài khoản |
-| Thông tin cá nhân → **Số điện thoại** | Có | Tuỳ chọn (nếu đăng nhập bằng SĐT) | Quản lý tài khoản |
-| Thông tin cá nhân → **Mã nhận dạng người dùng** | Có | Bắt buộc | Chức năng ứng dụng, Quản lý tài khoản |
-| Ảnh và video → **Ảnh** | Có | Tuỳ chọn | Chức năng ứng dụng (ảnh đại diện, khoảnh khắc) |
-| Tin nhắn → **Các tin nhắn khác trong ứng dụng** | Có | Tuỳ chọn | Chức năng ứng dụng |
-| Thiết bị hoặc mã nhận dạng khác | Có | Bắt buộc | Chức năng ứng dụng (mã nhận thông báo đẩy) |
+| Loại dữ liệu | Thu thập | Chia sẻ | Bắt buộc / tuỳ chọn | Mục đích |
+|---|---|---|---|---|
+| Vị trí → **Vị trí chính xác** | Có | Không | Tuỳ chọn | Chức năng ứng dụng |
+| Vị trí → **Vị trí gần đúng** | Có | **Có** (Nominatim, toạ độ đã làm tròn) | Tuỳ chọn | Chức năng ứng dụng |
+| Thông tin cá nhân → **Tên** | Có | Không | Bắt buộc | Chức năng ứng dụng, Quản lý tài khoản |
+| Thông tin cá nhân → **Địa chỉ email** | Có | Không | Tuỳ chọn (nếu đăng nhập bằng email/Google/Apple) | Quản lý tài khoản |
+| Thông tin cá nhân → **Số điện thoại** | Có | Không | Tuỳ chọn (nếu đăng nhập bằng SĐT) | Quản lý tài khoản |
+| Thông tin cá nhân → **Mã nhận dạng người dùng** | Có | Không | Bắt buộc | Chức năng ứng dụng, Quản lý tài khoản |
+| Ảnh và video → **Ảnh** | Có | Không | Tuỳ chọn | Chức năng ứng dụng (ảnh đại diện, khoảnh khắc) |
+| Tin nhắn → **Các tin nhắn khác trong ứng dụng** | Có | Không | Tuỳ chọn | Chức năng ứng dụng |
+| Hoạt động trong ứng dụng → **Nội dung khác do người dùng tạo** | Có | Không | Tuỳ chọn | Chức năng ứng dụng (khoảnh khắc, cuộc hẹn, địa điểm), An toàn/chống gian lận (báo cáo vi phạm) |
+| Thông tin và hiệu suất ứng dụng → **Chẩn đoán** | Có | Không | Bắt buộc | Chức năng ứng dụng (Google ML Kit gửi dữ liệu chẩn đoán/hiệu năng khi quét QR) |
+| Thiết bị hoặc mã nhận dạng khác | Có | Không | Bắt buộc | Chức năng ứng dụng (mã thông báo đẩy FCM; mã cài đặt Firebase / ML Kit) |
 
 **Không** khai các loại sau:
 
 - Lịch sử duyệt web, danh bạ, tài chính, sức khoẻ.
-- Nhật ký sự cố và phân tích: ứng dụng không dùng Crashlytics hay Analytics.
+- Nhật ký sự cố và Phân tích: ứng dụng không dùng Crashlytics hay Analytics.
 - Cảm biến chuyển động: chỉ xử lý trên máy, không gửi đi.
 
 Ghi chú về vị trí:
 
-- Vị trí chỉ được thu thập khi người dùng bật "Chia sẻ vị trí" (tắt mặc định) và chỉ gửi tới những nhóm người dùng đã đồng ý chia sẻ.
+- Vị trí được thu thập khi người dùng bật "Chia sẻ vị trí" (tắt mặc định; chỉ gửi tới những nhóm đã đồng ý chia sẻ), **và** khi người dùng tự thao tác cần vị trí: SOS, check-in, "Về an toàn", hẹn gặp, đăng khoảnh khắc kèm vị trí, mở màn Khám phá (chỉ khi ứng dụng đang mở).
 - Vị trí nền chỉ phục vụ việc chia sẻ vị trí với nhóm. Khám phá chỉ tô ô bản đồ khi ứng dụng đang mở hoặc khi chia sẻ đang bật, không phải lý do xin vị trí nền.
-- Lịch sử vị trí tự xoá sau 30 ngày; rời nhóm thì vị trí và lịch sử trong nhóm đó bị xoá.
+- Lịch sử vị trí và cảnh báo nhóm tự xoá sau 30 ngày; thôi chia sẻ với nhóm thì vị trí cuối và lịch sử trong nhóm đó bị xoá; rời nhóm thì mọi dữ liệu của mình trong nhóm đó bị xoá. Dữ liệu Khám phá giữ tới khi xoá tài khoản (đã ghi trong chính sách).
 
 Với mọi loại dữ liệu ở bảng trên:
 
 - **"Dữ liệu có được xử lý tạm thời không?"**: Không.
 - Không có mục đích nào là Quảng cáo hay Phân tích.
 
+### Nội dung do người dùng tạo (UGC)
+
+Ứng dụng có nhắn tin nhóm, nhắn tin 1-1 và khoảnh khắc (ảnh + chữ), nên phải đáp ứng chính sách UGC của Google Play / mục 1.2 của App Store:
+
+- **Điều khoản sử dụng** (https://iping-share.web.app/terms) cấm nội dung phản cảm, quấy rối; người dùng đồng ý khi đăng ký (đủ 13 tuổi).
+- **Báo cáo:** báo cáo tin nhắn nhóm, tin nhắn 1-1, khoảnh khắc hoặc người dùng với lý do (spam, quấy rối, tình dục, bạo lực, khác). Báo cáo lưu ở `reports`, Cloud Function `onReport` gửi thông báo cho quản trị viên (uid trong Firestore `config/admins.uids`).
+- **Chặn:** chặn người dùng → không nhận tin nhắn 1-1 và thông báo (trừ SOS) từ người đó.
+- **Xoá:** người gửi xoá tin nhắn / khoảnh khắc của mình; chủ nhóm xoá được tin nhắn và khoảnh khắc trong nhóm, xoá và chặn thành viên.
+- **Xử lý:** kiểm tra báo cáo trong vòng 24 giờ; xoá nội dung vi phạm và khoá tài khoản vi phạm.
+- Trước khi phát hành: tạo `config/admins` với `uids: [<uid quản trị viên>]` trong Firebase Console.
+
 ### Quyền vị trí (Quyền truy cập thông tin vị trí ở chế độ nền)
 
-Đây là mục Google duyệt kỹ nhất.
+Quyết định: **giữ** quyền vị trí nền (`ACCESS_BACKGROUND_LOCATION`, iOS "Luôn luôn"). Đây là mục Google duyệt kỹ nhất. Danh sách tính năng dưới đây phải khớp đúng màn giải thích trong app (`lib/screens/location_disclosure.dart`, `backgroundLocationFeatures`); sửa một chỗ thì sửa cả hai.
 
-**Mô tả tính năng cần vị trí nền:**
+Các tính năng dùng vị trí khi app chạy nền / đã đóng (đã kiểm tra trong code; tất cả chỉ chạy khi người dùng bật "Chia sẻ vị trí", tắt mặc định, và chỉ gửi cho nhóm đã đồng ý chia sẻ, không đang tạm ẩn):
+
+| Tính năng | Chạy ở đâu trong code |
+|---|---|
+| Chia sẻ vị trí liên tục với nhóm (toạ độ, tốc độ, % pin, lịch sử 30 ngày, nhịp "còn kết nối" 15 phút) qua dịch vụ nền trước loại Vị trí | `LocationService._startStream` / `_onPosition` / `_beat` |
+| Báo đến / rời địa điểm đã lưu; tự đánh dấu "đã tới" điểm hẹn Meetup | `GeofenceService.check` |
+| "Về an toàn": tự báo đã về tới nơi; quá giờ thì server gửi cảnh báo kèm vị trí cuối | `SafeTripService.check`, Cloud Function `safe_overdue` |
+| Cảnh báo chạy quá tốc độ (> 80 km/h) và báo cáo lái xe (tính từ lịch sử di chuyển) | `LocationService._checkSpeeding`, `TripAnalyzer` |
+| Trả lời khi thành viên bấm "Cập nhật vị trí" (hỏi "bạn đang ở đâu"), kể cả khi app đã bị vuốt tắt: push `locate` → lấy một vị trí và ghi vào nhóm đó | `firebaseBackgroundHandler` (`locate_background.dart`) |
+| Khám phá: tô các ô đã đi qua (chỉ người dùng thấy) bằng chính các vị trí của luồng chia sẻ; không phải lý do xin quyền | `ExploreService.record` |
+| Báo nhóm khi GPS bị tắt / quyền bị thu hồi lúc đang chia sẻ | `LocationService._onStreamError` |
+
+Không dùng vị trí nền: phát hiện va chạm (beta) chỉ chạy khi IPing đang mở trên màn hình; SOS, check-in, đăng khoảnh khắc chỉ lấy vị trí khi người dùng tự bấm.
+
+**Mô tả tính năng cần vị trí nền** (dán vào Play Console):
 
 ```
-IPing là ứng dụng chia sẻ vị trí theo nhóm cho gia đình và bạn bè. Vị trí nền chỉ dùng cho một tính năng cốt lõi: chia sẻ vị trí với nhóm mà người dùng đã chọn, để các thành viên đã đồng ý chia sẻ với nhau thấy vị trí cập nhật kể cả khi ứng dụng đóng.
+IPing là ứng dụng chia sẻ vị trí theo nhóm cho gia đình và bạn bè. Khi người dùng bật "Chia sẻ vị trí" (tắt mặc định), IPing thu thập vị trí chính xác kể cả khi ứng dụng đã đóng hoặc không được sử dụng, và chỉ gửi cho những nhóm người dùng đã chọn chia sẻ, để:
+- Chia sẻ vị trí liên tục (kèm tốc độ, % pin, lịch sử di chuyển 30 ngày) với các thành viên trong nhóm.
+- Báo cho nhóm khi người dùng đến hoặc rời địa điểm đã lưu, hoặc tới điểm hẹn Meetup.
+- "Về an toàn": tự báo khi về tới nơi; nếu quá giờ chưa tới, nhóm nhận cảnh báo kèm vị trí cuối.
+- Cảnh báo chạy quá tốc độ và báo cáo lái xe.
+- Trả lời khi một thành viên trong nhóm yêu cầu cập nhật vị trí ("X muốn biết bạn đang ở đâu"), kể cả khi ứng dụng đã bị đóng.
+- Khám phá: đánh dấu các khu vực đã đi qua (chỉ người dùng thấy).
 
-Thông báo đến/rời địa điểm và "Về an toàn" là một phần của việc chia sẻ vị trí với nhóm đó và chỉ hoạt động khi người dùng đang chia sẻ. Vị trí nền không được dùng cho mục đích nào khác (không quảng cáo, không phân tích, tính năng Khám phá chỉ dùng vị trí khi ứng dụng đang mở hoặc khi chia sẻ đang bật).
+Vị trí không dùng cho quảng cáo, phân tích hay bán cho bên thứ ba.
 
 Người dùng luôn chủ động:
-- Chia sẻ vị trí tắt mặc định. Trước khi xin quyền, ứng dụng hiển thị màn hình giải thích rõ việc thu thập vị trí kể cả khi ứng dụng đóng.
+- Trước khi xin quyền, ứng dụng hiển thị màn hình giải thích nói rõ việc thu thập dữ liệu vị trí kể cả khi ứng dụng đã đóng hoặc không được sử dụng, các tính năng trên, ai thấy vị trí và cách dừng; người dùng chọn "Đồng ý và tiếp tục" hoặc "Không, cảm ơn".
 - Vào nhóm bằng mã mời không tự động chia sẻ: ứng dụng hiện màn xác nhận cho biết nhóm có ai, nhóm sẽ thấy gì (vị trí chính xác, pin, lịch sử 30 ngày, thông báo đến/rời), và người dùng tự chọn "Chia sẻ vị trí với nhóm này", "Tham gia nhưng chưa chia sẻ" hoặc "Rời nhóm".
 - Khi đang chia sẻ luôn có thông báo cố định "IPing đang chia sẻ vị trí" với nút "Dừng chia sẻ", và trong ứng dụng hiển thị "Đang chia sẻ với N người".
 - Có thể tắt chia sẻ, thôi chia sẻ hoặc tạm ẩn với từng nhóm, hoặc rời nhóm bất cứ lúc nào trong Menu → Bảo mật & Bạn bè.
@@ -200,23 +253,25 @@ Người dùng luôn chủ động:
 
 **Video bắt buộc:**
 
-- Quay màn hình điện thoại khoảng 60–90 giây, tải lên YouTube ở chế độ **Không công khai** rồi dán link.
+- Quay màn hình điện thoại Android 11+ khoảng 60–90 giây (cần máy thứ hai, hoặc tài khoản thứ hai trên máy khác, để làm "thành viên khác"), tải lên YouTube ở chế độ **Không công khai** rồi dán link.
 - Nội dung video, theo thứ tự:
-  1. **Onboarding:** mở app, đăng nhập (tài khoản thử nghiệm), màn chào.
-  2. **Tạo nhóm:** Menu → Tạo nhóm mới (nhóm tự tạo = đồng ý chia sẻ với nhóm đó). Hoặc **tham gia nhóm:** "Tham gia bằng mã mời" → nhập mã 6 ký tự (hoặc quét QR / mở link mời).
-  3. **Màn đồng ý sau khi nhập mã** ("Tham gia “Tên nhóm”"): quay chậm để thấy danh sách thành viên, mục "Nếu chia sẻ, thành viên nhóm sẽ thấy" (vị trí chính xác, pin, lịch sử 30 ngày, thông báo đến/rời) và ba lựa chọn. Bấm **"Chia sẻ vị trí với nhóm này"**.
-  4. Bảng "Bật chia sẻ vị trí?" hiện ra (chia sẻ đang tắt) → bấm **"Bật chia sẻ"**.
-  5. **Màn giải thích vị trí** (disclosure: thu thập vị trí kể cả khi ứng dụng đóng, để chia sẻ với nhóm) → bấm "Đồng ý".
-  6. **Hộp thoại xin quyền của hệ thống** (Khi dùng ứng dụng) → màn giải thích "Luôn cho phép" → chọn **Cho phép mọi lúc** trong Cài đặt.
-  7. **Chạy nền:** về màn hình chính / khoá máy; cho thấy vị trí vẫn cập nhật trên máy thứ hai.
-  8. **Thông báo cố định** "IPing đang chia sẻ vị trí" trên thanh thông báo, có nút **"Dừng chia sẻ"** (bấm thử để thấy chia sẻ tắt, rồi bật lại).
-  9. Mở lại app: chỉ báo **"Đang chia sẻ với N người"** trên màn chính; vào Menu → Bảo mật & Bạn bè cho thấy công tắc "Chia sẻ với nhóm này" của từng nhóm.
+  1. **Chuẩn bị:** đăng nhập tài khoản thử nghiệm A trên máy quay; tài khoản B trên máy thứ hai, cùng một nhóm (vào bằng mã mời → "Chia sẻ vị trí với nhóm này"). Quyền vị trí trên máy quay đang ở trạng thái chưa cấp.
+  2. **Bật chia sẻ:** bấm **"Bật chia sẻ"**.
+  3. **Màn giải thích vị trí** (prominent disclosure): quay chậm để đọc được "dữ liệu vị trí… kể cả khi ứng dụng đã đóng hoặc không được sử dụng", danh sách tính năng, ai thấy, cách dừng → bấm **"Đồng ý và tiếp tục"**.
+  4. **Hộp thoại xin quyền của hệ thống** → chọn "Khi dùng ứng dụng".
+  5. Màn giải thích **"Luôn cho phép"** → "Tiếp tục" → **trang Cài đặt quyền vị trí của IPing (Android 11+)** → chọn **"Luôn cho phép"** → quay lại app.
+  6. **Thông báo cố định** "IPing đang chia sẻ vị trí" trên thanh thông báo, có nút **"Dừng chia sẻ"**.
+  7. **Vuốt tắt app** khỏi màn hình đa nhiệm (app không còn mở).
+  8. Trên máy thứ hai (tài khoản B): mở thành viên A → bấm **"Cập nhật vị trí"**.
+  9. Máy quay (A) nhận thông báo **"📍 B muốn biết bạn đang ở đâu"**; trên máy thứ hai vị trí của A **được cập nhật** (thời gian "vừa xong"), dù app trên máy A đã bị đóng. Nên quay cả hai máy hoặc ghép hai đoạn.
+  10. Kéo thanh thông báo trên máy A: thông báo cố định vẫn còn → bấm **"Dừng chia sẻ"** → chia sẻ tắt (máy B thấy A "đã tắt chia sẻ").
 
 ### Dịch vụ trên nền trước (Foreground service, Android 14)
 
-- Loại: **Vị trí** (Location).
-- Mô tả: "Hiển thị thông báo liên tục khi người dùng bật chia sẻ vị trí, để cập nhật vị trí cho những nhóm họ đã chọn chia sẻ trong lúc di chuyển. Thông báo có nút Dừng chia sẻ."
-- Video: dùng chung video ở trên (bước 8), cho thấy thông báo "IPing đang chia sẻ vị trí" và nút "Dừng chia sẻ".
+- Loại: **Vị trí** (Location) — `FOREGROUND_SERVICE_LOCATION`.
+- Mô tả: "Khi người dùng bật Chia sẻ vị trí, ứng dụng chạy dịch vụ nền trước loại Vị trí với thông báo cố định 'IPing đang chia sẻ vị trí' để tiếp tục cập nhật vị trí cho những nhóm họ đã chọn trong lúc di chuyển, kể cả khi ứng dụng đã đóng (báo đến/rời địa điểm, Về an toàn, cảnh báo tốc độ). Người dùng dừng bất cứ lúc nào bằng nút 'Dừng chia sẻ' trên thông báo hoặc trong ứng dụng. Dịch vụ dừng ngay khi tắt chia sẻ."
+- Người dùng có thấy không: **Có** (thông báo cố định trong suốt thời gian chạy).
+- Video: dùng chung video ở trên (bước 6 và 10), cho thấy thông báo "IPing đang chia sẻ vị trí" và nút "Dừng chia sẻ".
 
 ### Camera
 
@@ -225,6 +280,13 @@ Người dùng luôn chủ động:
 ---
 
 ## 4. Thử nghiệm kín (bắt buộc với tài khoản cá nhân mới)
+
+> **Thử nghiệm kín 12 người / 14 ngày** (tài khoản nhà phát triển cá nhân tạo sau 13/11/2023):
+>
+> - [ ] Ít nhất **12 người thử nghiệm đã chọn tham gia** (opt-in) và **giữ cài app liên tục 14 ngày** (không phải 12 lượt tải tổng cộng).
+> - [ ] Đếm 14 ngày tính từ khi đủ 12 người cùng tham gia; ai gỡ app hoặc rời chương trình thì không còn được tính.
+> - [ ] Khuyến khích người thử dùng thật (mở app, tham gia nhóm, bật chia sẻ) và gửi góp ý qua CH Play; Google hỏi về quá trình thử nghiệm khi đăng ký phát hành chính thức.
+> - [ ] Cập nhật bản thử nghiệm vài lần trong 14 ngày (sửa lỗi theo góp ý) để có câu trả lời cho bảng hỏi.
 
 1. Vào **Kiểm thử → Thử nghiệm kín** → tạo kênh, ví dụ "Thử nghiệm Alpha".
 2. Mục **Người thử nghiệm**:
@@ -251,6 +313,9 @@ Sau lần tải lên đầu tiên:
 ```bash
 flutter build appbundle --dart-define=MAPTILER_KEY=<key>
 ```
+
+- Cần `android/key.properties` (khoá upload, mẫu `android/key.properties.example`). Thiếu file này thì build release **báo lỗi** (không lặng lẽ ký bằng khoá debug). Chỉ để thử bản release trên máy: `flutter build apk --release -P allowDebugSigning=true` (hoặc `IPING_ALLOW_DEBUG_SIGNING=1 flutter build apk --release`). Bản debug / `flutter run` không bị ảnh hưởng.
+- Bản phát hành không bao giờ tải ô bản đồ từ `tile.openstreetmap.org` hay `server.arcgisonline.com` (không key): chưa có key MapTiler / ArcGIS (Firestore `config/maps` hoặc `--dart-define`) thì bản đồ để trống. Chỉ bản debug mới dùng máy chủ công cộng để phát triển.
 
 - Số phiên bản (versionCode) phải **tăng** mỗi lần tải lên.
 - Tăng ở dòng `version:` trong `pubspec.yaml`, hiện là `0.1.0+1`, lần sau đổi thành `0.1.0+2`.

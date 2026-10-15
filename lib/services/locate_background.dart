@@ -41,7 +41,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
         await FirebaseAuth.instance.authStateChanges().first.timeout(const Duration(seconds: 5), onTimeout: () => null);
     if (user == null) return;
     // Chưa đồng ý chia sẻ với nhóm này (vd. vừa vào bằng mã mời): không gửi vị trí.
-    // Chưa có dữ liệu đồng ý (người dùng cũ chưa mở bản mới) thì coi như đã đồng ý, như quy tắc chuyển đổi.
+    // Chưa có dữ liệu đồng ý thì KHÔNG gửi (an toàn về quyền riêng tư).
     if (!backgroundConsentAllows(prefs.getString(GroupConsent.prefKey(user.uid)), gid, GroupConsent.parse)) return;
 
     final perm = await Geolocator.checkPermission();

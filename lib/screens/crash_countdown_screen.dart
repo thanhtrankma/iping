@@ -63,7 +63,7 @@ class _CrashCountdownScreenState extends State<CrashCountdownScreen> {
       }
     }
     if (!mounted) return;
-    setState(() => _result = sent > 0 ? 'Đã gửi SOS tới $sent nhóm.' : 'Không gửi được SOS. Hãy gọi 113 / 115.');
+    setState(() => _result = sent > 0 ? 'Đã gửi SOS tới $sent nhóm.' : 'Không gửi được SOS. Hãy gọi 113 / 114 / 115.');
   }
 
   @override
@@ -82,7 +82,10 @@ class _CrashCountdownScreenState extends State<CrashCountdownScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
-              const Text('Phát hiện va chạm (beta) có thể nhầm khi điện thoại bị rơi hoặc va đập.',
+              const Text(
+                  'Phát hiện va chạm (beta) có thể nhầm khi điện thoại bị rơi hoặc va đập, và có thể không phát hiện '
+                  'được va chạm thật. Tính năng này không thay thế cuộc gọi 113 / 114 / 115: nếu cần trợ giúp, '
+                  'hãy gọi ngay.',
                   textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 15)),
               const Spacer(),
               if (_result != null)

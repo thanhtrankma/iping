@@ -59,9 +59,18 @@ class GroupService {
 
   // ---- Vị trí ----
 
+  /// Vị trí các thành viên. Bỏ qua bản ghi không có toạ độ (thành viên đã thôi chia sẻ / tạm dừng:
+  /// toạ độ cuối bị xoá, xem [LocationService.hiddenLocationFields]) để không vẽ ghim ở (0, 0).
   Stream<List<MemberLocation>> locations(String gid) => _sub(gid, 'locations')
       .snapshots()
-      .map((s) => s.docs.map(MemberLocation.fromDoc).toList());
+      .map((s) => s.docs.where((d) => hasCoordinates(d.data())).map(MemberLocation.fromDoc).toList());
+
+  /// Bản ghi vị trí còn toạ độ hợp lệ.
+  static bool hasCoordinates(Map<String, dynamic> d) => d['lat'] is num && d['lng'] is num;
+
+  /// Xoá lịch sử vị trí của mình trong nhóm [gid] và ẩn vị trí cuối (khi thôi chia sẻ với nhóm).
+  Future<void> forgetMyLocationInGroup(String gid) =>
+      _fn.httpsCallable('forgetMyLocationInGroup').call({'groupId': gid});
 
   /// Lịch sử vị trí của một thành viên trong khoảng thời gian.
   Future<List<TrackPoint>> history(String gid, String uid, DateTime from, DateTime to) async {
@@ -136,6 +145,7 @@ class GroupService {
         'likes': m.likes.contains(_uid) ? FieldValue.arrayRemove([_uid]) : FieldValue.arrayUnion([_uid]),
       });
 
+  /// Người đăng hoặc chủ nhóm xoá (Cloud Function `onMomentDeleted` xoá ảnh trên Storage).
   Future<void> deleteMoment(String gid, String id) => _sub(gid, 'moments').doc(id).delete();
 
   // ---- Meetup ----
@@ -196,6 +206,12 @@ class GroupService {
       .snapshots()
       .map((s) => s.docs.map(GroupEvent.fromDoc).toList());
 
+  /// Sự kiện tự xoá sau 30 ngày (Firestore TTL trên `expireAt`).
+  static const eventRetention = Duration(days: 30);
+
+  /// Hạn xoá của một sự kiện tạo lúc này.
+  static Timestamp eventExpireAt() => Timestamp.fromDate(DateTime.now().add(eventRetention));
+
   Future<void> addEvent(String gid,
           {required String type, String? placeName, double? lat, double? lng, int? battery, int? speed}) =>
       _sub(gid, 'events').add({
@@ -208,6 +224,7 @@ class GroupService {
         if (battery != null) 'battery': battery,
         if (speed != null) 'speed': speed,
         'createdAt': FieldValue.serverTimestamp(),
+        'expireAt': eventExpireAt(),
       });
 
   Future<void> sendSos(String gid, {double? lat, double? lng}) =>

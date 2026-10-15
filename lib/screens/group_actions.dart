@@ -211,7 +211,9 @@ class GroupActions {
         icon: const GlassIconBadge(icon: Icons.sos_rounded, color: AppColors.sos, size: 64),
         title: const Text('Gửi cảnh báo SOS?'),
         content: Text(
-          'Tất cả thành viên "${g.name}" sẽ nhận thông báo khẩn cấp kèm vị trí hiện tại của bạn.',
+          'Tất cả thành viên "${g.name}" sẽ nhận thông báo khẩn cấp kèm vị trí hiện tại của bạn.\n\n'
+          'SOS chỉ gửi tới thành viên nhóm, không gửi tới cơ quan cứu hộ và không thay thế cuộc gọi '
+          '113 / 114 / 115. Thông báo có thể đến chậm hoặc không đến khi mất mạng.',
           textAlign: TextAlign.center,
         ),
         actionsAlignment: MainAxisAlignment.center,

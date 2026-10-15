@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../utils/auth_errors.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
+import '../widgets/legal_links.dart';
 import 'account_dialogs.dart';
 import 'phone_sign_in_screen.dart';
 
@@ -27,6 +28,9 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _register = false;
   bool _busy = false;
   bool _showPassword = false;
+
+  /// Đăng ký bằng email: bắt buộc đánh dấu đủ 13 tuổi và đồng ý điều khoản.
+  bool _accepted = false;
   String? _error;
 
   @override
@@ -274,6 +278,52 @@ class _SignInScreenState extends State<SignInScreen> {
                                         ),
                                       ),
                                     ],
+                                    if (_register)
+                                      FormField<bool>(
+                                        key: const ValueKey('terms'),
+                                        initialValue: _accepted,
+                                        validator: (_) => _accepted ? null : 'Bạn cần đồng ý để tạo tài khoản',
+                                        builder: (field) => Padding(
+                                          padding: const EdgeInsets.only(top: 12),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Checkbox(
+                                                    value: _accepted,
+                                                    visualDensity: VisualDensity.compact,
+                                                    onChanged: (v) {
+                                                      setState(() => _accepted = v ?? false);
+                                                      field.didChange(v);
+                                                    },
+                                                  ),
+                                                  const Expanded(
+                                                    child: Padding(
+                                                      padding: EdgeInsets.only(top: 10),
+                                                      child: LegalConsentText(
+                                                        prefix: 'Tôi đủ 13 tuổi và đồng ý ',
+                                                        textAlign: TextAlign.start,
+                                                        fontSize: 13.5,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              if (field.hasError)
+                                                Padding(
+                                                  padding: const EdgeInsets.only(left: 14, top: 2),
+                                                  child: Text(field.errorText!,
+                                                      style: const TextStyle(
+                                                          color: AppColors.sos,
+                                                          fontSize: 12.5,
+                                                          fontWeight: FontWeight.w500)),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     const SizedBox(height: 20),
                                     _PrimaryButton(
                                       busy: _busy,
@@ -310,6 +360,11 @@ class _SignInScreenState extends State<SignInScreen> {
                                               .push(MaterialPageRoute(builder: (_) => const PhoneSignInScreen())),
                                       icon: const Icon(Icons.phone_iphone_rounded),
                                       label: const Text('Tiếp tục với số điện thoại'),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 6),
+                                      child: LegalConsentText(),
                                     ),
                                     const SizedBox(height: 6),
                                     TextButton(

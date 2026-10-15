@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/moderation_service.dart';
 import '../models/models.dart';
 import '../services/group_service.dart';
 import '../theme.dart';
@@ -68,7 +69,12 @@ class _ActivityTabState extends State<ActivityTab> {
         stream: _events,
         builder: (context, snap) {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-          final events = snap.data!;
+          // Ẩn hoạt động của người mình đã chặn (trừ SOS / quá giờ Về an toàn: vẫn phải thấy).
+          final blocked = ModerationService.instance.blocked.value;
+          final events = [
+            for (final e in snap.data!)
+              if (!blocked.contains(e.uid) || e.type == 'sos' || e.type == 'safe_overdue') e,
+          ];
           if (events.isEmpty) {
             return const EmptyState(
               icon: Icons.notifications_active_rounded,

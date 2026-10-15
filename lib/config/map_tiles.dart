@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -73,6 +74,42 @@ class MapKeys extends ChangeNotifier {
 
 const _ua = 'com.iping.app';
 
+/// Chỉ bản debug/profile mới được dùng máy chủ công cộng không key (tile.openstreetmap.org,
+/// server.arcgisonline.com) khi chưa có key. Bản phát hành KHÔNG BAO GIỜ gọi tới các máy chủ đó
+/// (chính sách tile của OSM và điều khoản Esri): chưa có key thì vẽ nền trống.
+@visibleForTesting
+bool allowKeylessTileFallback = !kReleaseMode;
+
+bool _loggedMissingKey = false;
+
+void _logMissingKey() {
+  if (_loggedMissingKey) return;
+  _loggedMissingKey = true;
+  debugPrint('Map tiles: chưa có MAPTILER_KEY / ARCGIS_KEY (config/maps hoặc --dart-define); bản đồ để trống.');
+}
+
+/// PNG 1x1 trong suốt: ô bản đồ "trống" khi chưa có key ở bản phát hành.
+final Uint8List _transparentPng = Uint8List.fromList(const [
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, //
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, //
+  0x89, 0x00, 0x00, 0x00, 0x0B, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x60, 0x00, 0x02, 0x00, //
+  0x00, 0x05, 0x00, 0x01, 0x7A, 0x5E, 0xAB, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, //
+  0xAE, 0x42, 0x60, 0x82,
+]);
+
+/// Không tải gì qua mạng: mọi ô là ảnh trong suốt (nền của bản đồ hiện ra).
+class _BlankTileProvider extends TileProvider {
+  @override
+  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) => MemoryImage(_transparentPng);
+}
+
+/// Lớp bản đồ trống (bản phát hành chưa có key).
+@visibleForTesting
+TileLayer blankTileLayer() {
+  _logMissingKey();
+  return TileLayer(tileProvider: _BlankTileProvider(), userAgentPackageName: _ua);
+}
+
 TileLayer _mapTiler(BuildContext context, String map, String ext) => TileLayer(
       // {r} = "@2x" trên màn hình mật độ cao (MapTiler tính như một lượt tải).
       urlTemplate: 'https://api.maptiler.com/maps/$map/256/{z}/{x}/{y}{r}.$ext?key=${MapKeys.instance.mapTiler}',
@@ -105,6 +142,7 @@ List<Widget> satelliteTileLayers(BuildContext context) {
     ];
   }
   if (keys.usingMapTiler) return [_mapTiler(context, 'hybrid', 'jpg')];
+  if (!allowKeylessTileFallback) return [blankTileLayer()];
   // Chỉ dùng khi phát triển: Esri không key không được phép dùng trong app phát hành.
   return [
     for (final service in ['World_Imagery', 'Reference/World_Boundaries_and_Places'])
@@ -117,10 +155,12 @@ List<Widget> satelliteTileLayers(BuildContext context) {
 }
 
 /// Bản đồ đường phố thường.
-TileLayer streetTileLayer(BuildContext context) => MapKeys.instance.usingMapTiler
-    ? _mapTiler(context, 'streets-v2', 'png')
-    // Chỉ dùng khi phát triển: chính sách tile của OSM không cho app phát hành dùng máy chủ công cộng.
-    : TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: _ua);
+TileLayer streetTileLayer(BuildContext context) {
+  if (MapKeys.instance.usingMapTiler) return _mapTiler(context, 'streets-v2', 'png');
+  if (!allowKeylessTileFallback) return blankTileLayer();
+  // Chỉ dùng khi phát triển: chính sách tile của OSM không cho app phát hành dùng máy chủ công cộng.
+  return TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: _ua);
+}
 
 /// Dòng ghi nguồn bắt buộc hiển thị trên bản đồ.
 String mapAttribution({required bool satellite}) {

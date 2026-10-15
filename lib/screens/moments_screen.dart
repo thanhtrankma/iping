@@ -10,11 +10,13 @@ import '../models/models.dart';
 import '../services/geocode_service.dart';
 import '../services/group_service.dart';
 import '../services/location_service.dart';
+import '../services/moderation_service.dart';
 import '../services/profile_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
+import 'moderation_sheets.dart';
 import 'profile_screen.dart' show pickImageSource;
 
 /// Danh sách khoảnh khắc 24 giờ qua của nhóm.
@@ -28,6 +30,12 @@ class MomentsScreen extends StatefulWidget {
 
 class _MomentsScreenState extends State<MomentsScreen> {
   late final Stream<List<Moment>> _moments = GroupService.instance.moments(widget.group.id);
+
+  @override
+  void initState() {
+    super.initState();
+    ModerationService.instance.watch();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,32 +67,85 @@ class _MomentsScreenState extends State<MomentsScreen> {
           builder: (context, snap) {
             if (snap.hasError) return Center(child: Text('Lỗi: ${snap.error}'));
             if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-            final moments = snap.data!;
-            if (moments.isEmpty) {
-              return const EmptyState(
-                icon: Icons.auto_awesome_rounded,
-                title: 'Chưa có khoảnh khắc nào',
-                text: 'Chia sẻ một bức ảnh hay một dòng trạng thái.\nKhoảnh khắc tự ẩn sau 24 giờ.',
-              );
-            }
-            final mq = MediaQuery.of(context);
-            return ListView.separated(
-              padding: EdgeInsets.fromLTRB(16, mq.padding.top + 60 + 12, 16, mq.padding.bottom + 110),
-              itemCount: moments.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, i) => MomentCard(groupId: widget.group.id, moment: moments[i]),
+            return ValueListenableBuilder<Set<String>>(
+              valueListenable: ModerationService.instance.blocked,
+              builder: (context, blocked, _) => _list(context, snap.data!, blocked),
             );
           },
         ),
       ),
     );
   }
+
+  Widget _list(BuildContext context, List<Moment> all, Set<String> blocked) {
+    // Ẩn khoảnh khắc của người mình đã chặn.
+    final moments = all.where((m) => !blocked.contains(m.uid)).toList();
+    if (moments.isEmpty) {
+      return const EmptyState(
+        icon: Icons.auto_awesome_rounded,
+        title: 'Chưa có khoảnh khắc nào',
+        text: 'Chia sẻ một bức ảnh hay một dòng trạng thái.\nKhoảnh khắc tự ẩn sau 24 giờ.',
+      );
+    }
+    final mq = MediaQuery.of(context);
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(16, mq.padding.top + 60 + 12, 16, mq.padding.bottom + 110),
+      itemCount: moments.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, i) => MomentCard(
+        groupId: widget.group.id,
+        moment: moments[i],
+        isGroupOwner: widget.group.isOwner(FirebaseAuth.instance.currentUser?.uid),
+      ),
+    );
+  }
 }
 
 class MomentCard extends StatelessWidget {
-  const MomentCard({super.key, required this.groupId, required this.moment});
+  const MomentCard({super.key, required this.groupId, required this.moment, this.isGroupOwner = false});
   final String groupId;
   final Moment moment;
+
+  /// Chủ nhóm được xoá khoảnh khắc của mọi người.
+  final bool isGroupOwner;
+
+  /// Menu "⋯": Báo cáo · Chặn người này · Xoá.
+  Future<void> _showMenu(BuildContext context, String? me) async {
+    final m = moment;
+    final action = await showContentActions(
+      context,
+      canCopy: false,
+      canDelete: ModerationService.canDelete(myUid: me, authorUid: m.uid, isGroupOwner: isGroupOwner),
+      isMine: m.uid == me,
+      deleteLabel: 'Xoá khoảnh khắc',
+    );
+    if (action == null || !context.mounted) return;
+    switch (action) {
+      case ContentAction.copy:
+        break;
+      case ContentAction.delete:
+        if (!await confirmDelete(context, title: 'Xoá khoảnh khắc?', content: 'Khoảnh khắc sẽ bị xoá với cả nhóm.')) {
+          return;
+        }
+        try {
+          await GroupService.instance.deleteMoment(groupId, m.id);
+        } catch (e) {
+          if (context.mounted) showMessage(context, 'Không xoá được: $e');
+        }
+      case ContentAction.report:
+        await showReportSheet(
+          context,
+          kind: ReportKind.moment,
+          targetUid: m.uid,
+          targetName: m.name,
+          groupId: groupId,
+          targetId: m.id,
+          text: m.text,
+        );
+      case ContentAction.block:
+        await blockUser(context, uid: m.uid, name: m.name);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,12 +195,11 @@ class MomentCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (m.uid == me)
-                    IconButton(
-                      tooltip: 'Xoá',
-                      icon: Icon(Icons.delete_outline_rounded, color: secondary, size: 22),
-                      onPressed: () => GroupService.instance.deleteMoment(groupId, m.id),
-                    ),
+                  IconButton(
+                    tooltip: 'Tuỳ chọn',
+                    icon: Icon(Icons.more_horiz_rounded, color: secondary, size: 24),
+                    onPressed: () => _showMenu(context, me),
+                  ),
                 ],
               ),
             ),

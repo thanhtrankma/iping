@@ -67,10 +67,10 @@ class PrivacyService {
     if (uid == null || !_marked.add(gid)) return;
     final until = paused.value.untilOf(gid);
     try {
+      // Tạm ẩn: nhóm không còn đọc được toạ độ / tốc độ / pin cuối cùng.
       await FirebaseFirestore.instance.doc('groups/$gid/locations/$uid').update({
-        'sharing': false,
+        ...LocationService.hiddenLocationFields,
         'pausedUntil': until == null ? null : Timestamp.fromDate(until),
-        'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       debugPrint('Mark paused $gid: $e');

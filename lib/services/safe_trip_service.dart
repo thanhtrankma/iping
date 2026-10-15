@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import '../models/models.dart';
 import 'location_service.dart';
 import 'group_consent.dart';
+import 'group_service.dart';
 import 'privacy_service.dart';
 
 /// "Về an toàn": người dùng báo cho nhóm mình đang đi tới đâu và dự kiến tới lúc nào.
@@ -151,6 +152,7 @@ class SafeTripService {
         if (lat != null) 'lat': lat,
         if (lng != null) 'lng': lng,
         'createdAt': FieldValue.serverTimestamp(),
+        'expireAt': GroupService.eventExpireAt(),
       };
 
   // ---- Tự phát hiện tới nơi ----

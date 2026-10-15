@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentDeleted, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
@@ -8,7 +8,7 @@ const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestor
 const { getMessaging } = require('firebase-admin/messaging');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
-const { wantsAlert, CRITICAL } = require('./alert_prefs');
+const { wantsAlert, blockedSender, CRITICAL } = require('./alert_prefs');
 
 initializeApp();
 setGlobalOptions({ region: 'asia-southeast1' });
@@ -39,6 +39,95 @@ async function displayName(uid) {
   if (!authName) return 'Thành viên';
   await db.doc(`users/${uid}`).set({ name: authName }, { merge: true });
   return authName;
+}
+
+// ---------- Lưu trữ ----------
+
+// Sự kiện nhóm (kể cả toạ độ SOS / check-in) tự xoá sau 30 ngày bằng Firestore TTL trên `expireAt`.
+const EVENT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// Báo cáo vi phạm giữ tối đa 1 năm cho việc kiểm duyệt.
+const REPORT_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+
+function eventExpireAt(from = Date.now()) {
+  return Timestamp.fromMillis(from + EVENT_TTL_MS);
+}
+
+// Firestore giới hạn 500 thao tác mỗi batch.
+const BATCH_SIZE = 400;
+
+/// Xoá (hoặc cập nhật bằng `update`) các doc theo từng batch.
+async function commitInChunks(refs, update) {
+  for (let i = 0; i < refs.length; i += BATCH_SIZE) {
+    const batch = db.batch();
+    for (const ref of refs.slice(i, i + BATCH_SIZE)) {
+      if (update) batch.update(ref, update);
+      else batch.delete(ref);
+    }
+    await batch.commit();
+  }
+}
+
+/// Xoá mọi doc khớp truy vấn, mỗi lần tối đa BATCH_SIZE doc.
+async function deleteQuery(query) {
+  for (;;) {
+    const snap = await query.limit(BATCH_SIZE).get();
+    if (snap.empty) return;
+    await commitInChunks(snap.docs.map((d) => d.ref));
+    if (snap.size < BATCH_SIZE) return;
+  }
+}
+
+// Xoá ảnh trên Storage theo tiền tố (ví dụ cả nhóm). Lỗi chỉ ghi log.
+async function deleteFilesWithPrefix(prefix) {
+  try {
+    await getStorage().bucket().deleteFiles({ prefix, force: true });
+  } catch (e) {
+    console.warn('deleteFilesWithPrefix', prefix, e.message);
+  }
+}
+
+// ---------- Giới hạn tần suất push ----------
+
+/// Cho phép tối đa 1 lần mỗi `minMs` cho cùng một khoá (ví dụ nhóm + người + loại).
+/// Chỉ chặn việc gửi push, không xoá dữ liệu. Doc `rateLimits/*` client không đọc/ghi được, tự xoá sau 1 ngày (TTL).
+async function allowRate(key, minMs) {
+  const id = crypto.createHash('sha1').update(key).digest('hex');
+  const ref = db.doc(`rateLimits/${id}`);
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const now = Date.now();
+      const last = snap.exists ? snap.get('at') || 0 : 0;
+      if (now - last < minMs) return false;
+      tx.set(ref, { at: now, expireAt: Timestamp.fromMillis(now + 24 * 3600 * 1000) });
+      return true;
+    });
+  } catch (e) {
+    // Lỗi tranh chấp transaction khi bị dội liên tục: coi như vượt giới hạn.
+    console.warn('rate limit', key, e.message);
+    return false;
+  }
+}
+
+// Khoảng tối thiểu giữa hai push cùng loại của một người trong một nhóm.
+const EVENT_RATE_MS = {
+  sos: 30 * 1000,
+  checkin: 60 * 1000,
+  low_battery: 30 * 60 * 1000,
+  speeding: 5 * 60 * 1000,
+  location_off: 10 * 60 * 1000,
+};
+const DEFAULT_EVENT_RATE_MS = 5 * 1000;
+// Sự kiện do chính server tạo (không cần giới hạn).
+const SERVER_EVENTS = new Set(['join', 'leave_group', 'removed', 'safe_overdue', 'offline']);
+
+/// Tên của `uid` theo server: `memberNames` của nhóm, nếu không có thì hồ sơ.
+/// Không dùng `name`/`fromName`/`createdByName` do client ghi để tránh mạo danh trong push.
+async function nameIn(groupSnap, uid) {
+  const n = (groupSnap?.get?.('memberNames') || {})[uid];
+  if (typeof n === 'string' && n.trim()) return n.trim().slice(0, 50);
+  if (!uid || typeof uid !== 'string') return 'Thành viên';
+  return displayName(uid);
 }
 
 async function photoUrl(uid) {
@@ -114,14 +203,15 @@ exports.joinGroup = onCall(async (req) => {
 
   if (joined) {
     await groupRef.collection('events').add({
-      type: 'join', uid, name: memberName, createdAt: FieldValue.serverTimestamp(),
+      type: 'join', uid, name: memberName, createdAt: FieldValue.serverTimestamp(), expireAt: eventExpireAt(),
     });
   }
   return { groupId: groupRef.id };
 });
 
 // Gỡ một thành viên khỏi nhóm: chuyển quyền chủ nhóm, xoá nhóm khi không còn ai.
-async function leaveGroupAs(uid, groupId) {
+// `announce`: ghi sự kiện "đã rời nhóm" (không ghi khi xoá tài khoản: không để lại tên / uid).
+async function leaveGroupAs(uid, groupId, { announce = true } = {}) {
   const groupRef = db.doc(`groups/${groupId}`);
 
   const result = await db.runTransaction(async (tx) => {
@@ -130,6 +220,9 @@ async function leaveGroupAs(uid, groupId) {
     const remaining = (g.get('memberIds') || []).filter((m) => m !== uid);
     if (remaining.length === 0) {
       tx.delete(db.doc(`inviteCodes/${g.get('inviteCode')}`));
+      // Xoá luôn doc nhóm trong transaction: nếu bước dọn subcollection phía sau lỗi,
+      // cũng không còn nhóm "mồ côi" (còn memberIds nhưng mất mã mời).
+      tx.delete(groupRef);
       return { deleted: true };
     }
     const update = {
@@ -139,17 +232,21 @@ async function leaveGroupAs(uid, groupId) {
     };
     if (g.get('ownerId') === uid) update.ownerId = remaining[0];
     tx.update(groupRef, update);
-    return { deleted: false };
+    return { deleted: false, name: g.get(`memberNames.${uid}`) };
   });
 
   if (result.missing) return;
   if (result.deleted) {
     await db.recursiveDelete(groupRef);
+    await deleteFilesWithPrefix(`moments/${groupId}/`);
   } else {
     await removeMemberData(groupRef, uid);
-    await groupRef.collection('events').add({
-      type: 'leave_group', uid, name: await displayName(uid), createdAt: FieldValue.serverTimestamp(),
-    });
+    if (announce) {
+      await groupRef.collection('events').add({
+        type: 'leave_group', uid, name: result.name || await displayName(uid),
+        createdAt: FieldValue.serverTimestamp(), expireAt: eventExpireAt(),
+      });
+    }
   }
 }
 
@@ -161,12 +258,65 @@ exports.leaveGroup = onCall(async (req) => {
   return { ok: true };
 });
 
-// Xoá vị trí (kèm lịch sử points), điểm khám phá và chuyến "Về an toàn" của một thành viên trong nhóm.
+/// Xoá lịch sử vị trí (points) của `uid` trong nhóm và ẩn vị trí cuối (không còn toạ độ / "đang chia sẻ").
+async function forgetLocation(groupRef, uid) {
+  const locRef = groupRef.collection('locations').doc(uid);
+  await db.recursiveDelete(locRef.collection('points'));
+  try {
+    await locRef.update({
+      sharing: false,
+      lat: FieldValue.delete(),
+      lng: FieldValue.delete(),
+      accuracy: FieldValue.delete(),
+      speed: FieldValue.delete(),
+      battery: FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    // Chưa từng chia sẻ với nhóm này: không có gì để ẩn.
+    if (e.code !== 5 && e.code !== 'not-found') throw e; // 5 = NOT_FOUND
+  }
+}
+
+/// Dọn toàn bộ dữ liệu của `uid` trong một nhóm (rời nhóm, bị xoá khỏi nhóm, xoá tài khoản):
+/// vị trí + lịch sử, điểm khám phá, chuyến "Về an toàn", sự kiện (kể cả toạ độ SOS / check-in),
+/// tin nhắn nhóm, ping, khoảnh khắc (+ ảnh), meetup đã tạo, trạng thái tham gia meetup và lượt tim.
 async function removeMemberData(groupRef, uid) {
   await db.recursiveDelete(groupRef.collection('locations').doc(uid));
   await groupRef.collection('explore').doc(uid).delete();
   await groupRef.collection('safeTrips').doc(uid).delete();
+
+  await deleteQuery(groupRef.collection('events').where('uid', '==', uid));
+  await deleteQuery(groupRef.collection('messages').where('uid', '==', uid));
+  await deleteQuery(groupRef.collection('pings').where('from', '==', uid));
+  await deleteQuery(groupRef.collection('pings').where('to', '==', uid));
+
+  // Khoảnh khắc: xoá doc (onMomentDeleted xoá ảnh) và xoá cả thư mục ảnh của người này cho chắc.
+  await deleteQuery(groupRef.collection('moments').where('uid', '==', uid));
+  await deleteFilesWithPrefix(`moments/${groupRef.id}/${uid}/`);
+  const liked = await groupRef.collection('moments').where('likes', 'array-contains', uid).get();
+  await commitInChunks(liked.docs.map((d) => d.ref), { likes: FieldValue.arrayRemove(uid) });
+
+  // Meetup do người này tạo: xoá. Meetup khác: bỏ trạng thái tham gia của người này.
+  const meetups = await groupRef.collection('meetups').get();
+  const mine = meetups.docs.filter((d) => d.get('createdBy') === uid);
+  await Promise.all(mine.map((d) => db.recursiveDelete(d.ref)));
+  const joined = meetups.docs.filter((d) => d.get('createdBy') !== uid && uid in (d.get('participants') || {}));
+  await commitInChunks(joined.map((d) => d.ref), { [`participants.${uid}`]: FieldValue.delete() });
+
+  // Địa điểm (Nhà, Trường...) là của chung nhóm: giữ lại nhưng bỏ thông tin người tạo.
+  const places = await groupRef.collection('places').where('createdBy', '==', uid).get();
+  await commitInChunks(places.docs.map((d) => d.ref), { createdBy: FieldValue.delete() });
 }
+
+exports.forgetMyLocationInGroup = onCall(async (req) => {
+  const uid = requireAuth(req);
+  const groupId = String(req.data?.groupId ?? '');
+  if (!groupId) throw new HttpsError('invalid-argument', 'Thiếu groupId.');
+  // Không cần kiểm tra thành viên: chỉ xoá dữ liệu của chính người gọi.
+  await forgetLocation(db.doc(`groups/${groupId}`), uid);
+  return { ok: true };
+});
 
 // Đọc nhóm và chắc chắn người gọi là chủ nhóm.
 async function requireOwner(tx, groupRef, uid) {
@@ -207,7 +357,8 @@ exports.removeMember = onCall(async (req) => {
   if (result.isMember) {
     await removeMemberData(groupRef, target);
     await groupRef.collection('events').add({
-      type: 'removed', uid: target, name: result.name, createdAt: FieldValue.serverTimestamp(),
+      type: 'removed', uid: target, name: result.name,
+      createdAt: FieldValue.serverTimestamp(), expireAt: eventExpireAt(),
     });
   }
   return { ok: true };
@@ -247,6 +398,8 @@ async function notifyUsers(groupId, targets, notification, data, senderUid) {
   for (const u of userSnaps) {
     // Tôn trọng cài đặt "Quản lý cảnh báo" của người nhận.
     if (!wantsAlert(u.data(), data.type, senderUid)) continue;
+    // Người nhận đã chặn người gửi.
+    if (blockedSender(u.data(), data.type, senderUid)) continue;
     for (const t of u.get('fcmTokens') || []) tokenOwners.set(t, u.id);
   }
   const tokens = [...tokenOwners.keys()];
@@ -288,10 +441,18 @@ async function notifyUsers(groupId, targets, notification, data, senderUid) {
 exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', async (event) => {
   const e = event.data?.data();
   if (!e) return;
-  // Tên lấy từ hồ sơ (chỉ chủ tài khoản ghi được), không tin `name` do client gửi.
-  e.name = await displayName(e.uid);
+  // Bản app cũ không ghi `expireAt`: bổ sung để TTL tự xoá sự kiện sau 30 ngày.
+  if (!e.expireAt) {
+    const created = e.createdAt?.toMillis?.() ?? Date.now();
+    await event.data.ref.update({ expireAt: eventExpireAt(created) }).catch((err) => console.warn('event expireAt', err.message));
+  }
   const groupId = event.params.groupId;
-  const groupName = (await db.doc(`groups/${groupId}`).get()).get('name') || 'Nhóm';
+  const g = await db.doc(`groups/${groupId}`).get();
+  if (!g.exists) return;
+  // Tên lấy từ server (nhóm / hồ sơ), không tin `name` do client gửi. Người vừa bị xoá / rời nhóm
+  // không còn trong memberNames → dùng tên trong sự kiện do chính server ghi.
+  e.name = SERVER_EVENTS.has(e.type) && e.name ? String(e.name) : await nameIn(g, e.uid);
+  const groupName = g.get('name') || 'Nhóm';
 
   let notification;
   switch (e.type) {
@@ -355,6 +516,12 @@ exports.onGroupEvent = onDocumentCreated('groups/{groupId}/events/{eventId}', as
     default:
       return;
   }
+  if (!SERVER_EVENTS.has(e.type)) {
+    // Đến/rời nhiều địa điểm cùng lúc là hợp lệ → khoá theo cả tên địa điểm.
+    const kind = e.type === 'arrive' || e.type === 'leave' ? `${e.type}:${e.placeName || ''}` : e.type;
+    const minMs = EVENT_RATE_MS[e.type] ?? DEFAULT_EVENT_RATE_MS;
+    if (!(await allowRate(`event:${groupId}:${e.uid}:${kind}`, minMs))) return;
+  }
   await notifyGroup(groupId, e.uid, notification, { type: e.type, uid: String(e.uid || '') });
 });
 
@@ -362,27 +529,23 @@ exports.onGroupMessage = onDocumentCreated('groups/{groupId}/messages/{messageId
   const m = event.data?.data();
   if (!m) return;
   const groupId = event.params.groupId;
-  const groupName = (await db.doc(`groups/${groupId}`).get()).get('name') || 'Nhóm';
+  const g = await db.doc(`groups/${groupId}`).get();
+  if (!g.exists) return;
+  // Nhắn dồn dập: tối đa 1 push mỗi 3 giây cho mỗi người gửi.
+  if (!(await allowRate(`message:${groupId}:${m.uid}`, 3 * 1000))) return;
+  const groupName = g.get('name') || 'Nhóm';
   await notifyGroup(groupId, m.uid, {
-    title: `${await displayName(m.uid)} · ${groupName}`,
+    title: `${await nameIn(g, m.uid)} · ${groupName}`,
     body: String(m.text).slice(0, 200),
   }, { type: 'message', uid: String(m.uid || '') });
 });
 
 // Giới hạn tần suất ping theo cặp người gửi → người nhận (chống spam push, hao pin máy bị yêu cầu vị trí).
-const PING_COOLDOWN_MS = { locate: 60 * 1000, default: 5 * 1000 };
+const PING_COOLDOWN_MS = { locate: 60 * 1000, ping: 5 * 1000 };
 
-async function allowPing(groupId, p) {
+function allowPing(groupId, p) {
   const key = p.type === 'locate' ? 'locate' : 'ping';
-  const ref = db.doc(`groups/${groupId}/pingLimits/${p.from}_${p.to}_${key}`);
-  const cooldown = PING_COOLDOWN_MS[key] || PING_COOLDOWN_MS.default;
-  return db.runTransaction(async (tx) => {
-    const last = (await tx.get(ref)).get('at');
-    const now = Date.now();
-    if (last && now - last.toMillis() < cooldown) return false;
-    tx.set(ref, { at: Timestamp.fromMillis(now) });
-    return true;
-  });
+  return allowRate(`ping:${groupId}:${p.from}:${p.to}:${key}`, PING_COOLDOWN_MS[key]);
 }
 
 const PING_TEXT = {
@@ -401,7 +564,7 @@ exports.onPing = onDocumentCreated('groups/{groupId}/pings/{pingId}', async (eve
   const g = await db.doc(`groups/${groupId}`).get();
   if (!(g.get('memberIds') || []).includes(p.to)) return;
   if (!(await allowPing(groupId, p))) return;
-  const name = await displayName(p.from);
+  const name = await nameIn(g, p.from);
   if (p.type === 'locate') {
     // Data message ưu tiên cao: máy nhận tự lấy và ghi vị trí (nếu đang bật chia sẻ).
     await notifyUsers(groupId, [p.to], { title: 'IPing', body: `📍 ${name} muốn biết bạn đang ở đâu` },
@@ -466,13 +629,14 @@ exports.checkSafeTrips = onSchedule({ schedule: 'every 1 minutes', timeZone: 'As
     await groupRef.collection('events').add({
       type: 'safe_overdue',
       uid,
-      name: trip.name || 'Thành viên',
+      name: (await displayName(uid)),
       placeName: trip.destName || '',
       dueAt: trip.dueAt,
       repeat,
       ...(typeof loc.lat === 'number' && loc.sharing !== false ? { lat: loc.lat, lng: loc.lng } : {}),
       ...(typeof loc.battery === 'number' ? { battery: loc.battery } : {}),
       createdAt: FieldValue.serverTimestamp(),
+      expireAt: eventExpireAt(),
     });
     // Nhắc chính người đi: có thể họ quên tắt, hoặc cần gia hạn.
     await notifyUsers(groupRef.id, [uid], {
@@ -512,10 +676,25 @@ exports.onMoment = onDocumentCreated('groups/{groupId}/moments/{momentId}', asyn
   const m = event.data?.data();
   if (!m) return;
   const groupId = event.params.groupId;
-  const groupName = (await db.doc(`groups/${groupId}`).get()).get('name') || 'Nhóm';
+  const g = await db.doc(`groups/${groupId}`).get();
+  if (!g.exists) return;
+  if (!(await allowRate(`moment:${groupId}:${m.uid}`, 30 * 1000))) return;
+  const groupName = g.get('name') || 'Nhóm';
   const body = m.text ? String(m.text).slice(0, 120) : (m.photoUrl ? '📷 Đã đăng một ảnh' : 'Có khoảnh khắc mới');
-  await notifyGroup(groupId, m.uid, { title: `✨ ${await displayName(m.uid)} · ${groupName}`, body },
+  await notifyGroup(groupId, m.uid, { title: `✨ ${await nameIn(g, m.uid)} · ${groupName}`, body },
     { type: 'moment', uid: String(m.uid || '') });
+});
+
+/// Khoảnh khắc bị xoá (người đăng / chủ nhóm xoá, TTL 24 giờ, rời nhóm, xoá nhóm) → xoá ảnh trên Storage.
+exports.onMomentDeleted = onDocumentDeleted('groups/{groupId}/moments/{momentId}', async (event) => {
+  const m = event.data?.data();
+  if (!m?.photoUrl || typeof m.uid !== 'string' || !m.uid) return;
+  const { groupId, momentId } = event.params;
+  try {
+    await getStorage().bucket().file(`moments/${groupId}/${m.uid}/${momentId}.jpg`).delete({ ignoreNotFound: true });
+  } catch (e) {
+    console.warn('delete moment photo', groupId, momentId, e.message);
+  }
 });
 
 // ---------- Meetup ----------
@@ -524,39 +703,108 @@ exports.onMeetup = onDocumentCreated('groups/{groupId}/meetups/{meetupId}', asyn
   const m = event.data?.data();
   if (!m) return;
   const groupId = event.params.groupId;
+  const g = await db.doc(`groups/${groupId}`).get();
+  if (!g.exists) return;
+  if (!(await allowRate(`meetup:${groupId}:${m.createdBy}`, 30 * 1000))) return;
   const when = m.time?.toDate?.();
   const time = when
     ? when.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
     : '';
   await notifyGroup(groupId, m.createdBy, {
-    title: `📍 Meetup: ${m.title}`,
-    body: `${await displayName(m.createdBy)} hẹn mọi người lúc ${time}. Mở IPing để tham gia.`,
+    title: `📍 Meetup: ${String(m.title || '').slice(0, 80)}`,
+    body: `${await nameIn(g, m.createdBy)} hẹn mọi người lúc ${time}. Mở IPing để tham gia.`,
   }, { type: 'meetup', meetupId: event.params.meetupId });
+});
+
+// ---------- Báo cáo vi phạm ----------
+
+const REPORT_KIND = { message: 'tin nhắn nhóm', dm: 'tin nhắn riêng', moment: 'khoảnh khắc', user: 'người dùng' };
+const REPORT_REASON = { spam: 'spam', harassment: 'quấy rối', sexual: 'nội dung tình dục', violence: 'bạo lực', other: 'khác' };
+
+/// Đọc lại nội dung bị báo cáo phía server (để còn bằng chứng nếu người đăng xoá sau đó).
+async function reportedContent(r) {
+  const id = typeof r.targetId === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(r.targetId) ? r.targetId : null;
+  const safe = (v) => (typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v) ? v : null);
+  let ref = null;
+  if (r.kind === 'message' && safe(r.groupId) && id) ref = db.doc(`groups/${r.groupId}/messages/${id}`);
+  if (r.kind === 'moment' && safe(r.groupId) && id) ref = db.doc(`groups/${r.groupId}/moments/${id}`);
+  if (r.kind === 'dm' && safe(r.dmId) && id) ref = db.doc(`dms/${r.dmId}/messages/${id}`);
+  if (!ref) return null;
+  const snap = await ref.get();
+  if (!snap.exists) return null;
+  const d = snap.data();
+  return {
+    uid: typeof d.uid === 'string' ? d.uid : null,
+    text: typeof d.text === 'string' ? d.text.slice(0, 1000) : null,
+    photoUrl: typeof d.photoUrl === 'string' ? d.photoUrl : null,
+  };
+}
+
+/// Báo cáo mới: đánh dấu `open`, lưu bản sao nội dung, hẹn giờ xoá (1 năm) và báo cho quản trị viên
+/// (uid trong `config/admins.uids`).
+exports.onReport = onDocumentCreated('reports/{reportId}', async (event) => {
+  const r = event.data?.data();
+  if (!r) return;
+  const reportId = event.params.reportId;
+  let content = null;
+  try {
+    content = await reportedContent(r);
+  } catch (e) {
+    console.warn('report content', reportId, e.message);
+  }
+  const created = r.createdAt?.toMillis?.() ?? Date.now();
+  await event.data.ref.update({
+    status: 'open',
+    expireAt: Timestamp.fromMillis(created + REPORT_TTL_MS),
+    ...(content ? { content } : {}),
+  });
+
+  const admins = ((await db.doc('config/admins').get()).get('uids') || []).filter((u) => typeof u === 'string');
+  const summary = `${REPORT_KIND[r.kind] || r.kind} · ${REPORT_REASON[r.reason] || r.reason}`;
+  if (admins.length === 0) {
+    console.warn('Báo cáo vi phạm mới nhưng chưa cấu hình config/admins.uids', reportId, summary);
+    return;
+  }
+  // Chống spam báo cáo: tối đa 1 push mỗi 10 giây cho mỗi người báo cáo.
+  if (!(await allowRate(`report:${r.reporterUid}`, 10 * 1000))) return;
+  const text = String(content?.text || r.text || r.note || '').slice(0, 120);
+  await notifyUsers(String(r.groupId || ''), admins, {
+    title: `🚩 Báo cáo vi phạm: ${summary}`,
+    body: text || `Người bị báo cáo: ${r.targetUid}`,
+  }, { type: 'report', reportId }, null);
 });
 
 // ---------- Tài khoản ----------
 
 // Xoá vĩnh viễn tài khoản và toàn bộ dữ liệu của người gọi.
-exports.deleteAccount = onCall({ timeoutSeconds: 300 }, async (req) => {
+exports.deleteAccount = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async (req) => {
   const uid = requireAuth(req);
 
-  // 1. Rời mọi nhóm (trước khi xoá users/{uid} vì cần tên cho sự kiện).
+  // 1. Rời mọi nhóm; removeMemberData xoá vị trí, lịch sử, sự kiện, tin nhắn, ping, khoảnh khắc (+ ảnh),
+  //    meetup, trạng thái tham gia, lượt tim của người này trong nhóm. Không ghi sự kiện "đã rời nhóm".
   const groups = await db.collection('groups').where('memberIds', 'array-contains', uid).get();
   for (const g of groups.docs) {
-    await leaveGroupAs(uid, g.id);
-    // Khoảnh khắc của người này sẽ mất ảnh nên xoá luôn.
-    const moments = await g.ref.collection('moments').where('uid', '==', uid).get();
-    await Promise.all(moments.docs.map((m) => db.recursiveDelete(m.ref)));
+    await leaveGroupAs(uid, g.id, { announce: false });
   }
+
+  // Nhóm đã chặn người này: bỏ tên (và uid) khỏi danh sách chặn.
+  const blockedIn = await db.collection('groups').where('blockedIds', 'array-contains', uid).get();
+  await commitInChunks(blockedIn.docs.map((d) => d.ref), {
+    blockedIds: FieldValue.arrayRemove(uid),
+    [`blockedNames.${uid}`]: FieldValue.delete(),
+  });
 
   // Chat 1-1 của người này (cả nội dung tin nhắn).
   const dms = await db.collection('dms').where('members', 'array-contains', uid).get();
   await Promise.all(dms.docs.map((d) => db.recursiveDelete(d.ref)));
 
+  // Báo cáo vi phạm do người này gửi.
+  await deleteQuery(db.collection('reports').where('reporterUid', '==', uid));
+
   // 2. Ảnh đại diện và ảnh khoảnh khắc trên Storage.
   const bucket = getStorage().bucket();
-  await bucket.deleteFiles({ prefix: `avatars/${uid}/` });
-  await bucket.deleteFiles({ prefix: 'moments/', matchGlob: `moments/*/${uid}/**` });
+  await bucket.deleteFiles({ prefix: `avatars/${uid}/`, force: true });
+  await bucket.deleteFiles({ prefix: 'moments/', matchGlob: `moments/*/${uid}/**`, force: true });
 
   // 3. Hồ sơ cùng các collection con (explore...).
   await db.recursiveDelete(db.doc(`users/${uid}`));
@@ -597,9 +845,10 @@ exports.checkStaleLocations = onSchedule({ schedule: 'every 15 minutes', timeZon
     await groupRef.collection('events').add({
       type: 'offline',
       uid,
-      name: d.name || 'Thành viên',
+      name: g.get(`memberNames.${uid}`) || d.name || 'Thành viên',
       lastAt: d.lastSeenAt,
       createdAt: FieldValue.serverTimestamp(),
+      expireAt: eventExpireAt(),
     });
   }));
 });
@@ -616,8 +865,10 @@ exports.onDmMessage = onDocumentCreated('dms/{dmId}/messages/{messageId}', async
   const ids = g.exists ? g.get('memberIds') || [] : [];
   if (!dm.members.every((u) => ids.includes(u))) return;
   const others = dm.members.filter((u) => u !== m.uid);
+  // Người nhận đã chặn người gửi: rules đã từ chối tin mới; notifyUsers cũng bỏ qua (blockedUids).
+  if (!(await allowRate(`dm:${event.params.dmId}:${m.uid}`, 3 * 1000))) return;
   await notifyUsers(dm.groupId || '', others, {
-    title: `💬 ${await displayName(m.uid)}`,
+    title: `💬 ${await nameIn(g, m.uid)}`,
     body: String(m.text).slice(0, 200),
   }, { type: 'dm', uid: String(m.uid), dmId: event.params.dmId }, m.uid);
 });

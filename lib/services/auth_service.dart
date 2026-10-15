@@ -184,10 +184,17 @@ class AuthService {
   }
 
   /// Xoá vĩnh viễn tài khoản qua Cloud Function `deleteAccount` rồi đăng xuất.
+  ///
+  /// Tài khoản có liên kết Đăng nhập bằng Apple: xác nhận lại với Apple để lấy authorization code và
+  /// thu hồi token Apple (App Store 5.1.1(v)) TRƯỚC khi xoá. Người dùng huỷ bước xác nhận thì ném
+  /// [AppleReauthCanceled] và không xoá gì.
   Future<void> deleteAccount() async {
-    final uid = user!.uid;
+    final u = user!;
+    final uid = u.uid;
+    final appleCode = await _appleAuthorizationCode(u);
     await _stopServices(uid);
     try {
+      if (appleCode != null) await _auth.revokeTokenWithAuthorizationCode(appleCode);
       await _fn
           .httpsCallable('deleteAccount', options: HttpsCallableOptions(timeout: const Duration(minutes: 5)))
           .call();
@@ -200,6 +207,26 @@ class AuthService {
     }
     await _signOutGoogle();
     await _auth.signOut();
+  }
+
+  /// Có liên kết Apple: đăng nhập lại bằng Apple để lấy authorization code (dùng để thu hồi token).
+  /// Không liên kết Apple thì trả về `null`.
+  Future<String?> _appleAuthorizationCode(User u) async {
+    if (!u.providerData.any((p) => p.providerId == 'apple.com')) return null;
+    final UserCredential cred;
+    try {
+      cred = await u.reauthenticateWithProvider(AppleAuthProvider());
+    } on FirebaseAuthException catch (e) {
+      if (const {'canceled', 'web-context-canceled', 'user-cancelled', 'web-context-cancelled'}.contains(e.code)) {
+        throw const AppleReauthCanceled();
+      }
+      rethrow;
+    }
+    final code = cred.additionalUserInfo?.authorizationCode;
+    if (code == null || code.isEmpty) {
+      throw FirebaseAuthException(code: 'missing-apple-code', message: 'Apple không trả về mã xác nhận.');
+    }
+    return code;
   }
 
   /// `initialize` chỉ được gọi một lần; nếu lỗi thì lần sau thử lại.
@@ -222,4 +249,12 @@ class AuthService {
       debugPrint('Google signOut: $e');
     }
   }
+}
+
+/// Người dùng huỷ bước xác nhận lại với Apple khi xoá tài khoản (tài khoản chưa bị xoá).
+class AppleReauthCanceled implements Exception {
+  const AppleReauthCanceled();
+
+  @override
+  String toString() => 'AppleReauthCanceled';
 }

@@ -22,15 +22,72 @@ service cloud.firestore {
       return s is string && s.size() >= lo && s.size() <= hi;
     }
 
+    // Bản ghi do client tạo phải dùng giờ server (FieldValue.serverTimestamp()), không được ghi giờ
+    // tương lai để ghim lên đầu chat / Hoạt động.
+    function serverNow() {
+      return request.resource.data.createdAt == request.time;
+    }
+
+    // Trường tuỳ chọn `f`: không có, hoặc là chuỗi dài 0..max.
+    function optStr(d, f, max) {
+      return !(f in d) || (d[f] is string && d[f].size() <= max);
+    }
+
+    // Tên hiển thị: Functions cắt còn 50 ký tự khi chép vào nhóm; rules chặn chuỗi quá dài.
+    function validUserName() {
+      return !('name' in request.resource.data) || lenIn(request.resource.data.name, 1, 100);
+    }
+
+    // Danh sách người mình chặn: mảng uid, tối đa 500.
+    function validBlocked() {
+      return !('blockedUids' in request.resource.data)
+        || (request.resource.data.blockedUids is list && request.resource.data.blockedUids.size() <= 500);
+    }
+
+    // `blocker` đã chặn `uid` (users/{blocker}.blockedUids).
+    function hasBlocked(blocker, uid) {
+      let path = /databases/$(database)/documents/users/$(blocker);
+      return exists(path) && uid in get(path).data.get('blockedUids', []);
+    }
+
+    function isOwner(gid) {
+      return get(/databases/$(database)/documents/groups/$(gid)).data.ownerId == request.auth.uid;
+    }
+
     // Cấu hình công khai cho app (key bản đồ phía client). Chỉ sửa trong Firebase Console.
+    // `config/admins` (uid quản trị viên nhận báo cáo vi phạm) chỉ Cloud Functions đọc.
     match /config/{doc} {
-      allow read: if true;
+      allow read: if doc != 'admins';
       allow write: if false;
     }
 
-    // Hồ sơ người dùng: chỉ chính chủ đọc/ghi (chứa token push).
+    // Báo cáo vi phạm (tin nhắn, tin nhắn riêng, khoảnh khắc, người dùng). Client chỉ tạo được,
+    // không đọc / sửa / xoá; Cloud Function onReport đặt `status` và báo quản trị viên.
+    match /reports/{rid} {
+      allow read, update, delete: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(
+             ['reporterUid', 'kind', 'reason', 'targetUid', 'groupId', 'dmId', 'targetId', 'note', 'text', 'createdAt'])
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.kind in ['message', 'dm', 'moment', 'user']
+        && request.resource.data.reason in ['spam', 'harassment', 'sexual', 'violence', 'other']
+        && lenIn(request.resource.data.targetUid, 1, 128)
+        && optStr(request.resource.data, 'groupId', 128)
+        && optStr(request.resource.data, 'dmId', 300)
+        && optStr(request.resource.data, 'targetId', 128)
+        && optStr(request.resource.data, 'note', 500)
+        && optStr(request.resource.data, 'text', 1000)
+        && serverNow();
+    }
+
+    // Hồ sơ người dùng: chỉ chính chủ đọc/ghi (chứa token push, danh sách chặn).
     match /users/{uid} {
-      allow read, write: if signedIn() && request.auth.uid == uid;
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid && validUserName() && validBlocked();
+      // Chỉ kiểm tra tên / danh sách chặn khi trường đó thay đổi (doc cũ vẫn cập nhật được token...).
+      allow update: if signedIn() && request.auth.uid == uid
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['name']) || validUserName())
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['blockedUids']) || validBlocked());
 
       // Ô lục giác đã khám phá, chia theo bucket.
       match /explore/{bucket} {
@@ -48,6 +105,11 @@ service cloud.firestore {
     function dmOpen(dmId) {
       let dm = get(/databases/$(database)/documents/dms/$(dmId)).data;
       return request.auth.uid in dm.members && bothInGroup(dm.members, dm.groupId);
+    }
+    // Người còn lại trong cuộc trò chuyện 1-1.
+    function dmOther(dmId) {
+      let m = get(/databases/$(database)/documents/dms/$(dmId)).data.members;
+      return m[0] == request.auth.uid ? m[1] : m[0];
     }
     match /dms/{dmId} {
       // resource == null: cho phép kiểm tra cuộc trò chuyện đã tồn tại chưa.
@@ -69,10 +131,16 @@ service cloud.firestore {
 
       match /messages/{mid} {
         allow read: if signedIn() && dmOpen(dmId);
+        // Người nhận đã chặn người gửi: không nhắn được nữa.
         allow create: if signedIn() && dmOpen(dmId)
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.text is string
-          && lenIn(request.resource.data.text, 1, 1000);
+          && lenIn(request.resource.data.text, 1, 1000)
+          && serverNow()
+          && !hasBlocked(dmOther(dmId), request.auth.uid);
+        // Người gửi xoá tin của mình.
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid
+          && request.auth.uid in get(/databases/$(database)/documents/dms/$(dmId)).data.members;
       }
     }
 
@@ -114,7 +182,8 @@ service cloud.firestore {
         allow create: if isMember(gid)
           && request.resource.data.from == request.auth.uid
           && request.resource.data.to in get(/databases/$(database)/documents/groups/$(gid)).data.memberIds
-          && request.resource.data.type in ['love', 'boo', 'poke', 'arrived', 'call', 'home', 'locate'];
+          && request.resource.data.type in ['love', 'boo', 'poke', 'arrived', 'call', 'home', 'locate']
+          && serverNow();
       }
 
       // Khoảnh khắc: ảnh/trạng thái kèm vị trí, tự hết hạn sau 24 giờ.
@@ -124,18 +193,33 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 300
-          && request.resource.data.likes == [];
+          && request.resource.data.likes == []
+          && serverNow()
+          // TTL: hết hạn trong khoảng 24 giờ (nới 2 giờ cho lệch đồng hồ máy).
+          && request.resource.data.expireAt is timestamp
+          && request.resource.data.expireAt <= request.time + duration.value(26, 'h')
+          // Ảnh chỉ được trỏ tới file của chính mình trong Storage của nhóm.
+          && (!('photoUrl' in request.resource.data)
+              || (request.resource.data.photoUrl is string
+                  && request.resource.data.photoUrl.matches(
+                       '^https://firebasestorage[.]googleapis[.]com/v0/b/[^/]+/o/moments%2F' + gid + '%2F'
+                       + request.auth.uid + '%2F[^/?]+([?].*)?$')));
         // Thành viên chỉ được thả/bỏ tim của chính mình.
         allow update: if isMember(gid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
           && request.resource.data.likes.toSet().difference(resource.data.likes.toSet())
                .union(resource.data.likes.toSet().difference(request.resource.data.likes.toSet()))
                .hasOnly([request.auth.uid]);
-        allow delete: if isMember(gid) && resource.data.uid == request.auth.uid;
+        // Người đăng hoặc chủ nhóm xoá (Cloud Function onMomentDeleted xoá ảnh).
+        allow delete: if isMember(gid) && (resource.data.uid == request.auth.uid || isOwner(gid));
       }
 
       // Meetup: điểm hẹn của nhóm.
       match /meetups/{mid} {
+        function validStatus(p) {
+          return p.get(request.auth.uid, 'going') in ['invited', 'going', 'declined', 'arrived'];
+        }
+
         allow read: if isMember(gid);
         allow create: if isMember(gid)
           && request.resource.data.createdBy == request.auth.uid
@@ -143,13 +227,23 @@ service cloud.firestore {
           && lenIn(request.resource.data.title, 1, 80)
           && isNumber(request.resource.data.lat)
           && isNumber(request.resource.data.lng)
-          && request.resource.data.time is timestamp;
+          && request.resource.data.time is timestamp
+          && request.resource.data.get('active', true) == true
+          // Lúc tạo chỉ có trạng thái của chính người tạo (không tự ghi "đang tới" cho người khác).
+          && (!('participants' in request.resource.data)
+              || (request.resource.data.participants is map
+                  && request.resource.data.participants.keys().hasOnly([request.auth.uid])
+                  && validStatus(request.resource.data.participants)));
         // Người tạo sửa được mọi thứ; người khác chỉ cập nhật trạng thái của mình.
-        allow update: if isMember(gid) && (
-          resource.data.createdBy == request.auth.uid
-          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants'])
-              && request.resource.data.participants.diff(resource.data.participants)
-                   .affectedKeys().hasOnly([request.auth.uid])));
+        // Không ai (kể cả người tạo) đổi được trạng thái tham gia của người khác.
+        allow update: if isMember(gid)
+          && (resource.data.createdBy == request.auth.uid
+              || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants']))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participants'])
+              || (request.resource.data.participants is map
+                  && request.resource.data.participants.diff(resource.data.get('participants', {}))
+                       .affectedKeys().hasOnly([request.auth.uid])
+                  && validStatus(request.resource.data.participants)));
         allow delete: if isMember(gid) && resource.data.createdBy == request.auth.uid;
       }
 
@@ -171,6 +265,11 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.type in ['arrive', 'leave', 'sos', 'meetup_arrive', 'low_battery', 'checkin', 'location_off', 'speeding',
                                          'safe_start', 'safe_arrive', 'safe_end', 'safe_ok', 'safe_extend']
+          && serverNow()
+          // TTL 30 ngày (Cloud Function onGroupEvent bổ sung nếu bản app cũ không gửi).
+          && (!('expireAt' in request.resource.data)
+              || (request.resource.data.expireAt is timestamp
+                  && request.resource.data.expireAt <= request.time + duration.value(31, 'd')))
           // Cảnh báo pin yếu phải kèm mức pin hợp lệ.
           && (request.resource.data.type != 'low_battery'
               || (request.resource.data.battery is int
@@ -217,7 +316,10 @@ service cloud.firestore {
         allow create: if isMember(gid)
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.text is string
-          && lenIn(request.resource.data.text, 1, 1000);
+          && lenIn(request.resource.data.text, 1, 1000)
+          && serverNow();
+        // Người gửi hoặc chủ nhóm xoá.
+        allow delete: if isMember(gid) && (resource.data.uid == request.auth.uid || isOwner(gid));
       }
     }
   }

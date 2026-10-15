@@ -120,13 +120,22 @@ class ExploreArea {
 ///
 /// Theo chính sách của Nominatim: tối đa 1 yêu cầu/giây, có User-Agent riêng,
 /// và cache kết quả (ở đây lưu cả đường biên vào máy để dùng lại khi offline).
+/// Chỉ gửi toạ độ đã làm tròn (~100 m), không kèm danh tính người dùng.
 class AreaService {
   AreaService._();
   static final instance = AreaService._();
 
   static const _prefKey = 'explore_areas';
   static const _maxCached = 30;
-  static const _userAgent = 'IPing/0.1 (com.iping.app; https://github.com/thanhtrankma/iping)';
+  /// Phiên bản app, khớp `version` trong pubspec.yaml (test kiểm tra).
+  static const appVersion = '0.1.0';
+
+  /// User-Agent riêng theo chính sách Nominatim: tên app/phiên bản + email liên hệ.
+  static const userAgent = 'IPing/$appVersion (contact: beatgone2503@gmail.com)';
+
+  /// Làm tròn toạ độ gửi cho Nominatim còn 3 chữ số thập phân (~100 m): không gửi vị trí chính xác
+  /// của người dùng ra bên thứ ba, vẫn đủ để biết phường/xã.
+  static String coarse(double v) => v.toStringAsFixed(3);
   // Nominatim: 14 ≈ phường/xã, 12 ≈ quận/huyện, 10 ≈ tỉnh/thành phố.
   static const _zooms = [14, 12, 10];
 
@@ -194,15 +203,15 @@ class AreaService {
       try {
         final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
           'format': 'jsonv2',
-          'lat': p.latitude.toStringAsFixed(6),
-          'lon': p.longitude.toStringAsFixed(6),
+          'lat': coarse(p.latitude),
+          'lon': coarse(p.longitude),
           'zoom': '$zoom',
           'polygon_geojson': '1',
           'polygon_threshold': '0.0001',
           'accept-language': 'vi',
         });
         final res = await http
-            .get(uri, headers: {'User-Agent': _userAgent, 'Accept': 'application/json'})
+            .get(uri, headers: {'User-Agent': userAgent, 'Accept': 'application/json'})
             .timeout(const Duration(seconds: 15));
         if (res.statusCode != 200) {
           debugPrint('Nominatim ${res.statusCode}');

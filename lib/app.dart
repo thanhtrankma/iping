@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/invite_screens.dart';
 import 'screens/sign_in_screen.dart';
+import 'services/moderation_service.dart';
 import 'services/auth_service.dart';
 import 'services/explore_service.dart';
 import 'services/location_service.dart';
@@ -103,6 +104,8 @@ class _SignedInShellState extends State<SignedInShell> {
     // Bấm push (app ở nền / đã tắt) → mở đúng màn hình.
     PushRouter.instance.init();
     CrashService.instance.init();
+    // Danh sách người mình đã chặn, dùng để ẩn nội dung ở mọi màn hình.
+    ModerationService.instance.watch();
   }
 
   @override

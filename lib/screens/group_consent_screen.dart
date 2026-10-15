@@ -29,9 +29,17 @@ Future<void> shareWithGroup(BuildContext context, String gid) async {
   if (err != null && context.mounted) showMessage(context, err);
 }
 
-/// Thôi chia sẻ với nhóm [gid]: nhóm không nhận vị trí mới của mình nữa.
+/// Thôi chia sẻ với nhóm [gid]: nhóm không nhận vị trí mới, không còn thấy mình "đang chia sẻ",
+/// vị trí cuối (toạ độ, tốc độ, pin) bị xoá và lịch sử vị trí trong nhóm này bị xoá trên server.
 Future<void> stopSharingWithGroup(String gid) async {
   await GroupConsent.instance.revoke(gid);
+  await LocationService.instance.hideFrom(gid);
+  try {
+    await GroupService.instance.forgetMyLocationInGroup(gid).timeout(const Duration(seconds: 30));
+  } catch (e) {
+    // Offline / lỗi mạng: vị trí cuối đã ẩn; lịch sử vẫn tự xoá sau 30 ngày (TTL).
+    debugPrint('forgetMyLocationInGroup $gid: $e');
+  }
   await LocationService.instance.refresh();
 }
 

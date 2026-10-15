@@ -147,8 +147,14 @@ Future<void> confirmDeleteAccount(BuildContext context) async {
   } catch (e) {
     nav.pop();
     if (!context.mounted) return;
+    if (e is AppleReauthCanceled) {
+      showMessage(context, 'Bạn đã huỷ xác nhận với Apple nên tài khoản chưa bị xoá. Hãy thử lại khi sẵn sàng.');
+      return;
+    }
     final msg = switch (e) {
       FirebaseFunctionsException(:final code) => authErrorMessage(code),
+      FirebaseAuthException(code: 'user-mismatch') => 'Hãy xác nhận bằng đúng Apple ID đã dùng để đăng nhập IPing.',
+      FirebaseAuthException(code: 'missing-apple-code') => 'Apple chưa xác nhận được. Hãy thử lại.',
       FirebaseAuthException(:final code) => authErrorMessage(code),
       _ => 'Có lỗi xảy ra.',
     };
