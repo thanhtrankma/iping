@@ -53,9 +53,10 @@ Tạo nhóm và cùng chia sẻ vị trí với gia đình, bạn bè. Mỗi ng�
 • Tự chọn loại thông báo muốn nhận cho từng người
 
 🆘 AN TOÀN
-• Nút SOS gửi cảnh báo khẩn cấp kèm vị trí cho cả nhóm
+• Nút SOS gửi cảnh báo kèm vị trí cho các thành viên trong nhóm (không gọi dịch vụ khẩn cấp)
 • "Về an toàn": tự báo cho nhóm khi bạn về tới nơi, cảnh báo nếu bị trễ
-• Phát hiện va chạm khi đang di chuyển (thử nghiệm)
+• Phát hiện va chạm (beta, chỉ khi IPing đang mở): có thể không phát hiện hoặc báo nhầm
+⚠️ IPing không liên hệ cơ quan cứu hộ và không thay thế cuộc gọi 113 / 114 / 115. Khi khẩn cấp, hãy gọi trực tiếp.
 
 🕒 LỊCH SỬ & BÁO CÁO
 • Dòng thời gian các nơi đã đến trong 30 ngày, chỉ chia sẻ với nhóm bạn đã chọn
@@ -167,14 +168,14 @@ Về **chia sẻ** (Shared):
   - hiển thị cho thành viên cùng nhóm, vì người dùng chủ động tham gia nhóm **và tự chọn chia sẻ với từng nhóm** (vào nhóm bằng mã mời không tự động chia sẻ: có màn đồng ý riêng; tạo nhóm = đồng ý với nhóm đó);
   - gửi cho nhà cung cấp dịch vụ xử lý thay mình (service provider), như Firebase, Google ML Kit.
 - **Vị trí gần đúng → Có chia sẻ**: tính năng Khám phá gửi toạ độ **đã làm tròn** cho OpenStreetMap Nominatim (bên thứ ba độc lập, không phải nhà cung cấp dịch vụ của mình) để lấy tên phường/quận/tỉnh. Mục đích: Chức năng ứng dụng. Vị trí chính xác **không** gửi cho bên thứ ba nào.
-- MapTiler / Esri chỉ nhận vùng bản đồ đang xem và địa chỉ IP khi tải ô bản đồ (không có dữ liệu tài khoản), không khai là chia sẻ.
+- **MapTiler / Esri (ArcGIS):** khi tải ô bản đồ, máy gửi vùng bản đồ đang xem (thường là quanh vị trí của mình) và địa chỉ IP, không kèm dữ liệu tài khoản. Để khớp với chính sách quyền riêng tư, **khai luôn là chia sẻ "Vị trí gần đúng"** (Chức năng ứng dụng). Khai thừa an toàn hơn khai thiếu.
 
 **Các loại dữ liệu được thu thập:**
 
 | Loại dữ liệu | Thu thập | Chia sẻ | Bắt buộc / tuỳ chọn | Mục đích |
 |---|---|---|---|---|
-| Vị trí → **Vị trí chính xác** | Có | Không | Tuỳ chọn | Chức năng ứng dụng |
-| Vị trí → **Vị trí gần đúng** | Có | **Có** (Nominatim, toạ độ đã làm tròn) | Tuỳ chọn | Chức năng ứng dụng |
+| Vị trí → **Vị trí chính xác** (cả lịch sử 30 ngày, tốc độ) | Có | Không | Tuỳ chọn | Chức năng ứng dụng |
+| Vị trí → **Vị trí gần đúng** | Có | **Có** (Nominatim: toạ độ đã làm tròn; MapTiler / Esri: vùng bản đồ đang xem + IP) | Tuỳ chọn | Chức năng ứng dụng |
 | Thông tin cá nhân → **Tên** | Có | Không | Bắt buộc | Chức năng ứng dụng, Quản lý tài khoản |
 | Thông tin cá nhân → **Địa chỉ email** | Có | Không | Tuỳ chọn (nếu đăng nhập bằng email/Google/Apple) | Quản lý tài khoản |
 | Thông tin cá nhân → **Số điện thoại** | Có | Không | Tuỳ chọn (nếu đăng nhập bằng SĐT) | Quản lý tài khoản |
@@ -182,7 +183,7 @@ Về **chia sẻ** (Shared):
 | Ảnh và video → **Ảnh** | Có | Không | Tuỳ chọn | Chức năng ứng dụng (ảnh đại diện, khoảnh khắc) |
 | Tin nhắn → **Các tin nhắn khác trong ứng dụng** | Có | Không | Tuỳ chọn | Chức năng ứng dụng |
 | Hoạt động trong ứng dụng → **Nội dung khác do người dùng tạo** | Có | Không | Tuỳ chọn | Chức năng ứng dụng (khoảnh khắc, cuộc hẹn, địa điểm), An toàn/chống gian lận (báo cáo vi phạm) |
-| Thông tin và hiệu suất ứng dụng → **Chẩn đoán** | Có | Không | Bắt buộc | Chức năng ứng dụng (Google ML Kit gửi dữ liệu chẩn đoán/hiệu năng khi quét QR) |
+| Thông tin và hiệu suất ứng dụng → **Chẩn đoán** | Có | Không | Bắt buộc | Chức năng ứng dụng (**mức pin** gửi cho nhóm khi đang chia sẻ, cảnh báo pin yếu; Google ML Kit gửi dữ liệu chẩn đoán/hiệu năng khi quét QR) |
 | Thiết bị hoặc mã nhận dạng khác | Có | Không | Bắt buộc | Chức năng ứng dụng (mã thông báo đẩy FCM; mã cài đặt Firebase / ML Kit) |
 
 **Không** khai các loại sau:
@@ -319,3 +320,26 @@ flutter build appbundle --dart-define=MAPTILER_KEY=<key>
 
 - Số phiên bản (versionCode) phải **tăng** mỗi lần tải lên.
 - Tăng ở dòng `version:` trong `pubspec.yaml`, hiện là `0.1.0+1`, lần sau đổi thành `0.1.0+2`.
+
+
+## App Store Connect: App Privacy (nhãn quyền riêng tư)
+
+Khớp với `ios/Runner/PrivacyInfo.xcprivacy` và trang chính sách. Mọi mục: **Linked to the user** (gắn với tài khoản), **Not used for tracking**, mục đích **App Functionality** (thêm *Product Personalization* = Không, *Analytics* = Không, *Third-Party Advertising* = Không).
+
+| Nhóm (Apple) | Loại dữ liệu | Ghi chú |
+|---|---|---|
+| Location | **Precise Location** | Chia sẻ với nhóm đã chọn, lịch sử 30 ngày, tốc độ |
+| Location | **Coarse Location** | Toạ độ làm tròn gửi Nominatim; vùng bản đồ gửi MapTiler / Esri |
+| Contact Info | **Name** | Tên hiển thị |
+| Contact Info | **Email Address** | Nếu đăng nhập email / Google / Apple |
+| Contact Info | **Phone Number** | Nếu đăng nhập bằng số điện thoại |
+| User Content | **Photos or Videos** | Ảnh đại diện, khoảnh khắc |
+| User Content | **Emails or Text Messages** | Tin nhắn nhóm và tin nhắn riêng trong app |
+| User Content | **Other User Content** | Khoảnh khắc, tên địa điểm, cuộc hẹn, báo cáo vi phạm |
+| Identifiers | **User ID** | uid Firebase |
+| Identifiers | **Device ID** | Mã thông báo đẩy (FCM / APNs) |
+| Other Data | **Other Data Types** | Mức pin gửi cho nhóm khi đang chia sẻ |
+
+Không khai: Health & Fitness, Financial Info, Contacts, Browsing/Search History, Purchases, Sensitive Info, Crash Data / Performance Data (không dùng Crashlytics / Analytics). Cảm biến chuyển động (phát hiện va chạm, beta) chỉ xử lý trên máy.
+
+**Review Notes (App Store):** dán phần hướng dẫn reviewer ở trên, thêm: "Phát hiện va chạm là tính năng beta, chỉ chạy khi app đang mở, không liên hệ dịch vụ khẩn cấp. Quyền vị trí 'Luôn cho phép' là tuỳ chọn: chia sẻ vẫn chạy nền khi bật lúc app đang mở (biểu tượng vị trí màu xanh)."

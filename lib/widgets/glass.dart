@@ -760,6 +760,8 @@ Future<T?> showGlassSheet<T>(
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,
+    // Sheet cao (nhiều nội dung) không được trùm lên thanh trạng thái.
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     elevation: 0,
     showDragHandle: false,
