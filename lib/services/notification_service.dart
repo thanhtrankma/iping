@@ -20,17 +20,17 @@ class NotificationService {
   StreamSubscription<String>? _refreshSub;
   StreamSubscription<RemoteMessage>? _msgSub;
   String? _token;
+  String? _uid;
+  bool _asked = false;
 
+  /// Đăng ký nhận push khi đăng nhập. KHÔNG hỏi quyền thông báo ở đây (không có ngữ cảnh):
+  /// quyền được hỏi khi người dùng bật chia sẻ vị trí ([ensurePermission]).
+  /// Token FCM vẫn được lấy và lưu nếu có (đã cấp quyền từ trước, hoặc Android < 13).
   Future<void> init(String uid) async {
+    _uid = uid;
+    _asked = false;
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
-    await _messaging.requestPermission();
-    try {
-      _token = await _messaging.getToken();
-    } catch (e) {
-      // Ví dụ: iOS Simulator không có APNs.
-      debugPrint('FCM token unavailable: $e');
-    }
-    if (_token != null) await _save(uid, _token!);
+    await _registerToken(uid);
 
     await _refreshSub?.cancel();
     _refreshSub = _messaging.onTokenRefresh.listen((t) {
@@ -58,6 +58,35 @@ class NotificationService {
     });
   }
 
+  Future<void> _registerToken(String uid) async {
+    try {
+      _token = await _messaging.getToken();
+    } catch (e) {
+      // Ví dụ: iOS Simulator không có APNs.
+      debugPrint('FCM token unavailable: $e');
+    }
+    if (_token != null) await _save(uid, _token!);
+  }
+
+  /// Hỏi quyền thông báo (POST_NOTIFICATIONS trên Android 13+, hộp thoại hệ thống trên iOS) khi người
+  /// dùng vừa làm một thao tác cần thông báo (bật chia sẻ vị trí). Gọi thẳng hộp thoại hệ thống, không
+  /// có màn hỏi trước. Đã cấp / đã từ chối thì hệ thống không hỏi lại; mỗi phiên chỉ gọi một lần.
+  Future<void> ensurePermission() async {
+    if (_asked) return;
+    _asked = true;
+    try {
+      final settings = await _messaging.getNotificationSettings();
+      final status = settings.authorizationStatus;
+      if (status != AuthorizationStatus.authorized && status != AuthorizationStatus.provisional) {
+        await _messaging.requestPermission();
+      }
+      final uid = _uid;
+      if (uid != null && _token == null) await _registerToken(uid);
+    } catch (e) {
+      debugPrint('Notification permission: $e');
+    }
+  }
+
   Future<void> unregister(String uid) async {
     await _refreshSub?.cancel();
     await _msgSub?.cancel();
@@ -68,6 +97,8 @@ class NotificationService {
       }, SetOptions(merge: true));
     }
     _token = null;
+    _uid = null;
+    _asked = false;
   }
 
   Future<void> _save(String uid, String token) => _db.doc('users/$uid').set({

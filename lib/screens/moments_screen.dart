@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/models.dart';
+import '../services/content_filter.dart';
 import '../services/geocode_service.dart';
 import '../services/group_service.dart';
 import '../services/location_service.dart';
@@ -16,6 +17,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
+import 'chat_tab.dart' show checkOutgoingText;
 import 'moderation_sheets.dart';
 import 'profile_screen.dart' show pickImageSource;
 
@@ -175,7 +177,7 @@ class MomentCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(m.name,
+                        Text(ContentFilter.mask(m.name),
                             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.2)),
                         Row(
                           children: [
@@ -230,7 +232,7 @@ class MomentCard extends StatelessWidget {
                               left: 16,
                               right: 16,
                               bottom: 14,
-                              child: Center(child: LocketCaption(m.text)),
+                              child: Center(child: LocketCaption(ContentFilter.mask(m.text))),
                             ),
                         ],
                       ),
@@ -241,7 +243,7 @@ class MomentCard extends StatelessWidget {
             if (m.text.isNotEmpty && m.photoUrl == null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Text(m.text,
+                child: Text(ContentFilter.mask(m.text),
                     style: TextStyle(
                       fontSize: m.photoUrl == null ? 21 : 15.5,
                       height: 1.3,
@@ -371,17 +373,23 @@ class _ComposeMomentScreenState extends State<ComposeMomentScreen> {
   }
 
   Future<void> _pick() async {
-    final source = await pickImageSource(context);
+    final source = await pickImageSource(context, title: 'Thêm ảnh');
     if (source == null) return;
     final f = await ProfileService.instance.pickImage(source);
     if (f != null) setState(() => _photo = f);
   }
 
   Future<void> _post() async {
-    final text = _text.text.trim();
+    var text = _text.text.trim();
     if (text.isEmpty && _photo == null) {
       showMessage(context, 'Hãy viết gì đó hoặc chọn một bức ảnh');
       return;
+    }
+    if (text.isNotEmpty) {
+      final checked = await checkOutgoingText(context, text);
+      // "Sửa lại": ở lại màn hình soạn.
+      if (checked == null || !mounted) return;
+      text = checked;
     }
     setState(() => _posting = true);
     try {
@@ -556,7 +564,7 @@ Marker momentMarker(Moment m, VoidCallback onTap) => Marker(
                     padding: const EdgeInsets.all(4),
                     alignment: Alignment.center,
                     child: Text(
-                      m.text,
+                      ContentFilter.mask(m.text),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,

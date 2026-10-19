@@ -84,6 +84,30 @@ void main() {
       expect(find.text('Đồng ý và tiếp tục'), findsNothing);
       debugDefaultTargetPlatformOverride = null;
     });
+
+    test('Khám phá: nói rõ nhóm chia sẻ thấy điểm và khu vực', () {
+      final explore = backgroundLocationFeatures.singleWhere((f) => f.startsWith('Khám phá'));
+      expect(explore, contains('các nhóm bạn chia sẻ vị trí thấy điểm Khám phá và tên khu vực'));
+    });
+
+    testWidgets('màn "Luôn cho phép": nêu thu thập khi app đóng, các tính năng và ai thấy', (tester) async {
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: BackgroundLocationSheet())));
+      expect(
+        find.text('IPing thu thập dữ liệu vị trí kể cả khi ứng dụng đã đóng hoặc không được sử dụng, để:'),
+        findsOneWidget,
+      );
+      for (final f in backgroundFeaturesShort) {
+        expect(find.text('• $f'), findsOneWidget);
+      }
+      expect(find.textContaining('Chỉ thành viên của những nhóm bạn đã chọn'), findsOneWidget);
+      expect(find.text('Tiếp tục'), findsOneWidget);
+      debugDefaultTargetPlatformOverride = null;
+    });
   });
 
   group('Cấu hình nền tảng', () {

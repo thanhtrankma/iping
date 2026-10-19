@@ -61,6 +61,17 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/iping_members_widget_info"/>
         </receiver>
+        <!-- Push FCM khi app ở nền: biểu tượng đơn sắc, màu thương hiệu và kênh mặc định "default"
+             (SOS gửi channelId "sos"). Hai kênh được tạo trong MainActivity.onCreate. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_iping" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/iping_notification_color" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/default_notification_channel_id" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

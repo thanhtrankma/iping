@@ -24,6 +24,7 @@ import 'driving_screen.dart';
 import 'group_actions.dart';
 import 'history_screen.dart';
 import 'member_admin.dart';
+import 'moderation_sheets.dart' show showUserModerationSheet;
 import 'home_screen.dart' show BatteryPill;
 
 const _pings = [
@@ -209,6 +210,20 @@ class _MemberScreenState extends State<MemberScreen> {
                             tooltip: 'Quay lại',
                             onTap: () => Navigator.pop(context),
                           ),
+                          // Báo cáo / chặn người dùng khác (không hiện với chính mình).
+                          if (!isMe) ...[
+                            const SizedBox(width: 8),
+                            GlassButton(
+                              icon: Icons.more_horiz_rounded,
+                              tooltip: 'Báo cáo hoặc chặn',
+                              onTap: () => showUserModerationSheet(
+                                context,
+                                uid: widget.uid,
+                                name: name,
+                                groupId: widget.groupId,
+                              ),
+                            ),
+                          ],
                           const Spacer(),
                           MapControlStack(controls: [
                             if (group != null)

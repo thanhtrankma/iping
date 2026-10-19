@@ -21,6 +21,9 @@ import 'places_tab.dart';
 import 'privacy_screen.dart';
 import 'profile_screen.dart';
 
+/// Email liên hệ (khớp hosting/public/privacy.html).
+const supportEmail = 'beatgone2503@gmail.com';
+
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key, required this.uid, required this.group});
   final String uid;
@@ -210,7 +213,7 @@ class _MenuView extends StatelessWidget {
                   builder: (context, on, _) => SwitchListTile(
                     horizontalTitleGap: 14,
                     secondary: const GlassIconBadge(icon: Icons.car_crash_rounded, color: AppColors.sos),
-                    title: const Text('Phát hiện va chạm (beta)'),
+                    title: const Text('Phát hiện va chạm'),
                     subtitle: const Text('Chỉ hoạt động khi IPing đang mở, đang chia sẻ và di chuyển nhanh; có 30 giây để huỷ trước khi '
                         'gửi SOS. Có thể không phát hiện hoặc báo nhầm. Không thay thế cuộc gọi 113/114/115.'),
                     value: on,
@@ -267,6 +270,21 @@ class _MenuView extends StatelessWidget {
                   trailing: const Icon(Icons.open_in_new_rounded, size: 18),
                   onTap: () => launchUrl(Uri.parse('https://iping-share.web.app/terms'),
                       mode: LaunchMode.externalApplication),
+                ),
+                ListTile(
+                  horizontalTitleGap: 14,
+                  leading: const GlassIconBadge(icon: Icons.support_agent_rounded, color: AppColors.brand),
+                  title: const Text('Hỗ trợ & liên hệ'),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () => launchUrl(Uri.parse('https://iping-share.web.app/support'),
+                      mode: LaunchMode.externalApplication),
+                ),
+                ListTile(
+                  horizontalTitleGap: 14,
+                  leading: const GlassIconBadge(icon: Icons.mail_rounded, color: AppColors.teal),
+                  title: const Text('Gửi email cho IPing'),
+                  subtitle: const Text(supportEmail),
+                  onTap: () => launchUrl(Uri(scheme: 'mailto', path: supportEmail, query: 'subject=IPing')),
                 ),
               ],
             ),

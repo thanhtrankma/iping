@@ -52,6 +52,7 @@
         <div class="row"><button id="btn-otp">Xác nhận</button></div>
       </div>
       <div id="recaptcha"></div>
+      <p style="font-size:14px">Đăng nhập bằng Apple? Xoá tài khoản trên trang này vẫn xoá toàn bộ dữ liệu IPing, nhưng trang web không thu hồi được quyền "Đăng nhập bằng Apple". Để thu hồi hoàn toàn, hãy xoá từ ứng dụng IPing trên iPhone (Cách 1, thu hồi tự động), hoặc sau khi xoá vào <strong>Cài đặt → [tên bạn] (Apple ID) → Đăng nhập bằng Apple → IPing → Ngừng sử dụng ID Apple</strong>.</p>
     </div>
 
     <div id="step-confirm" class="hidden">
@@ -67,7 +68,7 @@
     <div id="msg" class="msg"></div>
   </div>
 
-  <footer><a href="/">IPing</a> · <a href="/privacy">Chính sách quyền riêng tư</a> · <a href="mailto:beatgone2503@gmail.com">Hỗ trợ</a></footer>
+  <footer><a href="/">IPing</a> · <a href="/privacy">Chính sách quyền riêng tư</a> · <a href="/support">Hỗ trợ</a></footer>
 </main>
 
 <script type="module">
@@ -164,10 +165,14 @@
   $('btn-delete').onclick = async () => {
     $('btn-delete').disabled = true;
     say('Đang xoá tài khoản, vui lòng đợi…');
+    // Web không thu hồi được token Apple (cần mã uỷ quyền từ ứng dụng iOS): nhắc người dùng tự thu hồi.
+    const viaApple = (auth.currentUser?.providerData || []).some((p) => p.providerId === 'apple.com');
     try {
       await deleteAccount();
       await signOut(auth).catch(() => {});
-      say('Đã xoá tài khoản và toàn bộ dữ liệu của bạn.', 'ok');
+      say('Đã xoá tài khoản và toàn bộ dữ liệu của bạn.' + (viaApple
+        ? ' Để thu hồi hoàn toàn "Đăng nhập bằng Apple", vào Cài đặt → [tên bạn] → Đăng nhập bằng Apple → IPing → Ngừng sử dụng ID Apple.'
+        : ''), 'ok');
     } catch (e) {
       say('Không xoá được: ' + (e.message || e.code), 'err');
       $('btn-delete').disabled = false;

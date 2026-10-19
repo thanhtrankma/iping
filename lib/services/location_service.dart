@@ -15,7 +15,7 @@ import 'explore_service.dart';
 import 'geofence_service.dart';
 import 'group_consent.dart';
 import 'location_gates.dart';
-import 'notification_service.dart' show scaffoldMessengerKey;
+import 'notification_service.dart' show NotificationService, scaffoldMessengerKey;
 import 'sharing_notification.dart';
 import 'safe_trip_service.dart';
 import 'group_service.dart';
@@ -176,6 +176,8 @@ class LocationService {
   Future<String?> start() async {
     final err = await _ensurePermission(background: true);
     if (err != null) return err;
+    // Đúng lúc người dùng bật chia sẻ: hỏi quyền thông báo (cảnh báo nhóm, SOS, "Bạn đang ở đâu?").
+    unawaited(NotificationService.instance.ensurePermission());
     await _startStream();
     return null;
   }
@@ -440,7 +442,9 @@ class LocationService {
     return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: distanceFilter);
   }
 
-  /// [background]: đang bật chia sẻ → sau khi có quyền "khi dùng app" thì xin thêm "Luôn cho phép" (hỏi một lần).
+  /// Màn giải thích hiện TRƯỚC MỖI lần gọi `requestPermission()` (cả sau khi từ chối / thu hồi).
+  /// [background]: người dùng bấm bật chia sẻ → sau khi có quyền "khi dùng app" thì hiện màn giải thích
+  /// "Luôn cho phép" rồi mới xin quyền nền / mở Cài đặt (mỗi lần bật chia sẻ mà chưa có quyền nền).
   Future<String?> _ensurePermission({bool background = false}) async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       return 'Hãy bật dịch vụ định vị (GPS) trên thiết bị.';

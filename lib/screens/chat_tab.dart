@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../services/content_filter.dart';
 import '../services/group_service.dart';
 import '../services/moderation_service.dart';
 import '../theme.dart';
@@ -9,6 +10,51 @@ import '../utils/format.dart';
 import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import 'moderation_sheets.dart';
+
+/// Kiểm tra văn bản trước khi gửi (tin nhắn nhóm, tin 1-1, chú thích khoảnh khắc).
+///
+/// Văn bản sạch → trả về nguyên văn. Có từ không phù hợp → hỏi "Sửa lại" (mặc định, trả về null)
+/// hoặc "Vẫn gửi" (trả về bản đã che "***").
+Future<String?> checkOutgoingText(BuildContext context, String text) async {
+  if (!ContentFilter.isFlagged(text)) return text;
+  final send = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      title: const Text(
+        'Tin nhắn có từ ngữ không phù hợp',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+      ),
+      content: const Text(
+        'Hãy giữ IPing thân thiện với cả gia đình. Nếu vẫn gửi, những từ này sẽ được che bằng ***.',
+        textAlign: TextAlign.center,
+      ),
+      actions: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton(
+              autofocus: true,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Sửa lại'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              style: TextButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Vẫn gửi (sẽ được che)'),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+  return send == true ? ContentFilter.mask(text) : null;
+}
 
 /// Chiều cao ước tính của thanh soạn tin nổi (để chừa chỗ cho danh sách).
 const double _composerHeight = 64;
@@ -66,8 +112,11 @@ class _ChatTabState extends State<ChatTab> {
   }
 
   Future<void> _send() async {
-    final text = _input.text.trim();
-    if (text.isEmpty) return;
+    final raw = _input.text.trim();
+    if (raw.isEmpty) return;
+    final text = await checkOutgoingText(context, raw);
+    // "Sửa lại": giữ nguyên ô soạn tin để người dùng sửa.
+    if (text == null || !mounted) return;
     _input.clear();
     final send = widget.onSend;
     try {
@@ -96,7 +145,7 @@ class _ChatTabState extends State<ChatTab> {
     if (action == null || !mounted) return;
     switch (action) {
       case ContentAction.copy:
-        await copyText(context, m.text);
+        await copyText(context, ContentFilter.mask(m.text));
       case ContentAction.delete:
         if (!await confirmDelete(context, title: 'Xoá tin nhắn?', content: 'Tin nhắn sẽ bị xoá với mọi người.')) {
           return;
@@ -271,7 +320,7 @@ class _Bubble extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(left: 12, bottom: 3),
                     child: Text(
-                      m.name,
+                      ContentFilter.mask(m.name),
                       style: TextStyle(fontWeight: FontWeight.w600, color: avatarColor(m.uid), fontSize: 12),
                     ),
                   ),
@@ -302,7 +351,8 @@ class _Bubble extends StatelessWidget {
                           alignment: Alignment.centerLeft,
                           widthFactor: 1,
                           child: Text(
-                            m.text,
+                            // Che khi hiển thị: lọc cả tin cũ gửi trước khi có bộ lọc.
+                            ContentFilter.mask(m.text),
                             style: TextStyle(
                               color: mine ? Colors.white : scheme.onSurface,
                               fontSize: 16,

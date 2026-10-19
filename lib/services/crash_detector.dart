@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-/// Phát hiện va chạm (beta, hàm thuần có test).
+/// Phát hiện va chạm (hàm thuần có test).
 ///
 /// Coi là va chạm khi gia tốc (đã trừ trọng lực) vượt [thresholdG] trong lúc vừa di chuyển nhanh hơn
 /// [minSpeedKmh] (trong [speedWindow] gần nhất). Sau khi báo, chờ [cooldown] mới báo lại.

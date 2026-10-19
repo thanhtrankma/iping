@@ -5,6 +5,7 @@ Các trang hỗ trợ:
 - Trang web: https://iping-share.web.app
 - Chính sách quyền riêng tư: https://iping-share.web.app/privacy
 - Xoá tài khoản: https://iping-share.web.app/delete-account
+- Hỗ trợ / câu hỏi thường gặp: https://iping-share.web.app/support
 - Email hỗ trợ: beatgone2503@gmail.com
 
 ---
@@ -55,7 +56,7 @@ Tạo nhóm và cùng chia sẻ vị trí với gia đình, bạn bè. Mỗi ng�
 🆘 AN TOÀN
 • Nút SOS gửi cảnh báo kèm vị trí cho các thành viên trong nhóm (không gọi dịch vụ khẩn cấp)
 • "Về an toàn": tự báo cho nhóm khi bạn về tới nơi, cảnh báo nếu bị trễ
-• Phát hiện va chạm (beta, chỉ khi IPing đang mở): có thể không phát hiện hoặc báo nhầm
+• Phát hiện va chạm (tuỳ chọn, chỉ chạy khi IPing đang mở): đếm ngược 30 giây rồi gửi SOS cho nhóm; có thể không phát hiện hoặc báo nhầm
 ⚠️ IPing không liên hệ cơ quan cứu hộ và không thay thế cuộc gọi 113 / 114 / 115. Khi khẩn cấp, hãy gọi trực tiếp.
 
 🕒 LỊCH SỬ & BÁO CÁO
@@ -69,7 +70,7 @@ Tạo nhóm và cùng chia sẻ vị trí với gia đình, bạn bè. Mỗi ng�
 • Hẹn gặp: chọn điểm hẹn, mỗi người tự báo đang tới, đã tới hay không đi
 
 🗺️ KHÁM PHÁ
-• Tô màu những nơi bạn đã đi qua trên bản đồ, xem bạn đã khám phá bao nhiêu phường, quận, tỉnh
+• Tô màu những nơi bạn đã đi qua trên bản đồ (bản đồ chỉ mình bạn thấy), xem bạn đã khám phá bao nhiêu phường, quận, tỉnh; nhóm bạn chia sẻ vị trí thấy điểm Khám phá và tên khu vực bạn đang ở
 
 🔒 QUYỀN RIÊNG TƯ
 • Chia sẻ vị trí tắt mặc định, chỉ bật khi bạn đồng ý
@@ -121,7 +122,7 @@ Tài khoản đã có sẵn nhóm thử nghiệm. Một thành viên khác trong
 
 Thử tham gia nhóm bằng mã: Menu → Quản lý nhóm → Tham gia bằng mã mời → nhập <MÃ>. Ứng dụng hiện màn đồng ý: chọn "Chia sẻ vị trí với nhóm này", "Tham gia nhưng chưa chia sẻ" hoặc "Rời nhóm". Vào nhóm không tự động chia sẻ vị trí.
 
-Bật chia sẻ vị trí: bấm "Bật chia sẻ" → màn giải thích → hộp thoại quyền vị trí của hệ thống. Khi đang chia sẻ có thông báo cố định với nút "Dừng chia sẻ".
+Bật chia sẻ vị trí: bấm "Bật chia sẻ" → màn giải thích → hộp thoại quyền vị trí của hệ thống, sau đó hộp thoại quyền thông báo (ứng dụng chỉ xin quyền thông báo lúc bật chia sẻ, không xin lúc đăng nhập). Khi đang chia sẻ có thông báo cố định với nút "Dừng chia sẻ".
 
 Báo cáo / chặn: nhấn giữ một tin nhắn (chat nhóm hoặc tin nhắn riêng) → "Báo cáo" hoặc "Chặn người này"; khoảnh khắc: nút "⋯" trên thẻ; tin nhắn riêng: nút "⋯" trên thanh tiêu đề; danh sách người đã chặn: Menu → Bảo mật & Bạn bè → Đã chặn.
 
@@ -195,7 +196,7 @@ Về **chia sẻ** (Shared):
 Ghi chú về vị trí:
 
 - Vị trí được thu thập khi người dùng bật "Chia sẻ vị trí" (tắt mặc định; chỉ gửi tới những nhóm đã đồng ý chia sẻ), **và** khi người dùng tự thao tác cần vị trí: SOS, check-in, "Về an toàn", hẹn gặp, đăng khoảnh khắc kèm vị trí, mở màn Khám phá (chỉ khi ứng dụng đang mở).
-- Vị trí nền chỉ phục vụ việc chia sẻ vị trí với nhóm. Khám phá chỉ tô ô bản đồ khi ứng dụng đang mở hoặc khi chia sẻ đang bật, không phải lý do xin vị trí nền.
+- Vị trí nền chỉ phục vụ việc chia sẻ vị trí với nhóm. Khám phá chỉ tô ô bản đồ khi ứng dụng đang mở hoặc khi chia sẻ đang bật, không phải lý do xin vị trí nền. Khám phá: đánh dấu các khu vực bạn đã đi qua (bản đồ chỉ mình bạn thấy); các nhóm bạn chia sẻ vị trí thấy điểm Khám phá và tên khu vực bạn đang ở.
 - Lịch sử vị trí và cảnh báo nhóm tự xoá sau 30 ngày; thôi chia sẻ với nhóm thì vị trí cuối và lịch sử trong nhóm đó bị xoá; rời nhóm thì mọi dữ liệu của mình trong nhóm đó bị xoá. Dữ liệu Khám phá giữ tới khi xoá tài khoản (đã ghi trong chính sách).
 
 Với mọi loại dữ liệu ở bảng trên:
@@ -210,6 +211,7 @@ Với mọi loại dữ liệu ở bảng trên:
 - **Điều khoản sử dụng** (https://iping-share.web.app/terms) cấm nội dung phản cảm, quấy rối; người dùng đồng ý khi đăng ký (đủ 13 tuổi).
 - **Báo cáo:** báo cáo tin nhắn nhóm, tin nhắn 1-1, khoảnh khắc hoặc người dùng với lý do (spam, quấy rối, tình dục, bạo lực, khác). Báo cáo lưu ở `reports`, Cloud Function `onReport` gửi thông báo cho quản trị viên (uid trong Firestore `config/admins.uids`).
 - **Chặn:** chặn người dùng → không nhận tin nhắn 1-1 và thông báo (trừ SOS) từ người đó.
+- **Lọc nội dung:** mọi chữ do người dùng tạo (chat nhóm, tin nhắn 1-1, chú thích khoảnh khắc) được kiểm tra với danh sách từ tục tĩu / xúc phạm / tình dục tiếng Việt và tiếng Anh (cả không dấu, leetspeak, chữ cách nhau). Trước khi gửi app cảnh báo, người dùng sửa lại hoặc gửi với từ vi phạm bị che bằng ***; server lọc lại lần nữa (ghi đè nội dung, che trong thông báo đẩy); nội dung cũ cũng được che khi hiển thị.
 - **Xoá:** người gửi xoá tin nhắn / khoảnh khắc của mình; chủ nhóm xoá được tin nhắn và khoảnh khắc trong nhóm, xoá và chặn thành viên.
 - **Xử lý:** kiểm tra báo cáo trong vòng 24 giờ; xoá nội dung vi phạm và khoá tài khoản vi phạm.
 - Trước khi phát hành: tạo `config/admins` với `uids: [<uid quản trị viên>]` trong Firebase Console.
@@ -227,10 +229,10 @@ Các tính năng dùng vị trí khi app chạy nền / đã đóng (đã kiểm
 | "Về an toàn": tự báo đã về tới nơi; quá giờ thì server gửi cảnh báo kèm vị trí cuối | `SafeTripService.check`, Cloud Function `safe_overdue` |
 | Cảnh báo chạy quá tốc độ (> 80 km/h) và báo cáo lái xe (tính từ lịch sử di chuyển) | `LocationService._checkSpeeding`, `TripAnalyzer` |
 | Trả lời khi thành viên bấm "Cập nhật vị trí" (hỏi "bạn đang ở đâu"), kể cả khi app đã bị vuốt tắt: push `locate` → lấy một vị trí và ghi vào nhóm đó | `firebaseBackgroundHandler` (`locate_background.dart`) |
-| Khám phá: tô các ô đã đi qua (chỉ người dùng thấy) bằng chính các vị trí của luồng chia sẻ; không phải lý do xin quyền | `ExploreService.record` |
+| Khám phá: đánh dấu các khu vực bạn đã đi qua (bản đồ chỉ mình bạn thấy); các nhóm bạn chia sẻ vị trí thấy điểm Khám phá và tên khu vực bạn đang ở. Dùng chính các vị trí của luồng chia sẻ; không phải lý do xin quyền | `ExploreService.record` |
 | Báo nhóm khi GPS bị tắt / quyền bị thu hồi lúc đang chia sẻ | `LocationService._onStreamError` |
 
-Không dùng vị trí nền: phát hiện va chạm (beta) chỉ chạy khi IPing đang mở trên màn hình; SOS, check-in, đăng khoảnh khắc chỉ lấy vị trí khi người dùng tự bấm.
+Không dùng vị trí nền: phát hiện va chạm chỉ chạy khi IPing đang mở trên màn hình; SOS, check-in, đăng khoảnh khắc chỉ lấy vị trí khi người dùng tự bấm.
 
 **Mô tả tính năng cần vị trí nền** (dán vào Play Console):
 
@@ -241,7 +243,7 @@ IPing là ứng dụng chia sẻ vị trí theo nhóm cho gia đình và bạn b
 - "Về an toàn": tự báo khi về tới nơi; nếu quá giờ chưa tới, nhóm nhận cảnh báo kèm vị trí cuối.
 - Cảnh báo chạy quá tốc độ và báo cáo lái xe.
 - Trả lời khi một thành viên trong nhóm yêu cầu cập nhật vị trí ("X muốn biết bạn đang ở đâu"), kể cả khi ứng dụng đã bị đóng.
-- Khám phá: đánh dấu các khu vực đã đi qua (chỉ người dùng thấy).
+- Khám phá: đánh dấu các khu vực bạn đã đi qua (bản đồ chỉ mình bạn thấy); các nhóm bạn chia sẻ vị trí thấy điểm Khám phá và tên khu vực bạn đang ở.
 
 Vị trí không dùng cho quảng cáo, phân tích hay bán cho bên thứ ba.
 
@@ -340,6 +342,117 @@ Khớp với `ios/Runner/PrivacyInfo.xcprivacy` và trang chính sách. Mọi m�
 | Identifiers | **Device ID** | Mã thông báo đẩy (FCM / APNs) |
 | Other Data | **Other Data Types** | Mức pin gửi cho nhóm khi đang chia sẻ |
 
-Không khai: Health & Fitness, Financial Info, Contacts, Browsing/Search History, Purchases, Sensitive Info, Crash Data / Performance Data (không dùng Crashlytics / Analytics). Cảm biến chuyển động (phát hiện va chạm, beta) chỉ xử lý trên máy.
+Không khai: Health & Fitness, Financial Info, Contacts, Browsing/Search History, Purchases, Sensitive Info, Crash Data / Performance Data (không dùng Crashlytics / Analytics). Cảm biến chuyển động (phát hiện va chạm) chỉ xử lý trên máy.
 
-**Review Notes (App Store):** dán phần hướng dẫn reviewer ở trên, thêm: "Phát hiện va chạm là tính năng beta, chỉ chạy khi app đang mở, không liên hệ dịch vụ khẩn cấp. Quyền vị trí 'Luôn cho phép' là tuỳ chọn: chia sẻ vẫn chạy nền khi bật lúc app đang mở (biểu tượng vị trí màu xanh)."
+**Review Notes (App Store):** xem mục "App Store Connect: thông tin cửa hàng" bên dưới (bản riêng cho iOS).
+
+---
+
+## App Store Connect: thông tin cửa hàng
+
+Số ký tự đã đếm (Unicode, dạng NFC). Ô Từ khoá giữ dưới 100 cả theo ký tự lẫn theo byte UTF-8, vì chữ có dấu có thể bị tính nhiều hơn 1.
+
+| Mục | Giá trị | Số ký tự / giới hạn |
+|---|---|---|
+| Name | `IPing - Chia sẻ vị trí` | 22 / 30 |
+| Subtitle | `Cùng chia sẻ vị trí, tự quyết` | 29 / 30 |
+| Keywords | `gia đình,bạn bè,nhóm,định vị,bản đồ,SOS,an toàn,check-in,nhắn tin,khám phá` | 74 / 100 (95 byte) |
+| Support URL | https://iping-share.web.app/support | |
+| Marketing URL | https://iping-share.web.app | |
+| Privacy Policy URL | https://iping-share.web.app/privacy | |
+| Copyright | `© 2026 <tên nhà phát triển>` (thay bằng đúng tên trên tài khoản Apple Developer) | |
+| Primary category | Lifestyle (Phong cách sống); phụ: Social Networking | |
+
+Từ khoá không lặp lại chữ đã có trong Name/Subtitle ("chia sẻ", "vị trí") và không dùng tên thương hiệu của ứng dụng khác.
+
+**Promotional Text** (153 / 170):
+
+```
+Tạo nhóm với gia đình, bạn bè và cùng chia sẻ vị trí. Mỗi người tự chọn chia sẻ với nhóm nào, tạm ẩn hoặc dừng bất cứ lúc nào. Miễn phí, không quảng cáo.
+```
+
+**Description** (2583 / 4000). Khác bản Google Play: trên iOS không có thông báo cố định với nút "Dừng chia sẻ"; dừng trong ứng dụng, và iOS hiện chỉ báo vị trí màu xanh khi IPing dùng vị trí lúc chạy nền.
+
+```
+Tạo nhóm và cùng chia sẻ vị trí với gia đình, bạn bè. Mỗi người tự quyết định khi nào chia sẻ và chia sẻ với nhóm nào.
+
+📍 CHIA SẺ VỊ TRÍ THEO NHÓM, CÓ ĐỒNG Ý
+• Tạo nhóm Gia đình, Bạn bè và mời bằng mã, đường liên kết hoặc mã QR
+• Vào nhóm bằng mã mời không tự động chia sẻ: bạn thấy nhóm có ai, nhóm sẽ thấy gì, rồi tự chọn chia sẻ, chỉ tham gia hoặc rời nhóm
+• Những người cùng chọn chia sẻ thấy vị trí, mức pin và tình trạng kết nối của nhau trên bản đồ
+• Bật/tắt chia sẻ với từng nhóm, tạm ẩn vị trí hoặc rời nhóm bất cứ lúc nào ngay trong ứng dụng
+• Khi IPing dùng vị trí lúc chạy nền, iPhone hiện chỉ báo vị trí màu xanh trên thanh trạng thái
+
+🔔 THÔNG BÁO THÔNG MINH
+• Báo cho nhóm khi bạn đến hoặc rời Nhà, Trường, Công ty... và ngược lại
+• Cảnh báo pin yếu, mất kết nối, chạy quá tốc độ
+• Tự chọn loại thông báo muốn nhận cho từng người
+
+🆘 AN TOÀN
+• Nút SOS gửi cảnh báo kèm vị trí cho các thành viên trong nhóm (không gọi dịch vụ khẩn cấp)
+• "Về an toàn": tự báo cho nhóm khi bạn về tới nơi, cảnh báo nếu bị trễ
+• Phát hiện va chạm (tuỳ chọn, chỉ chạy khi IPing đang mở): đếm ngược 30 giây rồi gửi SOS cho nhóm; có thể không phát hiện hoặc báo nhầm
+⚠️ IPing không liên hệ cơ quan cứu hộ và không thay thế cuộc gọi 113 / 114 / 115. Khi khẩn cấp, hãy gọi trực tiếp.
+
+🕒 LỊCH SỬ & BÁO CÁO
+• Dòng thời gian các nơi đã đến trong 30 ngày, chỉ chia sẻ với nhóm bạn đã chọn
+• Chuyến đi và báo cáo lái xe
+
+💬 KẾT NỐI
+• Nhắn tin nhóm và nhắn tin riêng, có báo cáo và chặn người dùng
+• Ping nhanh: "Tới rồi", "Gọi lại", "Về nhà chưa"...
+• Khoảnh khắc: chia sẻ ảnh với nhóm, tự ẩn sau 24 giờ
+• Hẹn gặp: chọn điểm hẹn, mỗi người tự báo đang tới, đã tới hay không đi
+
+🗺️ KHÁM PHÁ
+• Tô màu những nơi bạn đã đi qua trên bản đồ (bản đồ chỉ mình bạn thấy), xem bạn đã khám phá bao nhiêu phường, quận, tỉnh; nhóm bạn chia sẻ vị trí thấy điểm Khám phá và tên khu vực bạn đang ở
+
+🔒 QUYỀN RIÊNG TƯ
+• Chia sẻ vị trí tắt mặc định, chỉ bật khi bạn đồng ý
+• Chỉ thành viên của nhóm bạn đã chọn chia sẻ mới thấy vị trí của bạn
+• Không bán dữ liệu, không quảng cáo
+• Xoá tài khoản và toàn bộ dữ liệu ngay trong ứng dụng
+
+IPing hoàn toàn miễn phí, mọi tính năng đều mở cho tất cả mọi người. Dành cho người dùng từ 13 tuổi.
+
+Lưu ý: IPing chỉ dùng vị trí khi chạy nền lúc bạn bật "Chia sẻ vị trí", để cập nhật vị trí cho những nhóm bạn đã chọn. Quyền "Luôn luôn" là tuỳ chọn. Bạn có thể dừng bất cứ lúc nào trong ứng dụng. Việc liên tục dùng GPS khi chạy nền có thể làm giảm thời lượng pin.
+
+Điều khoản sử dụng: https://iping-share.web.app/terms
+Chính sách quyền riêng tư: https://iping-share.web.app/privacy
+```
+
+### Age Rating (bảng hỏi App Store)
+
+| Câu hỏi | Trả lời |
+|---|---|
+| Cartoon / Realistic Violence, Sexual Content, Nudity, Profanity, Horror, Alcohol/Tobacco/Drugs, Simulated Gambling, Mature/Suggestive Themes, Medical Information, Contests | None / Không |
+| User-Generated Content | **Yes** (tin nhắn, ảnh khoảnh khắc; có báo cáo, chặn, kiểm duyệt 24 giờ) |
+| Messaging and Chat | **Yes** (nhắn tin nhóm và 1-1) |
+| Location sharing (chia sẻ vị trí với người dùng khác) | **Yes** |
+| Unrestricted Web Access | **No** (không có trình duyệt trong app; chỉ mở trang chính sách/điều khoản của IPing) |
+| Gambling, Loot boxes | No |
+| Parental controls / Age assurance | No |
+
+Kết quả dự kiến: **12+** (bảng cũ) hoặc **13+** (bảng tuổi mới của Apple) vì có UGC, nhắn tin và chia sẻ vị trí. Điều khoản sử dụng yêu cầu người dùng **đủ 13 tuổi**; nếu App Store Connect cho chọn thì đặt độ tuổi tối thiểu cao hơn (13+), không chọn "Made for Kids".
+
+### Review Notes (iOS)
+
+Dùng cùng hai tài khoản thử nghiệm như phần Google Play (A đưa cho người duyệt, B trên máy thật **đang bật chia sẻ** suốt thời gian duyệt). Dán vào App Review Information → Notes, điền ô Sign-in bằng `<EMAIL>` / `<MẬT KHẨU>`:
+
+```
+Đăng nhập: trên màn đăng nhập chọn "Email", nhập <EMAIL> / <MẬT KHẨU>. Vui lòng không dùng đăng nhập bằng số điện thoại (cần mã OTP gửi về SIM).
+
+Tài khoản đã có sẵn một nhóm thử nghiệm. Một tài khoản thứ hai trong nhóm đang bật chia sẻ vị trí trên một iPhone thật, nên bạn sẽ thấy vị trí, pin và lịch sử của thành viên đó trên bản đồ.
+
+Đồng ý chia sẻ theo nhóm: Menu → Quản lý nhóm → Tham gia bằng mã mời → nhập <MÃ>. Ứng dụng hiện màn đồng ý cho biết nhóm có ai và sẽ thấy gì, với ba lựa chọn: "Chia sẻ vị trí với nhóm này", "Tham gia nhưng chưa chia sẻ", "Rời nhóm". Vào nhóm không tự động chia sẻ vị trí.
+
+Chia sẻ vị trí: tắt mặc định. Bấm "Bật chia sẻ" → màn giải thích → hộp thoại quyền vị trí của iOS, sau đó hộp thoại quyền thông báo (chỉ xin lúc bật chia sẻ, không xin lúc đăng nhập). Quyền "Khi dùng ứng dụng" là đủ: chia sẻ tiếp tục khi IPing chạy nền và iOS hiện chỉ báo vị trí màu xanh. Quyền "Luôn luôn" là tuỳ chọn, chỉ giúp báo đến/rời địa điểm và trả lời yêu cầu "bạn đang ở đâu" của thành viên khi iOS cho phép IPing chạy nền. Dừng chia sẻ: tắt "Chia sẻ vị trí" trong ứng dụng, hoặc Menu → Bảo mật & Bạn bè (thôi chia sẻ / tạm ẩn từng nhóm, rời nhóm). Nút "Dừng chia sẻ" trên thông báo chỉ có ở bản Android, không có trên iOS.
+
+Báo cáo / chặn (Guideline 1.2): nhấn giữ một tin nhắn (chat nhóm hoặc tin nhắn riêng) → "Báo cáo" hoặc "Chặn người này"; khoảnh khắc: nút "⋯" trên thẻ; tin nhắn riêng: nút "⋯" trên thanh tiêu đề; thành viên: mở thành viên → "Báo cáo / Chặn"; danh sách đã chặn: Menu → Bảo mật & Bạn bè → Đã chặn. Báo cáo được xem xét trong vòng 24 giờ.
+
+SOS và Phát hiện va chạm: SOS chỉ gửi cảnh báo kèm vị trí cho thành viên trong nhóm, không liên hệ dịch vụ khẩn cấp và không thay thế 113/114/115. Phát hiện va chạm là tuỳ chọn, tắt mặc định, chỉ chạy khi IPing đang mở trên màn hình (dùng cảm biến chuyển động, xử lý trên máy), đếm ngược 30 giây trước khi gửi SOS và có thể không phát hiện hoặc báo nhầm.
+
+Xoá tài khoản: Menu → Hồ sơ → Xoá tài khoản (xin đừng xoá tài khoản thử nghiệm). Trang hỗ trợ: https://iping-share.web.app/support
+
+Content filtering, reporting and blocking (Guideline 1.2): IPing filters objectionable content in all user-generated text (group chat, 1-1 messages and Moment captions). Before sending, the app checks text against a Vietnamese and English list of profanity, slurs and sexual terms (including spellings without accents, leetspeak and spaced-out letters). If a match is found, the user is warned and can edit the message or send it with the offending words replaced by ***. Our server applies the same filter again: it rewrites any flagged content that reaches the database and masks it in push notifications, and the app also masks older content when displaying it. Any message, Moment or user can be reported from a long-press or ⋯ menu, and users can block others: blocked users' content is hidden immediately and they can no longer message the blocker. Our team reviews reports and acts on them, including removing content and the offending user, within 24 hours.
+```

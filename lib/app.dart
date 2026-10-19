@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/invite_screens.dart';
@@ -28,6 +29,14 @@ class IPingApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
+      // Giao diện tiếng Việt: chuỗi hệ thống (chọn ngày giờ, nút Huỷ/OK, ...) theo tiếng Việt.
+      locale: const Locale('vi'),
+      supportedLocales: const [Locale('vi'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const AuthGate(),
     );
   }

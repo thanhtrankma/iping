@@ -9,7 +9,7 @@ import 'crash_detector.dart';
 import 'location_service.dart';
 import 'push_router.dart';
 
-/// Phát hiện va chạm (BETA): chỉ chạy khi người dùng bật, đang chia sẻ vị trí VÀ IPing đang mở
+/// Phát hiện va chạm: chỉ chạy khi người dùng bật, đang chia sẻ vị trí VÀ IPing đang mở
 /// trên màn hình ([AppLifecycleState.resumed]). App vào nền thì tắt cảm biến, để màn đếm ngược
 /// (người dùng huỷ được trước khi gửi SOS) luôn hiện ra được. Không chạy nền, không thay thế 113/114/115.
 class CrashService with WidgetsBindingObserver {

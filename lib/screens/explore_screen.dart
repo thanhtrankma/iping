@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -50,6 +50,9 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
   /// Đang tắt chia sẻ nhưng đã có quyền: lấy vị trí định kỳ CHỈ khi màn này đang mở ở tiền cảnh.
   Timer? _poll;
   bool _polling = false;
+
+  /// Đã dừng lấy vị trí định kỳ (GPS tắt / lỗi): chỉ chạy lại khi người dùng bấm "Thử lại".
+  bool _pollStopped = false;
   static const _pollEvery = Duration(seconds: 15);
 
   double get _percent {
@@ -108,16 +111,42 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
   /// Không dùng luồng vị trí (geolocator dùng chung một luồng với chia sẻ nền) và dừng khi rời màn hình.
   void _startPolling() {
     _poll?.cancel();
+    if (_pollStopped) setState(() => _pollStopped = false);
     _pollOnce();
     _poll = Timer.periodic(_pollEvery, (_) => _pollOnce());
   }
 
+  /// GPS tắt / lỗi định vị: dừng hẳn việc lấy vị trí định kỳ cho tới khi người dùng bấm "Thử lại",
+  /// để không bao giờ bật đi bật lại hộp thoại hệ thống (bật GPS / "Độ chính xác vị trí").
+  void _stopPolling() {
+    _poll?.cancel();
+    _poll = null;
+    if (mounted && !_pollStopped) setState(() => _pollStopped = true);
+  }
+
+  /// Cài đặt cho lần lấy vị trí định kỳ: độ chính xác vừa phải; Android dùng LocationManager
+  /// (không qua kiểm tra cài đặt của Google Play Services nên không hiện hộp thoại "Độ chính xác vị trí").
+  static LocationSettings get _pollSettings {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(accuracy: LocationAccuracy.medium, forceLocationManager: true);
+    }
+    return const LocationSettings(accuracy: LocationAccuracy.medium);
+  }
+
   Future<void> _pollOnce() async {
     // Đang chia sẻ thì vị trí đến từ luồng chia sẻ ([_onMove]); app ở nền thì không lấy.
-    if (_polling || !mounted || LocationService.instance.sharing.value || !_explore.mayRecord) return;
+    if (_polling || _pollStopped || !mounted || LocationService.instance.sharing.value || !_explore.mayRecord) {
+      return;
+    }
     _polling = true;
     try {
-      final p = await Geolocator.getCurrentPosition().timeout(const Duration(seconds: 12));
+      // GPS đang tắt: không gọi getCurrentPosition (tránh hộp thoại bật GPS), chờ người dùng bấm "Thử lại".
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _stopPolling();
+        return;
+      }
+      final p = await Geolocator.getCurrentPosition(locationSettings: _pollSettings)
+          .timeout(const Duration(seconds: 12));
       if (!mounted || !_explore.mayRecord) return;
       final first = _me == null;
       setState(() => _me = LatLng(p.latitude, p.longitude));
@@ -125,8 +154,13 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
       if (first) _map.move(_me!, 15);
       final a = _area;
       if (a == null || !a.contains(_me!)) _loadArea();
-    } catch (e) {
+    } on TimeoutException catch (e) {
+      // Chưa bắt được tín hiệu: thử lại ở lần sau, không có hộp thoại nào.
       debugPrint('Explore position: $e');
+    } catch (e) {
+      // GPS bị tắt, quyền bị thu hồi, yêu cầu bật định vị thất bại…: dừng tới khi người dùng bấm "Thử lại".
+      debugPrint('Explore position: $e');
+      _stopPolling();
     } finally {
       _polling = false;
     }
@@ -443,6 +477,29 @@ class _ExploreScreenState extends State<ExploreScreen> with TickerProviderStateM
               ],
             ),
           ),
+          if (_permitted == true && _pollStopped && !LocationService.instance.sharing.value)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: pad.bottom + 90,
+              child: Center(
+                child: GlassPressable(
+                  onTap: _startPolling,
+                  shape: const StadiumBorder(),
+                  child: const Glass(
+                    capsule: true,
+                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.location_disabled_rounded, size: 18, color: AppColors.orange),
+                      SizedBox(width: 8),
+                      Text('Chưa lấy được vị trí · ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text('Thử lại',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.brand)),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
           if (_permitted == false)
             Positioned(
               left: 24,

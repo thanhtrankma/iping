@@ -9,7 +9,9 @@
       "codebase": "default",
       "ignore": [
         "node_modules",
-        ".git"
+        ".git",
+        "*.test.js",
+        "test/**"
       ]
     }
   ],

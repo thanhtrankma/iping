@@ -9,6 +9,7 @@ const { getMessaging } = require('firebase-admin/messaging');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
 const { wantsAlert, blockedSender, CRITICAL } = require('./alert_prefs');
+const contentFilter = require('./content_filter');
 
 initializeApp();
 setGlobalOptions({ region: 'asia-southeast1' });
@@ -128,6 +129,22 @@ async function nameIn(groupSnap, uid) {
   if (typeof n === 'string' && n.trim()) return n.trim().slice(0, 50);
   if (!uid || typeof uid !== 'string') return 'Thành viên';
   return displayName(uid);
+}
+
+/// Lọc từ ngữ không phù hợp (phòng thủ thêm cho bộ lọc ở client): nếu `text` của doc vừa tạo
+/// bị lọc thì ghi đè bằng bản đã che "***" (không lưu bản gốc) và đánh dấu `filtered: true`.
+/// Trả về văn bản sạch để dùng cho push.
+async function filterDocText(ref, text) {
+  const raw = typeof text === 'string' ? text : '';
+  const masked = contentFilter.mask(raw);
+  if (masked === raw) return raw;
+  try {
+    await ref.update({ text: masked, filtered: true });
+  } catch (e) {
+    // Doc có thể đã bị xoá ngay sau khi gửi.
+    console.warn('filterDocText', ref.path, e.message);
+  }
+  return masked;
 }
 
 async function photoUrl(uid) {
@@ -392,6 +409,12 @@ async function notifyGroup(groupId, exceptUid, notification, data) {
 
 async function notifyUsers(groupId, targets, notification, data, senderUid) {
   if (targets.length === 0) return;
+  // Tên nhóm / tên hiển thị / nội dung do người dùng nhập: che từ không phù hợp trong mọi push.
+  notification = {
+    ...notification,
+    ...(notification.title ? { title: contentFilter.mask(String(notification.title)) } : {}),
+    ...(notification.body ? { body: contentFilter.mask(String(notification.body)) } : {}),
+  };
 
   const userSnaps = await db.getAll(...targets.map((m) => db.doc(`users/${m}`)));
   const tokenOwners = new Map();
@@ -529,6 +552,7 @@ exports.onGroupMessage = onDocumentCreated('groups/{groupId}/messages/{messageId
   const m = event.data?.data();
   if (!m) return;
   const groupId = event.params.groupId;
+  const text = await filterDocText(event.data.ref, m.text);
   const g = await db.doc(`groups/${groupId}`).get();
   if (!g.exists) return;
   // Nhắn dồn dập: tối đa 1 push mỗi 3 giây cho mỗi người gửi.
@@ -536,7 +560,7 @@ exports.onGroupMessage = onDocumentCreated('groups/{groupId}/messages/{messageId
   const groupName = g.get('name') || 'Nhóm';
   await notifyGroup(groupId, m.uid, {
     title: `${await nameIn(g, m.uid)} · ${groupName}`,
-    body: String(m.text).slice(0, 200),
+    body: text.slice(0, 200),
   }, { type: 'message', uid: String(m.uid || '') });
 });
 
@@ -676,11 +700,12 @@ exports.onMoment = onDocumentCreated('groups/{groupId}/moments/{momentId}', asyn
   const m = event.data?.data();
   if (!m) return;
   const groupId = event.params.groupId;
+  const text = m.text ? await filterDocText(event.data.ref, m.text) : '';
   const g = await db.doc(`groups/${groupId}`).get();
   if (!g.exists) return;
   if (!(await allowRate(`moment:${groupId}:${m.uid}`, 30 * 1000))) return;
   const groupName = g.get('name') || 'Nhóm';
-  const body = m.text ? String(m.text).slice(0, 120) : (m.photoUrl ? '📷 Đã đăng một ảnh' : 'Có khoảnh khắc mới');
+  const body = text ? text.slice(0, 120) : (m.photoUrl ? '📷 Đã đăng một ảnh' : 'Có khoảnh khắc mới');
   await notifyGroup(groupId, m.uid, { title: `✨ ${await nameIn(g, m.uid)} · ${groupName}`, body },
     { type: 'moment', uid: String(m.uid || '') });
 });
@@ -858,7 +883,14 @@ exports.checkStaleLocations = onSchedule({ schedule: 'every 15 minutes', timeZon
 exports.onDmMessage = onDocumentCreated('dms/{dmId}/messages/{messageId}', async (event) => {
   const m = event.data?.data();
   if (!m) return;
-  const dm = (await db.doc(`dms/${event.params.dmId}`).get()).data();
+  const text = await filterDocText(event.data.ref, m.text);
+  const dmRef = db.doc(`dms/${event.params.dmId}`);
+  const dmSnap = await dmRef.get();
+  const dm = dmSnap.data();
+  // Bản xem trước của cuộc trò chuyện cũng phải là bản đã che.
+  if (dm && text !== m.text && dm.lastText === m.text) {
+    await dmRef.update({ lastText: text }).catch((e) => console.warn('filter dm lastText', e.message));
+  }
   if (!dm || !(dm.members || []).includes(m.uid)) return;
   // Hai người phải vẫn còn chung nhóm (người bị chặn / xoá / đã rời không gửi push được).
   const g = await db.doc(`groups/${dm.groupId}`).get();
@@ -869,6 +901,6 @@ exports.onDmMessage = onDocumentCreated('dms/{dmId}/messages/{messageId}', async
   if (!(await allowRate(`dm:${event.params.dmId}:${m.uid}`, 3 * 1000))) return;
   await notifyUsers(dm.groupId || '', others, {
     title: `💬 ${await nameIn(g, m.uid)}`,
-    body: String(m.text).slice(0, 200),
+    body: text.slice(0, 200),
   }, { type: 'dm', uid: String(m.uid), dmId: event.params.dmId }, m.uid);
 });

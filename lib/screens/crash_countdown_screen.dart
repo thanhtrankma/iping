@@ -8,7 +8,7 @@ import '../services/location_service.dart';
 import '../services/privacy_service.dart';
 import '../theme.dart';
 
-/// Nghi va chạm (BETA): đếm ngược để người dùng huỷ; hết giờ thì gửi SOS tới các nhóm.
+/// Nghi va chạm: đếm ngược để người dùng huỷ; hết giờ thì gửi SOS tới các nhóm.
 class CrashCountdownScreen extends StatefulWidget {
   const CrashCountdownScreen({super.key});
 
@@ -83,8 +83,8 @@ class _CrashCountdownScreenState extends State<CrashCountdownScreen> {
                   style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               const Text(
-                  'Phát hiện va chạm (beta) có thể nhầm khi điện thoại bị rơi hoặc va đập, và có thể không phát hiện '
-                  'được va chạm thật. Tính năng này không thay thế cuộc gọi 113 / 114 / 115: nếu cần trợ giúp, '
+                  'Phát hiện va chạm chỉ hoạt động khi IPing đang mở, có thể nhầm khi điện thoại bị rơi hoặc va đập '
+                  'và có thể không phát hiện được va chạm thật. Tính năng này không thay thế cuộc gọi 113 / 114 / 115: nếu cần trợ giúp, '
                   'hãy gọi ngay.',
                   textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 15)),
               const Spacer(),

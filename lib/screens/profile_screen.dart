@@ -8,8 +8,9 @@ import '../widgets/common.dart';
 import '../widgets/glass.dart';
 import 'account_dialogs.dart';
 
-/// Hiện lựa chọn nguồn ảnh: chụp mới hoặc chọn từ thư viện.
-Future<ImageSource?> pickImageSource(BuildContext context, {bool allowRemove = false}) {
+/// Hiện lựa chọn nguồn ảnh: chụp mới hoặc chọn từ thư viện. [title]: tiêu đề sheet
+/// (mặc định "Ảnh đại diện"; nơi khác như Khoảnh khắc truyền tiêu đề riêng).
+Future<ImageSource?> pickImageSource(BuildContext context, {bool allowRemove = false, String title = 'Ảnh đại diện'}) {
   return showGlassSheet<ImageSource?>(
     context,
     builder: (ctx) {
@@ -20,12 +21,12 @@ Future<ImageSource?> pickImageSource(BuildContext context, {bool allowRemove = f
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(8, 6, 8, 14),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 14),
               child: Text(
-                'Ảnh đại diện',
+                title,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3),
               ),
             ),
             _SheetGroup(children: [

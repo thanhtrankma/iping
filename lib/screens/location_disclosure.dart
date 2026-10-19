@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/push_router.dart' show navigatorKey;
 import '../theme.dart';
@@ -17,34 +16,28 @@ bool get _isApple => defaultTargetPlatform == TargetPlatform.iOS || defaultTarge
 /// kể cả khi app đóng, dùng cho tính năng nào, ai thấy, cách dừng, và người dùng phải bấm đồng ý.
 /// Danh sách tính năng phải khớp mục "Quyền vị trí ở chế độ nền" trong docs/PLAY_STORE.md.
 class LocationDisclosure {
-  static const _acceptedKey = 'location_disclosure_v1';
-  static const _backgroundAskedKey = 'location_background_asked_v1';
-
-  /// Đã đồng ý thì trả về true ngay; chưa thì hiện màn giải thích.
+  /// Hiện màn giải thích NGAY TRƯỚC mỗi lần app sắp gọi `Geolocator.requestPermission()`.
+  ///
+  /// Không lưu "đã đồng ý" vĩnh viễn: sau khi người dùng từ chối / thu hồi quyền, lần xin lại sau
+  /// vẫn có màn giải thích trước hộp thoại hệ thống (chính sách Google Play). Chỉ được gọi từ thao tác
+  /// do người dùng chủ động bấm (Bật chia sẻ, SOS, "Vị trí của tôi"…), nên không làm phiền.
   static Future<bool> ensureAccepted() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_acceptedKey) ?? false) return true;
     final context = navigatorKey.currentContext;
     if (context == null || !context.mounted) return false;
     final result = await showGlassSheet<bool>(context, builder: (ctx) => const LocationDisclosureSheet());
     // iOS: màn này chỉ dẫn tới hộp thoại của hệ thống, kể cả khi người dùng vuốt đóng.
-    final ok = result ?? _isApple;
-    if (ok) await prefs.setBool(_acceptedKey, true);
-    return ok;
+    return result ?? _isApple;
   }
 
-  /// Sau khi đã có quyền "khi dùng app": giải thích vì sao cần "Luôn cho phép" (hỏi một lần).
+  /// Sau khi đã có quyền "khi dùng app": giải thích vì sao cần "Luôn cho phép", hiện mỗi lần TRƯỚC khi
+  /// xin quyền nền / mở Cài đặt (chỉ khi người dùng chủ động bật chia sẻ).
   ///
   /// Trả về `true` nếu người dùng muốn tiếp tục: Android → xin quyền nền (Android 11+ mở trang Cài đặt
   /// của app để chọn "Luôn cho phép"); iOS → mở Cài đặt của IPing (Vị trí → "Luôn luôn"), vì
   /// geolocator không thể hỏi lại "Luôn luôn" sau khi đã có "Khi dùng ứng dụng".
   static Future<bool> askBackground() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_backgroundAskedKey) ?? false) return false;
     final context = navigatorKey.currentContext;
     if (context == null || !context.mounted) return false;
-    await prefs.setBool(_backgroundAskedKey, true);
-    if (!context.mounted) return false;
     return await showGlassSheet<bool>(context, builder: (ctx) => const BackgroundLocationSheet()) ?? false;
   }
 }
@@ -57,7 +50,18 @@ const backgroundLocationFeatures = [
   '"Về an toàn": tự báo khi bạn về tới nơi; quá giờ chưa tới thì nhóm nhận cảnh báo kèm vị trí cuối.',
   'Cảnh báo chạy quá tốc độ và báo cáo lái xe.',
   'Trả lời khi thành viên trong nhóm hỏi "Bạn đang ở đâu?", kể cả khi IPing đã đóng.',
-  'Khám phá: đánh dấu các khu vực bạn đã đi qua (chỉ mình bạn thấy).',
+  'Khám phá: đánh dấu các khu vực bạn đã đi qua (bản đồ chỉ mình bạn thấy); các nhóm bạn chia sẻ vị trí thấy điểm Khám phá và tên khu vực bạn đang ở.',
+];
+
+/// Bản rút gọn của [backgroundLocationFeatures] cho màn "Luôn cho phép".
+@visibleForTesting
+const backgroundFeaturesShort = [
+  'chia sẻ vị trí liên tục với các nhóm bạn chọn',
+  'báo khi bạn đến / rời địa điểm đã lưu hoặc điểm hẹn Meetup',
+  '"Về an toàn": báo khi bạn về tới nơi hoặc quá giờ chưa tới',
+  'cảnh báo chạy quá tốc độ và báo cáo lái xe',
+  'trả lời khi thành viên hỏi "Bạn đang ở đâu?"',
+  'Khám phá: điểm và tên khu vực hiển thị cho nhóm bạn chia sẻ',
 ];
 
 @visibleForTesting
@@ -156,16 +160,31 @@ class BackgroundLocationSheet extends StatelessWidget {
               style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
           const SizedBox(height: 12),
           Text(
-            apple
-                ? 'Khi IPing đang chạy nền, việc chia sẻ vẫn tiếp tục (iPhone hiện chỉ báo vị trí màu xanh). '
-                    'Để nhóm vẫn nhận được vị trí khi IPing đã bị đóng hẳn — báo đến / rời địa điểm, "Về an toàn", '
-                    'trả lời khi thành viên hỏi "Bạn đang ở đâu?" — hãy mở Cài đặt → Vị trí → chọn "Luôn luôn". '
-                    'Bạn vẫn dùng IPing được nếu chỉ cho phép "Khi dùng ứng dụng".'
-                : 'Để nhóm vẫn nhận được vị trí và thông báo khi bạn đến, rời địa điểm, về tới nơi, hoặc khi '
-                    'thành viên hỏi "Bạn đang ở đâu?" lúc IPing đã đóng, hãy chọn "Luôn cho phép" ở màn tiếp theo. '
-                    'Bạn vẫn dùng IPing được nếu chỉ cho phép khi đang dùng ứng dụng.',
+            'IPing thu thập dữ liệu vị trí kể cả khi ứng dụng đã đóng hoặc không được sử dụng, để:',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, height: 1.4, color: secondary),
+            style: TextStyle(fontSize: 15, height: 1.4, color: secondary, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          for (final f in backgroundFeaturesShort)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('• $f', style: TextStyle(fontSize: 14, height: 1.35, color: secondary)),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            'Chỉ thành viên của những nhóm bạn đã chọn chia sẻ mới thấy vị trí của bạn. '
+            'IPing không bán dữ liệu vị trí và không dùng cho quảng cáo.',
+            style: TextStyle(fontSize: 14, height: 1.35, color: secondary),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            apple
+                ? 'Hãy mở Cài đặt → Vị trí → chọn "Luôn luôn". '
+                    'Bạn vẫn dùng IPing được nếu chỉ cho phép "Khi dùng ứng dụng" (chia sẻ dừng khi IPing bị đóng hẳn).'
+                : 'Hãy chọn "Luôn cho phép" ở màn tiếp theo. '
+                    'Bạn vẫn dùng IPing được nếu chỉ cho phép khi đang dùng ứng dụng (chia sẻ khi IPing đang mở).',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, height: 1.4, color: secondary),
           ),
           const SizedBox(height: 18),
           FilledButton(

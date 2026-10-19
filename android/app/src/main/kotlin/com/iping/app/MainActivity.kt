@@ -24,7 +24,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        createSosChannel()
+        createNotificationChannels()
         // Activity được tạo lại (sau khi hệ thống thu hồi) thì intent cũ không còn là thao tác mới.
         if (savedInstanceState == null) handleStopIntent(intent)
     }
@@ -124,18 +124,26 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    /// Kênh "sos" phát tiếng còi riêng (res/raw/sos_siren). FCM gửi SOS vào kênh này (channelId "sos").
-    /// Kênh tồn tại vĩnh viễn sau lần mở app đầu tiên, nên push vẫn hú còi khi app đã tắt.
-    private fun createSosChannel() {
+    /// Kênh "default": push nhóm thông thường (FCM không ghi channelId → dùng
+    /// `default_notification_channel_id` trong AndroidManifest). Kênh "sos" phát tiếng còi riêng
+    /// (res/raw/sos_siren); Cloud Functions gửi SOS với channelId "sos".
+    /// Kênh tồn tại vĩnh viễn sau lần mở app đầu tiên, nên push vẫn hiện / hú còi khi app đã tắt.
+    /// Gọi lại createNotificationChannel với kênh đã có chỉ cập nhật tên và mô tả (âm thanh, mức độ
+    /// quan trọng người dùng đã chỉnh được giữ nguyên).
+    private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = getSystemService(NotificationManager::class.java) ?: return
-        if (manager.getNotificationChannel(SOS_CHANNEL) != null) return
+        manager.createNotificationChannel(
+            NotificationChannel(DEFAULT_CHANNEL, "Thông báo nhóm", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Đến/rời địa điểm, tin nhắn, ping, cảnh báo pin và các thông báo khác từ nhóm"
+            },
+        )
         val sound = Uri.parse("android.resource://$packageName/raw/sos_siren")
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
-        val channel = NotificationChannel(SOS_CHANNEL, "Cảnh báo SOS", NotificationManager.IMPORTANCE_HIGH).apply {
+        val channel = NotificationChannel(SOS_CHANNEL, "Khẩn cấp (SOS)", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "SOS và cảnh báo khẩn cấp từ thành viên trong nhóm"
             setSound(sound, attrs)
             enableVibration(true)
@@ -145,6 +153,7 @@ class MainActivity : FlutterActivity() {
     }
 
     companion object {
+        const val DEFAULT_CHANNEL = "default"
         const val SOS_CHANNEL = "sos"
         const val SHARING_CHANNEL = "iping/sharing"
         const val ACTION_STOP_SHARING = "com.iping.app.STOP_SHARING"

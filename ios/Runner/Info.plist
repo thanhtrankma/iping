@@ -5,7 +5,12 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>vi</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>vi</string>
+		<string>en</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>IPing</string>
 	<key>CFBundleExecutable</key>
@@ -57,11 +62,11 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Khi bạn bật "Chia sẻ vị trí", IPing gửi vị trí của bạn cho các nhóm bạn đã chọn, kể cả khi IPing chạy nền (thanh trạng thái hiện chỉ báo vị trí màu xanh). Chọn "Luôn luôn" để nhóm vẫn nhận được thông báo khi bạn đến hoặc rời địa điểm, về tới nơi an toàn, và vị trí khi thành viên hỏi bạn đang ở đâu lúc IPing đã đóng.</string>
+	<string>Khi bạn bật "Chia sẻ vị trí", IPing gửi vị trí của bạn cho các nhóm bạn đã chọn, kể cả khi IPing đang chạy nền (thanh trạng thái hiện chỉ báo vị trí màu xanh). Cho phép "Luôn luôn" là tuỳ chọn: giúp nhóm vẫn nhận được thông báo khi bạn đến hoặc rời địa điểm, về tới nơi an toàn, và giúp IPing trả lời khi thành viên hỏi vị trí của bạn mỗi lúc iOS cho phép IPing chạy nền.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Khi bạn bật "Chia sẻ vị trí", IPing hiển thị và gửi vị trí của bạn cho các nhóm bạn đã chọn, kể cả khi IPing chạy nền (thanh trạng thái hiện chỉ báo vị trí màu xanh), để báo khi bạn đến hoặc rời địa điểm. Vị trí cũng dùng cho SOS, check-in và căn bản đồ.</string>
+	<string>Khi bạn bật "Chia sẻ vị trí", IPing hiển thị và gửi vị trí của bạn cho các nhóm bạn đã chọn, kể cả khi IPing đang chạy nền (thanh trạng thái hiện chỉ báo vị trí màu xanh), để báo khi bạn đến hoặc rời địa điểm. Vị trí cũng dùng cho SOS, check-in và căn bản đồ.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Nếu bạn bật "Phát hiện va chạm (beta)", IPing dùng cảm biến chuyển động khi đang mở và bạn di chuyển nhanh để nhận ra va chạm mạnh, rồi đếm ngược 30 giây trước khi gửi SOS tới nhóm.</string>
+	<string>Nếu bạn bật "Phát hiện va chạm", IPing dùng cảm biến chuyển động khi IPing đang mở và bạn di chuyển nhanh để nhận ra va chạm mạnh, rồi đếm ngược 30 giây trước khi gửi SOS tới nhóm. Tính năng có thể không phát hiện hoặc báo nhầm và không thay thế 113/114/115.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>IPing cần truy cập ảnh để chọn ảnh đại diện và khoảnh khắc.</string>
 	<key>UIApplicationSceneManifest</key>

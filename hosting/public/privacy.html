@@ -25,8 +25,8 @@
     <li><strong>Trạng thái thiết bị:</strong> mức pin, mã thông báo đẩy (FCM) để gửi thông báo.</li>
     <li><strong>Nội dung bạn tạo:</strong> tin nhắn nhóm và tin nhắn 1-1, khoảnh khắc (ảnh, chữ và vị trí nếu bạn đính kèm), địa điểm, cuộc hẹn, ping, chuyến "Về an toàn".</li>
     <li><strong>Báo cáo và chặn:</strong> nội dung bạn báo cáo vi phạm (loại, lý do, ghi chú, bản sao nội dung bị báo cáo) và danh sách người bạn đã chặn.</li>
-    <li><strong>Khám phá:</strong> các ô bản đồ (khoảng 60–100 m) bạn đã đi qua và khu vực hành chính tương ứng; tổng diện tích đã khám phá hiển thị cho nhóm bạn đã chọn chia sẻ.</li>
-    <li><strong>Cảm biến chuyển động</strong> (chỉ khi bạn bật "Phát hiện va chạm (beta)"): xử lý ngay trên máy, không gửi lên máy chủ.</li>
+    <li><strong>Khám phá:</strong> các ô bản đồ (khoảng 60–100 m) bạn đã đi qua và khu vực hành chính tương ứng. Bản đồ Khám phá chỉ mình bạn thấy; các nhóm bạn chia sẻ vị trí thấy điểm Khám phá và tên khu vực bạn đang ở.</li>
+    <li><strong>Cảm biến chuyển động</strong> (chỉ khi bạn bật "Phát hiện va chạm", và chỉ khi IPing đang mở): xử lý ngay trên máy, không gửi lên máy chủ.</li>
     <li><strong>Camera:</strong> chỉ dùng khi bạn quét mã QR mời nhóm hoặc chụp ảnh; việc nhận dạng mã QR chạy trên máy (Google ML Kit).</li>
   </ul>
 
@@ -43,14 +43,14 @@
   <ul>
     <li>Chia sẻ vị trí tắt mặc định. Trước khi xin quyền vị trí, ứng dụng giải thích việc thu thập vị trí kể cả khi ứng dụng đóng.</li>
     <li>Vào nhóm bằng mã mời, đường liên kết hoặc mã QR <strong>không</strong> tự động chia sẻ: ứng dụng cho bạn thấy nhóm có ai, nhóm sẽ thấy gì, và bạn tự chọn chia sẻ, chỉ tham gia hoặc rời nhóm. Tạo nhóm mới được tính là đồng ý chia sẻ với nhóm đó.</li>
-    <li>Bạn có thể tắt chia sẻ, thôi chia sẻ hoặc tạm ẩn với từng nhóm bất cứ lúc nào (Menu → Bảo mật &amp; Bạn bè), hoặc bấm "Dừng chia sẻ" trên thông báo.</li>
+    <li>Bạn có thể tắt chia sẻ, thôi chia sẻ hoặc tạm ẩn với từng nhóm bất cứ lúc nào (Menu → Bảo mật &amp; Bạn bè), hoặc bấm "Dừng chia sẻ" trên thông báo (Android).</li>
     <li><strong>Khi bạn thôi chia sẻ với một nhóm:</strong> nhóm không còn thấy bạn "đang chia sẻ"; vị trí cuối, tốc độ và mức pin của bạn trong nhóm bị xoá ngay; lịch sử vị trí của bạn trong nhóm đó bị xoá. Các cảnh báo đã gửi trước đó vẫn còn tới khi hết hạn 30 ngày.</li>
     <li><strong>Khi bạn tắt chia sẻ hoặc tạm ẩn:</strong> nhóm không còn thấy vị trí cuối của bạn; lịch sử đã có được giữ tới khi hết hạn 30 ngày.</li>
   </ul>
 
   <h2>5. Ai thấy dữ liệu của bạn</h2>
   <ul>
-    <li><strong>Thành viên cùng nhóm bạn đã chọn chia sẻ:</strong> vị trí, tốc độ, pin, lịch sử, cảnh báo và tổng diện tích Khám phá. Nhóm bạn chưa chọn chia sẻ không nhận vị trí của bạn. Tin nhắn, khoảnh khắc, cuộc hẹn trong nhóm hiển thị cho mọi thành viên nhóm đó. Tin nhắn 1-1 chỉ hai người trong cuộc thấy.</li>
+    <li><strong>Thành viên cùng nhóm bạn đã chọn chia sẻ:</strong> vị trí, tốc độ, pin, lịch sử, cảnh báo, điểm Khám phá và tên khu vực bạn đang ở (bản đồ Khám phá chỉ mình bạn thấy). Nhóm bạn chưa chọn chia sẻ không nhận vị trí của bạn. Tin nhắn, khoảnh khắc, cuộc hẹn trong nhóm hiển thị cho mọi thành viên nhóm đó. Tin nhắn 1-1 chỉ hai người trong cuộc thấy.</li>
     <li><strong>Nhà cung cấp hạ tầng</strong> xử lý dữ liệu thay chúng tôi: Google Firebase (xác thực, gửi mã OTP qua SMS, cơ sở dữ liệu, lưu trữ ảnh, Cloud Functions, thông báo đẩy; máy chủ ở Singapore và Hoa Kỳ).</li>
     <li><strong>Đăng nhập bằng Google hoặc Apple:</strong> Google / Apple xác thực bạn và cho chúng tôi biết email, tên của tài khoản đó.</li>
     <li><strong>Nhà cung cấp bản đồ:</strong> khi tải bản đồ, ứng dụng tải các ô bản đồ từ MapTiler (Thuỵ Sĩ, bản đồ đường phố) và Esri ArcGIS (Hoa Kỳ, ảnh vệ tinh). Các dịch vụ này nhận <strong>địa chỉ IP</strong> của bạn và <strong>vùng bản đồ bạn đang xem</strong>, không nhận thông tin tài khoản.</li>
@@ -90,7 +90,7 @@
   <h2>10. Thay đổi chính sách</h2>
   <p>Khi có thay đổi quan trọng, chúng tôi sẽ cập nhật trang này và thông báo trong ứng dụng.</p>
 
-  <footer><a href="/">IPing</a> · <a href="/terms">Điều khoản sử dụng</a> · <a href="/delete-account">Xoá tài khoản</a></footer>
+  <footer><a href="/">IPing</a> · <a href="/terms">Điều khoản sử dụng</a> · <a href="/support">Hỗ trợ</a> · <a href="/delete-account">Xoá tài khoản</a></footer>
 </main>
 </body>
 </html>
